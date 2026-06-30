@@ -242,10 +242,87 @@
   /* DIVIDER */
   .divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 0; }
 
-  /* RESPONSIVE */
-  @media (max-width: 600px) {
-    .emp-grid { grid-template-columns: 1fr; }
+  /* TABLE SCROLL WRAPPER */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll table { min-width: 820px; }
+
+  /* MOBILE NAV */
+  .mob-nav {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(14,14,14,0.97); border-top: 1px solid rgba(201,168,76,0.25);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    padding: 8px 4px env(safe-area-inset-bottom);
+  }
+  .mob-nav ul { list-style: none; display: flex; justify-content: space-around; }
+  .mob-nav a {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--text2); text-decoration: none; font-size: 9px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 4px 8px; border-radius: 8px;
+    transition: color 0.2s;
+  }
+  .mob-nav a span.icon { font-size: 20px; }
+  .mob-nav a.active, .mob-nav a:hover { color: var(--gold); }
+
+  /* RESPONSIVE ≤ 900px */
+  @media (max-width: 900px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .opp-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  }
+
+  /* RESPONSIVE ≤ 768px */
+  @media (max-width: 768px) {
+    body { padding-bottom: 72px; }
+    .mob-nav { display: block; }
+    .container { padding: 0 14px; }
+    .section { padding: 32px 0 24px; }
+    .section-heading { font-size: 22px; margin-bottom: 20px; }
+    .hero { padding: 36px 20px 28px; }
+    .hero-logo { font-size: 9px; letter-spacing: 4px; margin-bottom: 10px; }
+    .hero-sub { font-size: 11px; letter-spacing: 2px; }
+    .hero-period { font-size: 11px; letter-spacing: 1px; padding: 5px 16px; margin-top: 14px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+    .metric-card { padding: 14px 10px; }
+    .metric-value { font-size: 22px; }
+    .awards { flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .award-card { min-width: unset; padding: 14px 16px; }
+    .award-icon { font-size: 28px; }
+    .award-name { font-size: 18px; }
+    .chart-grid { grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; }
+    .chart-card { padding: 16px; }
+    .emp-grid { grid-template-columns: 1fr; gap: 16px; }
     .emp-kpis { grid-template-columns: repeat(2, 1fr); }
+    .opp-grid { grid-template-columns: 1fr; gap: 12px; }
+    .rank-table th, .rank-table td { padding: 10px 10px; font-size: 12px; }
+    .rank-table .hide-mob { display: none; }
+    .rank-table td:nth-child(3),
+    .rank-table td:nth-child(4),
+    .rank-table td:nth-child(8),
+    .rank-table td:nth-child(10),
+    .rank-table td:nth-child(11) { display: none; }
+    .footer { padding: 16px; font-size: 10px; }
+    .heatmap table { min-width: 600px; }
+    .heatmap th, .heatmap td { padding: 8px 8px; font-size: 10px; }
+  }
+
+  /* RESPONSIVE ≤ 480px */
+  @media (max-width: 480px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric-card { padding: 12px 8px; }
+    .metric-value { font-size: 19px; }
+    .metric-label { font-size: 9px; letter-spacing: 1px; }
+    .emp-card-header { padding: 14px 16px; gap: 10px; }
+    .emp-avatar { width: 40px; height: 40px; font-size: 15px; }
+    .emp-name { font-size: 16px; }
+    .emp-kpis { grid-template-columns: repeat(3, 1fr); }
+    .emp-kpi { padding: 10px 8px; }
+    .emp-kpi-value { font-size: 14px; }
+    .emp-body { padding: 14px 16px; }
+    .analysis-item { font-size: 11px; }
+    .rank-table th, .rank-table td { padding: 8px 8px; font-size: 11px; }
+    .section-heading { font-size: 20px; }
+    .award-card { flex-direction: row; }
+    .mob-nav a { font-size: 8px; }
+    .mob-nav a span.icon { font-size: 18px; }
   }
 </style>
 </head>
@@ -262,7 +339,7 @@
 <div class="container">
 
   <!-- STORE OVERVIEW -->
-  <section class="section">
+  <section class="section" id="sec-store">
     <div class="section-title">Store Performance</div>
     <div class="section-heading">門市整體業績</div>
 
@@ -325,7 +402,7 @@
   <hr class="divider">
 
   <!-- AWARDS -->
-  <section class="section">
+  <section class="section" id="sec-awards">
     <div class="section-title">Special Recognition</div>
     <div class="section-heading">本月特別表彰</div>
 
@@ -368,25 +445,25 @@
   <hr class="divider">
 
   <!-- RANKING -->
-  <section class="section">
+  <section class="section" id="sec-rank">
     <div class="section-title">Sales Ranking</div>
     <div class="section-heading">個人業績排名</div>
 
-    <div style="background:var(--dark3);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;margin-bottom:32px;">
+    <div class="table-scroll" style="background:var(--dark3);border:1px solid rgba(255,255,255,0.08);border-radius:16px;margin-bottom:32px;">
       <table class="rank-table">
         <thead>
           <tr>
-            <th style="width:50px">排名</th>
+            <th style="width:44px">排名</th>
             <th>姓名</th>
-            <th>職位</th>
-            <th>目標</th>
+            <th class="hide-mob">職位</th>
+            <th class="hide-mob">目標</th>
             <th>業績</th>
             <th>達成率</th>
             <th>差距</th>
-            <th>vs. 平均</th>
+            <th class="hide-mob">vs. 平均</th>
             <th>UPT</th>
-            <th>ADS</th>
-            <th>AUR</th>
+            <th class="hide-mob">ADS</th>
+            <th class="hide-mob">AUR</th>
           </tr>
         </thead>
         <tbody>
@@ -544,7 +621,7 @@
   <hr class="divider">
 
   <!-- INDIVIDUAL EMPLOYEE CARDS -->
-  <section class="section">
+  <section class="section" id="sec-emp">
     <div class="section-title">Individual Analysis</div>
     <div class="section-heading">個人詳細分析</div>
 
@@ -1241,7 +1318,7 @@
   <hr class="divider">
 
   <!-- CATEGORY HEATMAP -->
-  <section class="section">
+  <section class="section" id="sec-cat">
     <div class="section-title">Category Heatmap</div>
     <div class="section-heading">品類強弱熱力圖</div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:24px">綠色 = 高於門市平均佔比 / 橙色 = 接近門市平均 / 紅色 = 低於門市平均佔比</p>
@@ -1360,7 +1437,7 @@
   <hr class="divider">
 
   <!-- OPPORTUNITIES -->
-  <section class="section">
+  <section class="section" id="sec-opp">
     <div class="section-title">Action Plan</div>
     <div class="section-heading">機會點 & 行動計畫</div>
 
@@ -1448,6 +1525,18 @@
 <div class="footer">
   MICHAEL KORS &nbsp;·&nbsp; TAOYUAN GLORIA OUTLETS &nbsp;·&nbsp; JUNE 2026 MONTHLY REVIEW &nbsp;·&nbsp; CONFIDENTIAL
 </div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mob-nav" aria-label="快速導航">
+  <ul>
+    <li><a href="#sec-store"><span class="icon">🏪</span>門市</a></li>
+    <li><a href="#sec-awards"><span class="icon">🏆</span>表彰</a></li>
+    <li><a href="#sec-rank"><span class="icon">📊</span>排名</a></li>
+    <li><a href="#sec-emp"><span class="icon">👤</span>個人</a></li>
+    <li><a href="#sec-cat"><span class="icon">🗂️</span>品類</a></li>
+    <li><a href="#sec-opp"><span class="icon">🎯</span>機會</a></li>
+  </ul>
+</nav>
 
 <script>
 // ============================
