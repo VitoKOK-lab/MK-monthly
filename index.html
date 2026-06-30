@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK 月度業績檢討 — June 2026 | Taoyuan Gloria Outlets</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --dark: #0A0A0A;
+    --dark2: #141414;
+    --dark3: #1E1E1E;
+    --dark4: #2A2A2A;
+    --text: #F0F0F0;
+    --text2: #A0A0A0;
+    --green: #4CAF50;
+    --red: #EF5350;
+    --blue: #42A5F5;
+    --orange: #FF9800;
+    --purple: #AB47BC;
+    --teal: #26A69A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--dark); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #0A0A0A 0%, #1A1209 50%, #0A0A0A 100%);
+    border-bottom: 2px solid var(--gold);
+    padding: 48px 32px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 60% at 50% 100%, rgba(201,168,76,0.12) 0%, transparent 70%);
+  }
+  .hero-logo {
+    font-size: 11px; letter-spacing: 6px; color: var(--gold); text-transform: uppercase;
+    margin-bottom: 16px; opacity: 0.8;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 5vw, 52px); font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--gold-light), var(--gold), var(--gold-light));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 8px;
+  }
+  .hero-sub { color: var(--text2); font-size: 14px; letter-spacing: 4px; text-transform: uppercase; }
+  .hero-period {
+    display: inline-block; margin-top: 20px; padding: 6px 24px;
+    border: 1px solid rgba(201,168,76,0.4); border-radius: 20px;
+    font-size: 13px; color: var(--gold); letter-spacing: 2px;
+  }
+
+  /* LAYOUT */
+  .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+  .section { padding: 48px 0 40px; }
+  .section-title {
+    font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .section-heading {
+    font-size: 28px; font-weight: 700; margin-bottom: 32px;
+    border-left: 3px solid var(--gold); padding-left: 16px;
+  }
+
+  /* STORE METRICS */
+  .metrics-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;
+    margin-bottom: 32px;
+  }
+  .metric-card {
+    background: var(--dark3); border: 1px solid rgba(201,168,76,0.2); border-radius: 12px;
+    padding: 20px 16px; text-align: center; transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: rgba(201,168,76,0.5); }
+  .metric-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
+  .metric-value { font-size: 26px; font-weight: 700; color: var(--gold-light); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.red { color: var(--red); }
+  .metric-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* AWARD BADGES */
+  .awards { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 40px; }
+  .award-card {
+    flex: 1; min-width: 200px; border-radius: 12px; padding: 20px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .award-card.gold { background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05)); border: 1px solid rgba(201,168,76,0.4); }
+  .award-card.silver { background: linear-gradient(135deg, rgba(192,192,192,0.15), rgba(192,192,192,0.03)); border: 1px solid rgba(192,192,192,0.3); }
+  .award-card.red { background: linear-gradient(135deg, rgba(239,83,80,0.15), rgba(239,83,80,0.03)); border: 1px solid rgba(239,83,80,0.3); }
+  .award-card.blue { background: linear-gradient(135deg, rgba(66,165,245,0.15), rgba(66,165,245,0.03)); border: 1px solid rgba(66,165,245,0.3); }
+  .award-icon { font-size: 36px; flex-shrink: 0; }
+  .award-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
+  .award-name { font-size: 22px; font-weight: 700; color: var(--gold-light); }
+  .award-card.red .award-name { color: #FF7777; }
+  .award-card.blue .award-name { color: var(--blue); }
+  .award-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* RANKING TABLE */
+  .rank-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+  .rank-table th {
+    text-align: left; padding: 10px 16px; font-size: 10px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--text2); border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .rank-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+  .rank-table tr:hover td { background: rgba(201,168,76,0.04); }
+  .rank-num {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+  }
+  .rank-1 { background: linear-gradient(135deg, #C9A84C, #F0D080); color: #000; }
+  .rank-2 { background: linear-gradient(135deg, #A0A0A0, #D0D0D0); color: #000; }
+  .rank-3 { background: linear-gradient(135deg, #CD7F32, #E8A050); color: #fff; }
+  .rank-n { background: rgba(255,255,255,0.08); color: var(--text2); }
+  .name-cell { font-weight: 600; font-size: 15px; }
+  .pos-cell { font-size: 11px; color: var(--text2); }
+  .sales-cell { font-size: 16px; font-weight: 700; }
+  .ach-cell { font-size: 14px; font-weight: 600; }
+  .ach-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-top: 4px; overflow: hidden; }
+  .ach-fill { height: 100%; border-radius: 2px; background: var(--green); }
+  .ach-fill.over { background: var(--gold); }
+  .ach-fill.under { background: var(--red); }
+  .gap-pos { color: var(--green); font-weight: 600; }
+  .gap-neg { color: var(--red); font-weight: 600; }
+  .avg-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+  .avg-badge.above { background: rgba(76,175,80,0.2); color: var(--green); }
+  .avg-badge.below { background: rgba(239,83,80,0.2); color: var(--red); }
+
+  /* EMPLOYEE CARDS */
+  .emp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; }
+  .emp-card {
+    background: var(--dark3); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+    overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .emp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .emp-card.top1 { border-color: rgba(201,168,76,0.5); }
+  .emp-card.top2 { border-color: rgba(192,192,192,0.4); }
+  .emp-card-header {
+    padding: 20px 24px; display: flex; align-items: center; gap: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .emp-avatar {
+    width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0;
+  }
+  .emp-name { font-size: 18px; font-weight: 700; }
+  .emp-position { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .emp-rank-badge {
+    margin-left: auto; text-align: right; font-size: 11px; color: var(--text2);
+  }
+  .emp-rank-num { font-size: 28px; font-weight: 700; color: var(--gold); line-height: 1; }
+  .emp-kpis {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .emp-kpi {
+    padding: 14px 16px; text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .emp-kpi:last-child { border-right: none; }
+  .emp-kpi-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
+  .emp-kpi-value { font-size: 17px; font-weight: 700; }
+  .emp-body { padding: 20px 24px; }
+  .emp-achievement {
+    margin-bottom: 16px;
+  }
+  .ach-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .ach-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); }
+  .ach-pct { font-size: 20px; font-weight: 700; }
+  .ach-bar2 { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .ach-fill2 { height: 100%; border-radius: 3px; }
+  .avg-diff-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .avg-diff-label { font-size: 11px; color: var(--text2); }
+  .emp-cats { margin-bottom: 16px; }
+  .emp-cats-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); margin-bottom: 10px; }
+  .cat-row { margin-bottom: 7px; }
+  .cat-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .cat-name { font-size: 11px; color: var(--text); }
+  .cat-pct-text { font-size: 11px; font-weight: 600; }
+  .cat-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 3px; }
+  .analysis-section { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+  .analysis-item { display: flex; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+  .analysis-icon { flex-shrink: 0; width: 18px; }
+  .analysis-content b { color: var(--text); font-weight: 600; }
+  .analysis-content span { color: var(--text2); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin: 2px; }
+  .tag-green { background: rgba(76,175,80,0.2); color: #81C784; }
+  .tag-gold { background: rgba(201,168,76,0.2); color: var(--gold); }
+  .tag-red { background: rgba(239,83,80,0.2); color: #EF9A9A; }
+  .tag-blue { background: rgba(66,165,245,0.2); color: #90CAF9; }
+
+  /* CHART SECTION */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 32px; }
+  .chart-card { background: var(--dark3); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text2); text-transform: uppercase; letter-spacing: 2px; }
+  .chart-canvas-wrap { position: relative; }
+
+  /* CATEGORY HEATMAP */
+  .heatmap { overflow-x: auto; margin-bottom: 32px; }
+  .heatmap table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  .heatmap th {
+    padding: 10px 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text2); text-align: center; white-space: nowrap;
+  }
+  .heatmap th.name-col { text-align: left; }
+  .heatmap td {
+    padding: 10px 12px; text-align: center; font-size: 12px; font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap;
+  }
+  .heatmap td.name-col { text-align: left; font-weight: 600; }
+  .hm-above { background: rgba(76,175,80,0.25); color: #A5D6A7; }
+  .hm-below { background: rgba(239,83,80,0.2); color: #FFCDD2; }
+  .hm-avg { background: rgba(255,152,0,0.15); color: #FFE082; }
+  .hm-zero { color: rgba(255,255,255,0.2); }
+
+  /* OPPORTUNITIES */
+  .opp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .opp-card {
+    background: var(--dark3); border-left: 3px solid var(--gold);
+    border-radius: 0 12px 12px 0; padding: 20px;
+  }
+  .opp-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--gold-light); }
+  .opp-list { list-style: none; }
+  .opp-list li { font-size: 12px; color: var(--text2); padding: 4px 0; padding-left: 16px; position: relative; }
+  .opp-list li::before { content: '→'; position: absolute; left: 0; color: var(--gold); }
+
+  /* FOOTER */
+  .footer {
+    border-top: 1px solid rgba(201,168,76,0.2); padding: 24px; text-align: center;
+    font-size: 11px; color: var(--text2); letter-spacing: 2px;
+  }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 0; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .emp-grid { grid-template-columns: 1fr; }
+    .emp-kpis { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-logo">Michael Kors — Taoyuan Gloria Outlets</div>
+  <h1>月度業績檢討報告</h1>
+  <div class="hero-sub">Monthly Sales Review</div>
+  <div class="hero-period">June 2026 &nbsp;|&nbsp; FY2027 P3 &nbsp;|&nbsp; 2026-06-30</div>
+</div>
+
+<div class="container">
+
+  <!-- STORE OVERVIEW -->
+  <section class="section">
+    <div class="section-title">Store Performance</div>
+    <div class="section-heading">門市整體業績</div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">本月目標</div>
+        <div class="metric-value">475<span style="font-size:14px">萬</span></div>
+        <div class="metric-sub">NT$ 4,750,000</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">實際業績</div>
+        <div class="metric-value green">600<span style="font-size:14px">萬</span></div>
+        <div class="metric-sub">NT$ 6,001,904</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">達成率</div>
+        <div class="metric-value green">126.4%</div>
+        <div class="metric-sub">超標 NT$ +1,251,904</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">客單數 Trans</div>
+        <div class="metric-value">579</div>
+        <div class="metric-sub">YoY -37.3%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">件數 Units</div>
+        <div class="metric-value">1,134</div>
+        <div class="metric-sub">UPT 1.96</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">客均消費 ADS</div>
+        <div class="metric-value">10,366</div>
+        <div class="metric-sub">YoY +0.7%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">件均價 AUR</div>
+        <div class="metric-value">5,293</div>
+        <div class="metric-sub">YoY +2.9%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">去年業績 LY</div>
+        <div class="metric-value red">950<span style="font-size:14px">萬</span></div>
+        <div class="metric-sub">Comp -36.8%</div>
+      </div>
+    </div>
+
+    <!-- STORE CATEGORY PIE DESCRIPTION -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">門市品類佔比</div>
+        <div class="chart-canvas-wrap"><canvas id="storePieChart" height="260"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">團隊業績分佈</div>
+        <div class="chart-canvas-wrap"><canvas id="teamBarChart" height="260"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- AWARDS -->
+  <section class="section">
+    <div class="section-title">Special Recognition</div>
+    <div class="section-heading">本月特別表彰</div>
+
+    <div class="awards">
+      <div class="award-card gold">
+        <div class="award-icon">👑</div>
+        <div>
+          <div class="award-title">業績完成王 #1</div>
+          <div class="award-name">Yvette Wang</div>
+          <div class="award-detail">業績 NT$1,108,740 · 達成率 158.4% · 排名第一</div>
+        </div>
+      </div>
+      <div class="award-card silver">
+        <div class="award-icon">⭐</div>
+        <div>
+          <div class="award-title">達成率最高</div>
+          <div class="award-name">Liv Yang</div>
+          <div class="award-detail">達成率 187.9% · 超標 NT$483,521</div>
+        </div>
+      </div>
+      <div class="award-card blue">
+        <div class="award-icon">💎</div>
+        <div>
+          <div class="award-title">最高客均消費</div>
+          <div class="award-name">Vina Chung</div>
+          <div class="award-detail">ADS NT$11,870 · AUR NT$6,095 · 高客單品質最佳</div>
+        </div>
+      </div>
+      <div class="award-card red">
+        <div class="award-icon">⚠️</div>
+        <div>
+          <div class="award-title">漏單王 / 未達標</div>
+          <div class="award-name">Demi Chen</div>
+          <div class="award-detail">達成率 96.4% · 差距 -NT$25,189 · UPT 最低 1.57</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- RANKING -->
+  <section class="section">
+    <div class="section-title">Sales Ranking</div>
+    <div class="section-heading">個人業績排名</div>
+
+    <div style="background:var(--dark3);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;margin-bottom:32px;">
+      <table class="rank-table">
+        <thead>
+          <tr>
+            <th style="width:50px">排名</th>
+            <th>姓名</th>
+            <th>職位</th>
+            <th>目標</th>
+            <th>業績</th>
+            <th>達成率</th>
+            <th>差距</th>
+            <th>vs. 平均</th>
+            <th>UPT</th>
+            <th>ADS</th>
+            <th>AUR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Average for active employees: 856,963 -->
+          <tr>
+            <td><div class="rank-num rank-1" style="margin:0 auto">1</div></td>
+            <td><div class="name-cell">Yvette Wang</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell" style="color:var(--gold-light)">1,108,740</td>
+            <td>
+              <div class="ach-cell" style="color:var(--gold)">158.4%</div>
+              <div class="ach-bar"><div class="ach-fill over" style="width:100%"></div></div>
+            </td>
+            <td class="gap-pos">+408,740</td>
+            <td><span class="avg-badge above">+29.4%</span></td>
+            <td style="color:var(--gold)"><b>2.32</b></td>
+            <td style="color:var(--gold)"><b>12,052</b></td>
+            <td>5,205</td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-1" style="margin:0 auto;background:linear-gradient(135deg,#FFD700,#FFA500)">🏆</div></td>
+            <td><div class="name-cell">Liv Yang</div></td>
+            <td class="pos-cell">Sales Supervisor</td>
+            <td>550,000</td>
+            <td class="sales-cell" style="color:var(--green)">1,033,520</td>
+            <td>
+              <div class="ach-cell" style="color:var(--green)">187.9% 🔥</div>
+              <div class="ach-bar"><div class="ach-fill over" style="width:100%"></div></div>
+            </td>
+            <td class="gap-pos">+483,520</td>
+            <td><span class="avg-badge above">+20.6%</span></td>
+            <td>1.91</td>
+            <td>10,335</td>
+            <td>5,411</td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-2" style="margin:0 auto">3</div></td>
+            <td><div class="name-cell">Alvin Pan</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell">867,246</td>
+            <td>
+              <div class="ach-cell" style="color:var(--green)">123.9%</div>
+              <div class="ach-bar"><div class="ach-fill over" style="width:100%"></div></div>
+            </td>
+            <td class="gap-pos">+167,246</td>
+            <td><span class="avg-badge above">+1.2%</span></td>
+            <td>2.00</td>
+            <td>10,841</td>
+            <td>5,420</td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-3" style="margin:0 auto">4</div></td>
+            <td><div class="name-cell">Kai Huang</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell">847,538</td>
+            <td>
+              <div class="ach-cell" style="color:var(--green)">121.1%</div>
+              <div class="ach-bar"><div class="ach-fill over" style="width:80%"></div></div>
+            </td>
+            <td class="gap-pos">+147,538</td>
+            <td><span class="avg-badge below">-1.1%</span></td>
+            <td>1.81</td>
+            <td>9,113</td>
+            <td>5,045</td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-n" style="margin:0 auto">5</div></td>
+            <td><div class="name-cell">Bailey Chou</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell">790,300</td>
+            <td>
+              <div class="ach-cell" style="color:var(--green)">112.9%</div>
+              <div class="ach-bar"><div class="ach-fill over" style="width:72%"></div></div>
+            </td>
+            <td class="gap-pos">+90,300</td>
+            <td><span class="avg-badge below">-7.8%</span></td>
+            <td style="color:var(--gold)"><b>2.20</b></td>
+            <td>10,399</td>
+            <td>4,732</td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-n" style="margin:0 auto">6</div></td>
+            <td><div class="name-cell">Vina Chung</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell">676,590</td>
+            <td>
+              <div class="ach-cell" style="color:var(--red)">96.7%</div>
+              <div class="ach-bar"><div class="ach-fill under" style="width:61%"></div></div>
+            </td>
+            <td class="gap-neg">-23,410</td>
+            <td><span class="avg-badge below">-21.1%</span></td>
+            <td>1.95</td>
+            <td style="color:var(--gold)"><b>11,870</b></td>
+            <td style="color:var(--gold)"><b>6,095</b></td>
+          </tr>
+          <tr>
+            <td><div class="rank-num rank-n" style="margin:0 auto">7</div></td>
+            <td><div class="name-cell">Demi Chen</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>700,000</td>
+            <td class="sales-cell">674,811</td>
+            <td>
+              <div class="ach-cell" style="color:var(--red)">96.4%</div>
+              <div class="ach-bar"><div class="ach-fill under" style="width:61%"></div></div>
+            </td>
+            <td class="gap-neg">-25,189</td>
+            <td><span class="avg-badge below">-21.3%</span></td>
+            <td style="color:var(--red)">1.57</td>
+            <td>8,764</td>
+            <td style="color:var(--gold)">5,577</td>
+          </tr>
+          <tr style="opacity:0.4">
+            <td><div class="rank-num rank-n" style="margin:0 auto">—</div></td>
+            <td><div class="name-cell">Ruby Liu</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>—</td>
+            <td class="sales-cell">0</td>
+            <td><div class="ach-cell" style="color:var(--text2)">— 本月缺勤</div></td>
+            <td style="color:var(--text2)">—</td>
+            <td style="color:var(--text2)">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr style="opacity:0.4">
+            <td><div class="rank-num rank-n" style="margin:0 auto">—</div></td>
+            <td><div class="name-cell">Ryan Hsieh</div></td>
+            <td class="pos-cell">Sales Associate</td>
+            <td>—</td>
+            <td class="sales-cell">0</td>
+            <td><div class="ach-cell" style="color:var(--text2)">— 本月缺勤</div></td>
+            <td style="color:var(--text2)">—</td>
+            <td style="color:var(--text2)">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card" style="grid-column: 1/-1;">
+        <div class="chart-title">業績達成率對比 (目標線 = 100%)</div>
+        <div class="chart-canvas-wrap"><canvas id="achChart" height="120"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- INDIVIDUAL EMPLOYEE CARDS -->
+  <section class="section">
+    <div class="section-title">Individual Analysis</div>
+    <div class="section-heading">個人詳細分析</div>
+
+    <div class="emp-grid">
+
+      <!-- YVETTE WANG -->
+      <div class="emp-card top1">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#C9A84C,#F0D080);color:#000">YW</div>
+          <div>
+            <div class="emp-name">Yvette Wang</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num">#1</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value" style="color:var(--gold-light)">110.9萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">158.4%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">超標</div>
+            <div class="emp-kpi-value" style="color:var(--green)">+40.9萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">2.32</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">12,052</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">Trans</div>
+            <div class="emp-kpi-value">92</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--gold)">158.4%</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light))"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge above">高於平均 +29.4% (↑ NT$251,777)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">48.4%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:48.4%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">23.7%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:23.7%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK RTW</span><span class="cat-pct-text" style="color:var(--green)">10.2%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:10.2%;background:var(--green)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS HANDBAGS</span><span class="cat-pct-text" style="color:var(--purple)">9.8%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:9.8%;background:var(--purple)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK FRAGRANCE</span><span class="cat-pct-text" style="color:var(--orange)">4.3%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:4.3%;background:var(--orange)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>全店業績第一，UPT(2.32)、ADS(12,052) 均為團隊最高；RTW 佔比(10.2%) 領先，Fragrance 推單能力強(4.3%)；Men's Bag 銷售穩健</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>高連帶率，善於引導客人購買多件；時裝品味強，能推RTW/Fragrance等非主力品相</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>Watch/Shoes/Jewelry 品類佔比為零，可學習 Demi 在腕表上的推單技巧；Transaction 數(92次)還有成長空間</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>已是全店標竿，可分享 UPT 提升技巧給團隊；Accessories 品類開發</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">業績第一</span>
+              <span class="tag tag-gold">UPT最高</span>
+              <span class="tag tag-gold">ADS最高</span>
+              <span class="tag tag-green">Team Leader</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIV YANG -->
+      <div class="emp-card top2">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#4CAF50,#81C784);color:#fff">LY</div>
+          <div>
+            <div class="emp-name">Liv Yang</div>
+            <div class="emp-position">Sales Supervisor</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--green)">#2</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value" style="color:var(--green)">103.4萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--green)">🔥187.9%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">超標</div>
+            <div class="emp-kpi-value" style="color:var(--green)">+48.4萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value">1.91</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value">10,335</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">Trans</div>
+            <div class="emp-kpi-value">100</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--green)">187.9% 🔥</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:100%;background:linear-gradient(90deg,var(--green),#A5D6A7)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge above">高於平均 +20.6% (↑ NT$176,557)</span>
+            </div>
+            <div style="margin-top:6px;font-size:11px;color:var(--orange)">⚠️ 主管目標較低(55萬)，實際銷售超過多位 SA</div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比 (最均衡)</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">47.6%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:47.6%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">26.9%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:26.9%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK RTW</span><span class="cat-pct-text" style="color:var(--green)">7.6%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:7.6%;background:var(--green)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS HANDBAGS</span><span class="cat-pct-text" style="color:var(--purple)">7.5%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:7.5%;background:var(--purple)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS SLG</span><span class="cat-pct-text" style="color:var(--teal)">4.1%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:4.1%;background:var(--teal)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>達成率全店最高(187.9%)；品類最均衡，HB/SLG/RTW/MensLine 全面均有貢獻；客均100筆單最多，人脈廣顧客黏性高；Fragrance 推廣能力強</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>作為 Supervisor 以身作則，品類知識全面；善用老客戶回購，顧客忠誠度高；多品類連帶推廣</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>YoY Comp -10.7%，去年業績更高；UPT(1.91) 有空間提升；可學習 Yvette 的 UPT 策略</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>可帶領未達標的 Demi/Vina 提升品類連帶率；Watch/Jewelry 品類開發潛力</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">達成率最高</span>
+              <span class="tag tag-green">品類最均衡</span>
+              <span class="tag tag-blue">Trans最多</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALVIN PAN -->
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#42A5F5,#90CAF9);color:#000">AP</div>
+          <div>
+            <div class="emp-name">Alvin Pan</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--blue)">#3</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value">86.7萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--green)">123.9%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">超標</div>
+            <div class="emp-kpi-value" style="color:var(--green)">+16.7萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value">2.00</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">10,841</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">Trans</div>
+            <div class="emp-kpi-value">80</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--green)">123.9%</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:100%;background:var(--green)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge above">高於平均 +1.2% (↑ NT$10,283)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">52.0%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:52%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS HANDBAGS</span><span class="cat-pct-text" style="color:var(--purple)">12.8%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:12.8%;background:var(--purple)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK RTW</span><span class="cat-pct-text" style="color:var(--green)">10.9%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:10.9%;background:var(--green)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">18.1%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:18.1%;background:var(--blue)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>ADS(10,841) 全隊第二高，善售高單價商品；Men's Line 佔比(12.8%) 全隊最強，擅長男女包兼顧；RTW 佔比(10.9%) 優秀</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>男性客群專家，懂得針對男性顧客需求；高端包包說服力強，客單價高</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>SLG 佔比(18.1%) 低於店均(23.6%)；Transaction 數(80次) 偏低，可增加進店頻率轉換；Fragrance/Eyewear 品類幾乎未有</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>向 Bailey 學習 SLG 搭配推單技巧；其他人可向 Alvin 學習男裝/男包的客群開發</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">Men's 王者</span>
+              <span class="tag tag-blue">高ADS</span>
+              <span class="tag tag-green">RTW強</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KAI HUANG -->
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#FF9800,#FFE0B2);color:#000">KH</div>
+          <div>
+            <div class="emp-name">Kai Huang</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--orange)">#4</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value">84.8萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--green)">121.1%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">YoY Comp</div>
+            <div class="emp-kpi-value" style="color:var(--red)">-22.9%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value">1.81</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value">9,113</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">Trans</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">93</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--green)">121.1%</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:100%;background:var(--orange)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge below">低於平均 -1.1% (↓ NT$9,425)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">53.8%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:53.8%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">27.5%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:27.5%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS HANDBAGS</span><span class="cat-pct-text" style="color:var(--purple)">6.5%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:6.5%;background:var(--purple)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK RTW</span><span class="cat-pct-text" style="color:var(--green)">6.0%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:6%;background:var(--green)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>Transaction(93次) 為全隊最多，接客效率高；SLG 銷售量(67件) 全隊最多，連帶推單能力強</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>勤快接客，顧客轉換率高；SLG 搭配專家，能引導包包+SLG 組合購買</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>ADS(9,113) 全隊最低，建議提升客單價；YoY Comp -22.9% 需關注；RTW/Accessories 幾乎未推</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>接客量大但客單低，可向 Vina 學習如何引導客人選擇較高價位商品；增加 Eyewear/Watch 附加品</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">Trans最多</span>
+              <span class="tag tag-blue">SLG件數最多</span>
+              <span class="tag tag-red">ADS最低</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BAILEY CHOU -->
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#26A69A,#80CBC4);color:#fff">BC</div>
+          <div>
+            <div class="emp-name">Bailey Chou</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--teal)">#5</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value">79.0萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--green)">112.9%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">YoY Comp</div>
+            <div class="emp-kpi-value" style="color:var(--red)">-19.5%</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">2.20</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value">10,399</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">Trans</div>
+            <div class="emp-kpi-value">76</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--green)">112.9%</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:100%;background:var(--teal)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge below">低於平均 -7.8% (↓ NT$66,663)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比 (RTW最佳)</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">40.1%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:40.1%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK RTW</span><span class="cat-pct-text" style="color:var(--green)">19.9% 🔥</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:19.9%;background:var(--green)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">21.7%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:21.7%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS RTW</span><span class="cat-pct-text" style="color:var(--teal)">3.0%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:3%;background:var(--teal)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>RTW 佔比(19.9%) 全隊最高，是時裝達人；UPT(2.20) 全隊第二，連帶能力強；Mens RTW 也有斬獲，全品類均衡</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>時裝品味突出，能以搭配概念帶動衣服銷售；多件連帶高手</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>HB 佔比(40.1%) 全隊最低；YoY Comp -19.5%；AUR(4,732) 全隊最低，可嘗試推更高價位HB</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>其他人可向 Bailey 學習 RTW 搭配推銷技巧；可以嘗試提高 HB 客單(向 Vina 學習高端包推銷)</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-green">RTW最強</span>
+              <span class="tag tag-gold">UPT第二</span>
+              <span class="tag tag-red">HB佔比最低</span>
+              <span class="tag tag-red">AUR最低</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VINA CHUNG -->
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#AB47BC,#CE93D8);color:#fff">VC</div>
+          <div>
+            <div class="emp-name">Vina Chung</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--red)">#6</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value">67.7萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--red)">96.7% ⚠️</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">差距</div>
+            <div class="emp-kpi-value" style="color:var(--red)">-2.3萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value">1.95</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">11,870</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">AUR</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">6,095</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--red)">96.7% ⚠️ 未達標</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:96.7%;background:var(--red)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge below">低於平均 -21.1% (↓ NT$180,373)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比 (HB佔比最高)</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--red)">59.3% 🔺</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:59.3%;background:var(--red)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">19.0%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:19%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MK MENS HANDBAGS</span><span class="cat-pct-text" style="color:var(--purple)">8.9%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:8.9%;background:var(--purple)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK EYEWEAR</span><span class="cat-pct-text" style="color:var(--teal)">2.3%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:2.3%;background:var(--teal)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>ADS(11,870) 全隊最高，AUR(6,095) 全隊最高；擅長推高端包款，客品質最佳；Eyewear/Fragrance/Watch 品類多元</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>高端服務專家，每位顧客消費金額最高；擅長引導客人選擇較高價位商品</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>Trans(57次) 全隊最少，需增加進店顧客轉換；HB 過度集中(59.3%)；RTW 佔比偏低(3.4%)，需拓展品類</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>轉化率/進店率需提升，可向 Kai 學習接客效率；RTW 搭配推廣（向 Bailey 學習）；增加 Trans 量即可突破目標</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">ADS最高</span>
+              <span class="tag tag-gold">AUR最高</span>
+              <span class="tag tag-red">Trans最少</span>
+              <span class="tag tag-red">未達標</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEMI CHEN -->
+      <div class="emp-card">
+        <div class="emp-card-header">
+          <div class="emp-avatar" style="background:linear-gradient(135deg,#EF5350,#EF9A9A);color:#fff">DC</div>
+          <div>
+            <div class="emp-name">Demi Chen</div>
+            <div class="emp-position">Michael Kors Sales Associate</div>
+          </div>
+          <div class="emp-rank-badge">
+            <div class="emp-rank-num" style="color:var(--red)">#7</div>
+            <div>業績排名</div>
+          </div>
+        </div>
+        <div class="emp-kpis">
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">業績</div>
+            <div class="emp-kpi-value">67.5萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">達成率</div>
+            <div class="emp-kpi-value" style="color:var(--red)">96.4% ⚠️</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">差距</div>
+            <div class="emp-kpi-value" style="color:var(--red)">-2.5萬</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">UPT</div>
+            <div class="emp-kpi-value" style="color:var(--red)">1.57</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">ADS</div>
+            <div class="emp-kpi-value">8,764</div>
+          </div>
+          <div class="emp-kpi">
+            <div class="emp-kpi-label">AUR</div>
+            <div class="emp-kpi-value" style="color:var(--gold)">5,577</div>
+          </div>
+        </div>
+        <div class="emp-body">
+          <div class="emp-achievement">
+            <div class="ach-header">
+              <div class="ach-label">目標達成進度</div>
+              <div class="ach-pct" style="color:var(--red)">96.4% ⚠️ 漏單王</div>
+            </div>
+            <div class="ach-bar2"><div class="ach-fill2" style="width:96.4%;background:var(--red)"></div></div>
+            <div class="avg-diff-row">
+              <div class="avg-diff-label">vs. 團隊平均 (856,963):</div>
+              <span class="avg-badge below">低於平均 -21.3% (↓ NT$182,152)</span>
+            </div>
+          </div>
+          <div class="emp-cats">
+            <div class="emp-cats-title">品類佔比 (SLG+Watch 亮點)</div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK HANDBAGS</span><span class="cat-pct-text" style="color:var(--gold)">52.1%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:52.1%;background:var(--gold)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SLG</span><span class="cat-pct-text" style="color:var(--blue)">27.8% ✨</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:27.8%;background:var(--blue)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK WATCH</span><span class="cat-pct-text" style="color:var(--teal)">4.5% ✨</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:4.5%;background:var(--teal)"></div></div>
+            </div>
+            <div class="cat-row">
+              <div class="cat-label-row"><span class="cat-name">MMK SHOES</span><span class="cat-pct-text" style="color:var(--orange)">1.7%</span></div>
+              <div class="cat-bar"><div class="cat-fill" style="width:1.7%;background:var(--orange)"></div></div>
+            </div>
+          </div>
+          <div class="analysis-section">
+            <div class="analysis-item">
+              <div class="analysis-icon">💪</div>
+              <div class="analysis-content"><b>強項：</b><span>SLG 佔比(27.8%) 全隊最高；Watch 佔比(4.5%) 全隊最高，是腕表達人；AUR(5,577) 中上；Shoes 有售</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">✨</div>
+              <div class="analysis-content"><b>特質：</b><span>配件/SLG 推廣能力強，腕表知識豐富；細心服務型人才</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">📈</div>
+              <div class="analysis-content"><b>可加強：</b><span>UPT(1.57) 全隊最低，每單件數不足；RTW 佔比(3.8%) 極低；YoY Comp -15.7%；需提升連帶率</span></div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-icon">🎯</div>
+              <div class="analysis-content"><b>機會點：</b><span>向 Bailey 學習 RTW 搭配；向 Yvette 學習 UPT 提升；其他人可向 Demi 學習 Watch/SLG 的專業知識；每單多推一件即可達標</span></div>
+            </div>
+            <div style="margin-top:8px">
+              <span class="tag tag-gold">SLG佔比最高</span>
+              <span class="tag tag-blue">Watch達人</span>
+              <span class="tag tag-red">UPT最低</span>
+              <span class="tag tag-red">漏單王</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- CATEGORY HEATMAP -->
+  <section class="section">
+    <div class="section-title">Category Heatmap</div>
+    <div class="section-heading">品類強弱熱力圖</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:24px">綠色 = 高於門市平均佔比 / 橙色 = 接近門市平均 / 紅色 = 低於門市平均佔比</p>
+    <div class="heatmap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name-col">姓名</th>
+            <th>MMK HB<br><span style="font-weight:400;color:var(--text2)">店均 50.0%</span></th>
+            <th>MMK SLG<br><span style="font-weight:400;color:var(--text2)">店均 23.6%</span></th>
+            <th>MMK RTW<br><span style="font-weight:400;color:var(--text2)">店均 9.0%</span></th>
+            <th>MMK WATCH<br><span style="font-weight:400;color:var(--text2)">店均 1.2%</span></th>
+            <th>MMK EYEWEAR<br><span style="font-weight:400;color:var(--text2)">店均 0.9%</span></th>
+            <th>MMK FRAG<br><span style="font-weight:400;color:var(--text2)">店均 1.4%</span></th>
+            <th>MK MEN HB<br><span style="font-weight:400;color:var(--text2)">店均 8.9%</span></th>
+            <th>MK MEN SLG<br><span style="font-weight:400;color:var(--text2)">店均 2.8%</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Yvette: HB 48.4 SLG 23.7 RTW 10.2 Watch 0 EW 0 Frag 4.3 MenHB 9.8 MenSLG 2.3 -->
+          <tr>
+            <td class="name-col">Yvette Wang</td>
+            <td class="hm-avg">48.4%</td>
+            <td class="hm-avg">23.7%</td>
+            <td class="hm-above">10.2% ▲</td>
+            <td class="hm-zero">0%</td>
+            <td class="hm-zero">0%</td>
+            <td class="hm-above">4.3% ▲</td>
+            <td class="hm-above">9.8% ▲</td>
+            <td class="hm-avg">2.3%</td>
+          </tr>
+          <!-- Liv: HB 47.6 SLG 26.9 RTW 7.6 Watch 1.6 EW 1.1 Frag 1.8 MenHB 7.5 MenSLG 4.1 -->
+          <tr>
+            <td class="name-col">Liv Yang</td>
+            <td class="hm-avg">47.6%</td>
+            <td class="hm-above">26.9% ▲</td>
+            <td class="hm-avg">7.6%</td>
+            <td class="hm-above">1.6% ▲</td>
+            <td class="hm-above">1.1% ▲</td>
+            <td class="hm-above">1.8% ▲</td>
+            <td class="hm-avg">7.5%</td>
+            <td class="hm-above">4.1% ▲</td>
+          </tr>
+          <!-- Alvin: HB 52.0 SLG 18.1 RTW 10.9 Watch 0.5 EW 1.6 Frag 0 MenHB 12.8 MenSLG 2.5 -->
+          <tr>
+            <td class="name-col">Alvin Pan</td>
+            <td class="hm-above">52.0% ▲</td>
+            <td class="hm-below">18.1% ▼</td>
+            <td class="hm-above">10.9% ▲</td>
+            <td class="hm-avg">0.5%</td>
+            <td class="hm-above">1.6% ▲</td>
+            <td class="hm-zero">0%</td>
+            <td class="hm-above">12.8% ▲▲</td>
+            <td class="hm-avg">2.5%</td>
+          </tr>
+          <!-- Kai: HB 53.8 SLG 27.5 RTW 6.0 Watch 0.8 EW 0.5 Frag 0 MenHB 6.5 MenSLG 3.7 -->
+          <tr>
+            <td class="name-col">Kai Huang</td>
+            <td class="hm-above">53.8% ▲</td>
+            <td class="hm-above">27.5% ▲</td>
+            <td class="hm-below">6.0% ▼</td>
+            <td class="hm-avg">0.8%</td>
+            <td class="hm-avg">0.5%</td>
+            <td class="hm-zero">0%</td>
+            <td class="hm-below">6.5% ▼</td>
+            <td class="hm-above">3.7% ▲</td>
+          </tr>
+          <!-- Bailey: HB 40.1 SLG 21.7 RTW 19.9 Watch 0.5 EW 0.7 Frag 0.8 MenHB 9.3 MenSLG 2.2 -->
+          <tr>
+            <td class="name-col">Bailey Chou</td>
+            <td class="hm-below">40.1% ▼▼</td>
+            <td class="hm-avg">21.7%</td>
+            <td class="hm-above">19.9% ▲▲</td>
+            <td class="hm-avg">0.5%</td>
+            <td class="hm-avg">0.7%</td>
+            <td class="hm-avg">0.8%</td>
+            <td class="hm-avg">9.3%</td>
+            <td class="hm-avg">2.2%</td>
+          </tr>
+          <!-- Vina: HB 59.3 SLG 19.0 RTW 3.4 Watch 1.8 EW 2.3 Frag 1.9 MenHB 8.9 MenSLG 1.9 -->
+          <tr>
+            <td class="name-col">Vina Chung</td>
+            <td class="hm-below" style="background:rgba(239,83,80,0.35)">59.3% ▼▼</td>
+            <td class="hm-below">19.0% ▼</td>
+            <td class="hm-below">3.4% ▼▼</td>
+            <td class="hm-above">1.8% ▲</td>
+            <td class="hm-above">2.3% ▲</td>
+            <td class="hm-above">1.9% ▲</td>
+            <td class="hm-avg">8.9%</td>
+            <td class="hm-avg">1.9%</td>
+          </tr>
+          <!-- Demi: HB 52.1 SLG 27.8 RTW 3.8 Watch 4.5 EW 1.0 Frag 0 MenHB 6.5 MenSLG 2.2 -->
+          <tr>
+            <td class="name-col">Demi Chen</td>
+            <td class="hm-above">52.1% ▲</td>
+            <td class="hm-above">27.8% ▲</td>
+            <td class="hm-below">3.8% ▼▼</td>
+            <td class="hm-above" style="background:rgba(76,175,80,0.4)">4.5% ▲▲</td>
+            <td class="hm-avg">1.0%</td>
+            <td class="hm-zero">0%</td>
+            <td class="hm-below">6.5% ▼</td>
+            <td class="hm-avg">2.2%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-grid" style="margin-top:32px">
+      <div class="chart-card" style="grid-column:1/-1">
+        <div class="chart-title">品類銷售佔比對比 (各員工 vs 門市均值)</div>
+        <div class="chart-canvas-wrap"><canvas id="catCompareChart" height="140"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- OPPORTUNITIES -->
+  <section class="section">
+    <div class="section-title">Action Plan</div>
+    <div class="section-heading">機會點 & 行動計畫</div>
+
+    <div class="opp-grid">
+      <div class="opp-card">
+        <div class="opp-title">🚀 提升達成率 (Vina & Demi)</div>
+        <ul class="opp-list">
+          <li>Vina: 增加 Trans 頻率，目前57次為最低，每天多成交 1-2 單即達標</li>
+          <li>Demi: UPT 全隊最低(1.57)，每單多推 0.4 件即可達標</li>
+          <li>由 Liv Yang 帶領進行一對一 coaching，分享連帶推廣技巧</li>
+          <li>設立每週小目標追蹤機制，避免月底衝刺壓力</li>
+        </ul>
+      </div>
+      <div class="opp-card">
+        <div class="opp-title">💰 提升 UPT / 連帶率</div>
+        <ul class="opp-list">
+          <li>Yvette(2.32) 分享她的連帶推廣 script 給全團隊</li>
+          <li>Bailey(2.20) 的 RTW 搭配技巧可做內訓分享</li>
+          <li>推行"一包一配"政策：每賣一個包推薦一個 SLG</li>
+          <li>針對 Demi/Kai ADS 偏低，練習向上推銷技巧</li>
+        </ul>
+      </div>
+      <div class="opp-card">
+        <div class="opp-title">👔 Men's Line 發展</div>
+        <ul class="opp-list">
+          <li>Alvin(12.8%) 是最強 Men's 銷售，可分享男客接待技巧</li>
+          <li>Kai/Bailey/Demi 的 Men's 佔比有提升空間</li>
+          <li>週末特別安排 Men's 品項推廣日，集中資源</li>
+          <li>Ruby Liu 回歸後安排 Men's Line 深度培訓</li>
+        </ul>
+      </div>
+      <div class="opp-card">
+        <div class="opp-title">⌚ 腕表 / 配件類拓展</div>
+        <ul class="opp-list">
+          <li>Demi(4.5%) 是唯一 Watch 達人，安排 Watch 內訓給全員</li>
+          <li>Vina 的 Eyewear(2.3%) 值得推廣，分享搭配技巧</li>
+          <li>Yvette 的 Fragrance(4.3%) 是最佳範例，制定推廣話術</li>
+          <li>目標：下月每人至少完成 2 件 Watch/Jewelry</li>
+        </ul>
+      </div>
+      <div class="opp-card">
+        <div class="opp-title">📉 YoY Comp 改善</div>
+        <ul class="opp-list">
+          <li>全店 Comp -36.8%，去年 950萬 vs 今年 600萬</li>
+          <li>Kai(-22.9%), Bailey(-19.5%), Demi(-15.7%) 需重點關注</li>
+          <li>Ruby Liu 去年 120萬今年缺勤，是最大 Comp Gap 來源</li>
+          <li>制定老客戶回流計畫，針對去年熟客進行主動聯繫</li>
+        </ul>
+      </div>
+      <div class="opp-card">
+        <div class="opp-title">🏆 標竿學習清單</div>
+        <ul class="opp-list">
+          <li>學 Yvette: UPT提升(2.32) + ADS提升(12,052)的說話技巧</li>
+          <li>學 Bailey: RTW 時裝搭配推廣讓客人多件購買</li>
+          <li>學 Alvin: Men's 客群開發，吸引男性顧客或陪伴者購買</li>
+          <li>學 Kai: 高效接客轉換，快速建立客人信任感</li>
+          <li>學 Vina: 高端服務，引導客人選擇更高價位商品</li>
+          <li>學 Demi: Watch/SLG 配件專業知識，豐富顧客體驗</li>
+          <li>學 Liv: 全品類均衡銷售，沒有弱點的完整能力</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- KPI RADAR CHART -->
+  <section class="section">
+    <div class="section-title">Comprehensive Comparison</div>
+    <div class="section-heading">綜合能力對比圖</div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">KPI 雷達圖 (Yvette / Liv / Alvin)</div>
+        <div class="chart-canvas-wrap"><canvas id="radarChart1" height="280"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">KPI 雷達圖 (Kai / Bailey / Vina / Demi)</div>
+        <div class="chart-canvas-wrap"><canvas id="radarChart2" height="280"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="footer">
+  MICHAEL KORS &nbsp;·&nbsp; TAOYUAN GLORIA OUTLETS &nbsp;·&nbsp; JUNE 2026 MONTHLY REVIEW &nbsp;·&nbsp; CONFIDENTIAL
+</div>
+
+<script>
+// ============================
+// DATA
+// ============================
+const STORE_AVG = 856963;
+const employees = [
+  { name:'Yvette Wang', short:'YW', color:'#C9A84C', target:700000, sales:1108740, ach:1.584, gap:408740, upt:2.32, ads:12052, aur:5205, trans:92, comp:null },
+  { name:'Liv Yang',    short:'LY', color:'#4CAF50', target:550000, sales:1033520, ach:1.879, gap:483520, upt:1.91, ads:10335, aur:5411, trans:100, comp:-0.1065 },
+  { name:'Alvin Pan',   short:'AP', color:'#42A5F5', target:700000, sales:867246,  ach:1.239, gap:167246, upt:2.00, ads:10841, aur:5420, trans:80,  comp:null },
+  { name:'Kai Huang',   short:'KH', color:'#FF9800', target:700000, sales:847538,  ach:1.211, gap:147538, upt:1.81, ads:9113,  aur:5045, trans:93,  comp:-0.2285 },
+  { name:'Bailey Chou', short:'BC', color:'#26A69A', target:700000, sales:790300,  ach:1.129, gap:90300,  upt:2.20, ads:10399, aur:4732, trans:76,  comp:-0.1946 },
+  { name:'Vina Chung',  short:'VC', color:'#AB47BC', target:700000, sales:676590,  ach:0.967, gap:-23410, upt:1.95, ads:11870, aur:6095, trans:57,  comp:null },
+  { name:'Demi Chen',   short:'DC', color:'#EF5350', target:700000, sales:674811,  ach:0.964, gap:-25189, upt:1.57, ads:8764,  aur:5577, trans:77,  comp:-0.1569 },
+];
+
+const storeCategories = {
+  'MMK HB': 0.500, 'MMK SLG': 0.236, 'MMK RTW': 0.090,
+  'MMK WATCH': 0.012, 'MMK EW': 0.009, 'MMK FRAG': 0.014,
+  'MEN HB': 0.089, 'MEN SLG': 0.028
+};
+
+const empCategories = [
+  // Yvette
+  { 'MMK HB':0.484, 'MMK SLG':0.237, 'MMK RTW':0.102, 'MMK WATCH':0, 'MMK EW':0, 'MMK FRAG':0.043, 'MEN HB':0.098, 'MEN SLG':0.023 },
+  // Liv
+  { 'MMK HB':0.476, 'MMK SLG':0.269, 'MMK RTW':0.076, 'MMK WATCH':0.016, 'MMK EW':0.011, 'MMK FRAG':0.018, 'MEN HB':0.075, 'MEN SLG':0.041 },
+  // Alvin
+  { 'MMK HB':0.520, 'MMK SLG':0.181, 'MMK RTW':0.109, 'MMK WATCH':0.005, 'MMK EW':0.016, 'MMK FRAG':0, 'MEN HB':0.128, 'MEN SLG':0.025 },
+  // Kai
+  { 'MMK HB':0.538, 'MMK SLG':0.275, 'MMK RTW':0.060, 'MMK WATCH':0.008, 'MMK EW':0.005, 'MMK FRAG':0, 'MEN HB':0.065, 'MEN SLG':0.037 },
+  // Bailey
+  { 'MMK HB':0.401, 'MMK SLG':0.217, 'MMK RTW':0.199, 'MMK WATCH':0.005, 'MMK EW':0.007, 'MMK FRAG':0.008, 'MEN HB':0.093, 'MEN SLG':0.022 },
+  // Vina
+  { 'MMK HB':0.593, 'MMK SLG':0.190, 'MMK RTW':0.034, 'MMK WATCH':0.018, 'MMK EW':0.023, 'MMK FRAG':0.019, 'MEN HB':0.089, 'MEN SLG':0.019 },
+  // Demi
+  { 'MMK HB':0.521, 'MMK SLG':0.278, 'MMK RTW':0.038, 'MMK WATCH':0.045, 'MMK EW':0.010, 'MMK FRAG':0, 'MEN HB':0.065, 'MEN SLG':0.022 },
+];
+
+Chart.defaults.color = '#808080';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+const font = { family: "'Segoe UI', system-ui, sans-serif" };
+
+// ============================
+// STORE PIE CHART
+// ============================
+new Chart(document.getElementById('storePieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['MMK HANDBAGS 50%', 'MMK SLG 23.6%', 'MMK RTW 9.0%', 'MK MEN HB 8.9%', 'MK MEN SLG 2.8%', 'MMK FRAG 1.4%', 'MMK WATCH 1.2%', 'MMK EW 0.9%', '其他 2.2%'],
+    datasets: [{
+      data: [50.0, 23.6, 9.0, 8.9, 2.8, 1.4, 1.2, 0.9, 2.2],
+      backgroundColor: ['#C9A84C','#42A5F5','#4CAF50','#AB47BC','#26A69A','#FF9800','#EF5350','#66BB6A','#607D8B'],
+      borderWidth: 2, borderColor: '#1E1E1E'
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'right', labels: { font, boxWidth: 12, padding: 8, color:'#A0A0A0', font: { size: 10 } } } }
+  }
+});
+
+// ============================
+// TEAM BAR CHART
+// ============================
+new Chart(document.getElementById('teamBarChart'), {
+  type: 'bar',
+  data: {
+    labels: employees.map(e => e.short),
+    datasets: [
+      {
+        label: '實際業績',
+        data: employees.map(e => e.sales),
+        backgroundColor: employees.map(e => e.color + 'BB'),
+        borderColor: employees.map(e => e.color),
+        borderWidth: 1, borderRadius: 4,
+      },
+      {
+        label: '目標',
+        data: employees.map(e => e.target),
+        type: 'line',
+        borderColor: 'rgba(255,255,255,0.3)',
+        borderDash: [5,5], pointRadius: 3,
+        fill: false, tension: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { labels: { font, color:'#A0A0A0' } } },
+    scales: {
+      y: { ticks: { font, callback: v => (v/10000).toFixed(0)+'萬' }, grid: { color:'rgba(255,255,255,0.05)' } },
+      x: { ticks: { font } }
+    }
+  }
+});
+
+// ============================
+// ACHIEVEMENT CHART
+// ============================
+new Chart(document.getElementById('achChart'), {
+  type: 'bar',
+  data: {
+    labels: employees.map(e => e.name),
+    datasets: [{
+      label: '達成率 %',
+      data: employees.map(e => Math.round(e.ach * 100)),
+      backgroundColor: employees.map(e => e.ach >= 1 ? e.color + 'BB' : '#EF535099'),
+      borderColor: employees.map(e => e.ach >= 1 ? e.color : '#EF5350'),
+      borderWidth: 1, borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true, indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x + '%' } },
+      annotation: {}
+    },
+    scales: {
+      x: { min: 0, max: 210, ticks: { font, callback: v => v+'%' }, grid: { color:'rgba(255,255,255,0.05)' } },
+      y: { ticks: { font, color: '#D0D0D0' } }
+    }
+  }
+});
+
+// ============================
+// CATEGORY COMPARE CHART
+// ============================
+const catKeys = Object.keys(storeCategories);
+const catColors = ['#C9A84C','#42A5F5','#4CAF50','#AB47BC','#26A69A','#FF9800','#EF5350'];
+
+new Chart(document.getElementById('catCompareChart'), {
+  type: 'bar',
+  data: {
+    labels: catKeys,
+    datasets: [
+      {
+        label: '門市均值',
+        data: catKeys.map(k => Math.round(storeCategories[k]*1000)/10),
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderColor: 'rgba(255,255,255,0.3)',
+        borderWidth: 1, borderRadius: 2, type: 'line',
+        borderDash: [4,4], pointRadius: 4, fill: false, tension: 0,
+      },
+      ...employees.map((emp, i) => ({
+        label: emp.short,
+        data: catKeys.map(k => Math.round(empCategories[i][k]*1000)/10),
+        backgroundColor: emp.color + '55',
+        borderColor: emp.color,
+        borderWidth: 1, borderRadius: 2,
+      }))
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { labels: { font, color:'#A0A0A0', boxWidth:12 } } },
+    scales: {
+      y: { ticks: { font, callback: v => v+'%' }, grid: { color:'rgba(255,255,255,0.05)' } },
+      x: { ticks: { font } }
+    }
+  }
+});
+
+// ============================
+// RADAR CHARTS
+// ============================
+// Normalize KPIs: ach, upt, ads, aur, trans, catBreadth
+// Max values: ach 1.879, upt 2.32, ads 12052, aur 6095, trans 100
+const maxVals = { ach: 1.879, upt: 2.32, ads: 12052, aur: 6095, trans: 100 };
+function normalize(emp) {
+  const catBreadth = Object.values(empCategories[employees.indexOf(emp)]).filter(v=>v>0.005).length;
+  return [
+    Math.round(emp.ach/maxVals.ach*100),
+    Math.round(emp.upt/maxVals.upt*100),
+    Math.round(emp.ads/maxVals.ads*100),
+    Math.round(emp.aur/maxVals.aur*100),
+    Math.round(emp.trans/maxVals.trans*100),
+    Math.round(catBreadth/8*100)
+  ];
+}
+
+const radarLabels = ['達成率', 'UPT', 'ADS', 'AUR', '接客量', '品類廣度'];
+
+function makeRadarDataset(emp, idx) {
+  return {
+    label: emp.short,
+    data: normalize(emp),
+    borderColor: emp.color,
+    backgroundColor: emp.color + '22',
+    pointBackgroundColor: emp.color,
+    borderWidth: 2, pointRadius: 3
+  };
+}
+
+new Chart(document.getElementById('radarChart1'), {
+  type: 'radar',
+  data: {
+    labels: radarLabels,
+    datasets: [makeRadarDataset(employees[0],0), makeRadarDataset(employees[1],1), makeRadarDataset(employees[2],2)]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    scales: { r: { min:0, max:100, ticks: { stepSize:20, font, backdropColor:'transparent' }, grid: { color:'rgba(255,255,255,0.1)' }, angleLines: { color:'rgba(255,255,255,0.1)' }, pointLabels: { color:'#A0A0A0', font: { size:11 } } } },
+    plugins: { legend: { labels: { font, color:'#A0A0A0' } } }
+  }
+});
+
+new Chart(document.getElementById('radarChart2'), {
+  type: 'radar',
+  data: {
+    labels: radarLabels,
+    datasets: [makeRadarDataset(employees[3],3), makeRadarDataset(employees[4],4), makeRadarDataset(employees[5],5), makeRadarDataset(employees[6],6)]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    scales: { r: { min:0, max:100, ticks: { stepSize:20, font, backdropColor:'transparent' }, grid: { color:'rgba(255,255,255,0.1)' }, angleLines: { color:'rgba(255,255,255,0.1)' }, pointLabels: { color:'#A0A0A0', font: { size:11 } } } },
+    plugins: { legend: { labels: { font, color:'#A0A0A0' } } }
+  }
+});
+</script>
+</body>
+</html>
