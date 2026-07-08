@@ -1,0 +1,4 @@
+/* 月份清單 — 每新增一個月，在最上方加入一筆並建立對應的 data/YYYY-MM.js */
+window.MK_MONTHS = [
+  { id: '2026-06', label: 'JUNE 2026', short: '6月', fy: 'FY27 · P3' },
+];
