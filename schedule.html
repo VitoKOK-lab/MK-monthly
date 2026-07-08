@@ -11,9 +11,9 @@
   --gold: #B4975A; --gold-dark: #8f7439; --gold-wash: rgba(180,151,90,0.12);
   --good: #006300; --crit: #b32424; --crit-wash: rgba(208,59,59,0.08);
   --track: #ecebe7;
-  --m-wash: #f5ecd8;   /* 早 morning */
-  --mid-wash: #dceaf8; /* 中 mid */
-  --e-ink: #26261f;    /* 晚 evening chip */
+  --m-wash: #f5ecd8;   /* 早 */
+  --mid-wash: #dceaf8; /* 中 */
+  --e-ink: #26261f;    /* 晚 */
   --serif: 'Didot','Bodoni MT','Playfair Display',Georgia,'Times New Roman',serif;
   --sans: system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
 }
@@ -37,7 +37,6 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-
 .subhead::after { content: ''; flex: 1; height: 1px; background: var(--hair); }
 .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
-/* controls */
 .ctrl-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 6px; }
 .ctrl { display: flex; flex-direction: column; gap: 4px; }
 .ctrl label { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
@@ -57,15 +56,26 @@ input[type="month"], select, input[type="text"], input[type="number"] {
 .check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink2); padding: 8px 0; }
 
 /* staff table */
-table.staff { border-collapse: collapse; width: 100%; }
-.staff th { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--ink); }
-.staff td { padding: 7px 8px; border-bottom: 1px solid var(--hair-soft); font-size: 13px; }
-.staff input[type="text"] { width: 130px; border-color: var(--hair); }
-.staff input[type="number"] { width: 62px; border-color: var(--hair); }
+.staff-scroll { overflow-x: auto; }
+table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
+.staff th { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+.staff td { padding: 7px 8px; border-bottom: 1px solid var(--hair-soft); font-size: 13px; white-space: nowrap; }
+.staff input[type="text"] { width: 104px; border-color: var(--hair); }
+.staff input[type="number"] { width: 58px; border-color: var(--hair); }
+.staff select { border-color: var(--hair); padding: 6px 8px; }
 .staff .del { cursor: pointer; color: var(--crit); background: none; border: none; font-size: 15px; }
-.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; }
+/* 週律 cycler: 空→休→班 */
+.wkrow { display: inline-flex; gap: 3px; }
+.wk {
+  width: 30px; height: 30px; border: 1px solid var(--hair); background: var(--bg); cursor: pointer;
+  font-family: var(--sans); font-size: 10px; color: var(--muted); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.1; padding: 0;
+}
+.wk .st { font-size: 9px; font-weight: 700; }
+.wk.off { background: var(--ink); color: #fff; border-color: var(--ink); }
+.wk.work { background: var(--gold-wash); color: var(--gold-dark); border-color: var(--gold); }
 
-/* mini calendar for 指休/假日 */
+/* mini calendars */
 .person-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; flex-wrap: wrap; }
 .pchip { border: 1px solid var(--hair); background: var(--bg); border-radius: 999px; padding: 5px 15px; font-size: 13px; font-weight: 600; color: var(--ink2); cursor: pointer; font-family: var(--sans); }
 .pchip.active { border-color: var(--ink); color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
@@ -82,8 +92,10 @@ table.staff { border-collapse: collapse; width: 100%; }
 .mc-d.wkend { background: var(--paper); }
 .mc-d.holi::after { content: '假'; position: absolute; top: 2px; right: 3px; font-size: 8px; color: var(--gold-dark); font-weight: 700; }
 .mc-d.sel { background: var(--ink); color: #fff; border-color: var(--ink); }
+.mc-d.lock { background: #55534d; color: #fff; border-color: #55534d; cursor: not-allowed; }
+.mc-d.blk { background: repeating-linear-gradient(45deg, var(--paper), var(--paper) 4px, #eceae4 4px, #eceae4 8px); color: var(--muted); cursor: not-allowed; }
 .mc-d.sel.conflict { background: var(--crit); border-color: var(--crit); }
-.mc-d .sub { font-size: 8px; color: inherit; opacity: .6; }
+.mc-d .sub { font-size: 8px; color: inherit; opacity: .7; }
 
 /* result grid */
 .grid-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--hair); }
@@ -94,21 +106,21 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .sched thead th.holi { background: var(--gold-wash); color: var(--gold-dark); }
 .sched thead th .dow { display: block; font-size: 9px; }
 .sched td.name-col, .sched th.name-col {
-  position: sticky; left: 0; background: var(--bg); z-index: 2; min-width: 96px;
+  position: sticky; left: 0; background: var(--bg); z-index: 2; min-width: 110px;
   text-align: left; padding: 6px 10px; font-weight: 700; font-size: 12px; border-right: 1px solid var(--ink);
 }
+.role-tag { font-size: 9px; font-weight: 600; color: var(--gold-dark); background: var(--gold-wash); padding: 1px 6px; margin-left: 5px; letter-spacing: .05em; }
 .cell { width: 100%; height: 100%; border: none; cursor: pointer; font-family: var(--sans); font-size: 11px; font-weight: 700; padding: 8px 2px; background: var(--bg); color: var(--ink); }
-.cell.s0 { background: var(--m-wash); color: #6e5518; }      /* 早 */
-.cell.s1 { background: var(--mid-wash); color: #1c5cab; }     /* 中 */
-.cell.s2 { background: var(--e-ink); color: #fff; }           /* 晚 */
-.cell.s3 { background: #f1f0ec; color: #b5b3aa; }             /* 休 */
+.cell.s0 { background: var(--m-wash); color: #6e5518; }
+.cell.s1 { background: var(--mid-wash); color: #1c5cab; }
+.cell.s2 { background: var(--e-ink); color: #fff; }
+.cell.s3 { background: #f1f0ec; color: #b5b3aa; }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .sched tfoot td { font-size: 10px; padding: 5px 2px; color: var(--muted); background: var(--paper); }
 .sched tfoot td.short { background: var(--crit-wash); color: var(--crit); font-weight: 700; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink2); margin: 12px 2px; }
 .legend i { display: inline-block; width: 13px; height: 13px; margin-right: 5px; vertical-align: -2px; border: 1px solid var(--hair-soft); }
 
-/* stats + violations */
 .stat-table { border-collapse: collapse; width: 100%; }
 .stat-table th { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 7px 8px; border-bottom: 1px solid var(--ink); text-align: center; }
 .stat-table th:first-child { text-align: left; }
@@ -121,15 +133,22 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 
 .footer { text-align: center; padding: 30px 16px 20px; font-size: 9px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; border-top: 1px solid var(--hair); margin-top: 30px; }
 
-@media (max-width: 720px) {
-  .sec-title { font-size: 18px; }
-  .ctrl-row { gap: 10px; }
-}
+/* 簽核欄與 PDF 頁首（螢幕上隱藏） */
+.print-head { display: none; }
+.sign-row { display: none; }
+@media (max-width: 720px) { .sec-title { font-size: 18px; } .ctrl-row { gap: 10px; } }
 @media print {
-  .no-print, .masthead, .backrow, .footer { display: none !important; }
+  .no-print, .masthead, .backrow, .footer, .legend .no-print { display: none !important; }
   .grid-scroll { border: none; overflow: visible; }
   body { font-size: 10px; }
   .sched thead th { min-width: auto; }
+  .print-head { display: block; text-align: center; margin-bottom: 10px; }
+  .ph-brand { font-size: 10px; letter-spacing: .35em; color: #555; }
+  .ph-title { font-family: var(--serif); font-size: 20px; margin: 4px 0 2px; }
+  .ph-meta { font-size: 9px; color: #888; }
+  .sign-row { display: flex; justify-content: space-between; margin-top: 22px; padding: 0 10px; }
+  .sign-box { font-size: 12px; }
+  #violBox .viol { page-break-inside: avoid; }
   @page { size: A4 landscape; margin: 8mm; }
 }
 </style>
@@ -151,27 +170,28 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="card">
     <div class="ctrl-row">
       <div class="ctrl"><label>排班月份</label><input type="month" id="monthInput"></div>
-      <div class="ctrl"><label>&nbsp;</label>
-        <div class="check"><input type="checkbox" id="midWeekday" checked><label for="midWeekday" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink2)">平日（一～四）人力足夠時加開中班</label></div>
-      </div>
     </div>
-    <div class="subhead" style="margin-top:14px">員工名單</div>
+    <div class="subhead" style="margin-top:14px">員工名單與週律</div>
+    <div class="staff-scroll">
     <table class="staff">
-      <thead><tr><th>姓名</th><th>本月休假天數</th><th></th></tr></thead>
+      <thead><tr><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班）</th><th></th></tr></thead>
       <tbody id="staffBody"></tbody>
     </table>
+    </div>
+    <div class="hint">週律範例：Wiggie 週日、週一固定「班」，週二固定「休」。固定休會自動計入休假額度。</div>
     <div style="margin-top:10px"><button class="btn ghost" id="addStaff" style="padding:8px 18px">＋ 新增員工</button></div>
-    <div class="subhead" style="margin-top:18px">互斥休假（不能同一天休）</div>
+
+    <div class="subhead" style="margin-top:18px">管理職互斥休假</div>
     <div class="ctrl-row">
       <div class="ctrl"><select id="trio1"></select></div>
       <div class="ctrl"><select id="trio2"></select></div>
       <div class="ctrl"><select id="trio3"></select></div>
     </div>
-    <div class="ctrl-row" style="margin-top:8px">
-      <div class="check"><input type="radio" name="trioMode" id="tmAll3" value="all3"><label for="tmAll3" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink2)">三人不可同一天全休（每天至少一人在班）</label></div>
+    <div class="ctrl-row" style="margin-top:4px">
+      <div class="check"><input type="radio" name="trioMode" id="tmAll3" value="all3"><label for="tmAll3" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink2)">三人不可同一天全休（每天至少一位管理職在班）</label></div>
       <div class="check"><input type="radio" name="trioMode" id="tmPair" value="pair"><label for="tmPair" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink2)">任兩人都不可同一天休（最嚴格）</label></div>
     </div>
-    <div class="hint">注意：「任兩人不可同休」在 31 天、三人各休 10 天的月份需要 30 個不重疊日子，但平日只有 21 天，其餘須落在假日、又受「假日最多休 2 天」限制——多數月份數學上無解。建議使用「至少一人在班」。</div>
+    <div class="hint">「任兩人不可同休」在多數月份數學上無解（三人 30 天休假需完全不重疊，平日僅約 21 天，超出部分受假日 2 天上限卡死），建議用「至少一位在班」。</div>
   </div>
 </section>
 
@@ -182,10 +202,10 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="card">
     <div class="subhead">國定假日（點日期切換；週六日自動視為假日）</div>
     <div class="mini-cal" id="holiCal"></div>
-    <div class="subhead" style="margin-top:20px">指休 — 先選人，再點日期</div>
+    <div class="subhead" style="margin-top:20px">指休與 BL/AL 特殊假 — 先選人，再點日期循環：<span style="letter-spacing:0;text-transform:none">空 → 指休 → BL → AL → 清除</span></div>
     <div class="person-chips" id="fixChips"></div>
     <div class="mini-cal" id="fixCal"></div>
-    <div class="hint">紅色 = 這天與互斥名單其他人撞休。指休天數可少於休假額度，其餘由系統自動補滿。</div>
+    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，不計入假日 2–3 天限制）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。指休可少於額度，其餘由系統補滿。</div>
   </div>
 </section>
 
@@ -195,22 +215,27 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="sec-title">自動排班</div>
   <div class="card" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
     <button class="btn gold" id="genBtn">⚙ 自動排班</button>
+    <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
     <button class="btn ghost" id="csvBtn">匯出 CSV</button>
-    <button class="btn ghost" onclick="window.print()">列印</button>
     <span class="status" id="status"></span>
   </div>
 </section>
 
 <!-- ============ 4. 結果 ============ -->
 <section class="sec" id="resultSec" style="display:none">
-  <div class="sec-kicker">Result</div>
+  <div class="print-head" id="printHead">
+    <div class="ph-brand">MICHAEL KORS · TAOYUAN GLORIA OUTLETS</div>
+    <div class="ph-title" id="printTitle"></div>
+    <div class="ph-meta" id="printMeta"></div>
+  </div>
+  <div class="sec-kicker no-print">Result</div>
   <div class="sec-title" id="resultTitle">排班表</div>
   <div class="legend">
     <span><i style="background:var(--m-wash)"></i>早班</span>
-    <span><i style="background:var(--mid-wash)"></i>中班</span>
+    <span><i style="background:var(--mid-wash)"></i>中班（第 5 人）</span>
     <span><i style="background:var(--e-ink)"></i>晚班</span>
     <span><i style="background:#f1f0ec"></i>休假</span>
-    <span>底線 = 指休</span>
+    <span>底線 = 指休/固定休</span>
     <span class="no-print" style="color:var(--gold-dark)">點任一格可手動微調（早→中→晚→休）</span>
   </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
@@ -220,6 +245,11 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div style="overflow-x:auto"><table class="stat-table" id="statTable"></table></div>
   </div>
   <div id="violBox"></div>
+  <div class="sign-row" id="signRow">
+    <div class="sign-box">製表人：＿＿＿＿＿＿＿＿</div>
+    <div class="sign-box">主管核准：＿＿＿＿＿＿＿＿</div>
+    <div class="sign-box">日期：＿＿＿＿＿＿＿＿</div>
+  </div>
 </section>
 
 </div>
@@ -227,22 +257,26 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 
 <script>
 /* ============================================================
-   自動排班 — 限制條件求解器（模擬退火 + 局部修復）
+   自動排班 — 限制條件求解器（模擬退火＋交換移動＋最陡下降修復）
    規則：
-   1. 每人每月休假 10–11 天（可調）
-   2. 假日（週六日＋國定假日）每人最多休 2 天
-   3. 班別需求：一~四 早1晚3（人力夠加中1）；五 早1中1晚3；假日 早1中1晚3
-   4. 連上 2–4 天必休；禁止連上超過 4 天（>4 重罰）
+   1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
+   2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
+      BL/AL 特殊假不計入此限制）
+   3. 每日基本人力 4 人：早 1、晚 3；湊得到第 5 人 → 開 1 個中班
+      （週五與假日優先開中班）
+   4. 連上 2–3 天最理想；連四會哇哇叫（重罰）；連五爆炸（禁止）
    5. 早班天數各人差距 ≤ ±1
-   6. 互斥名單（預設 Wiggie/Liv/Demi）不得同日休
-   7. 指休為硬條件
+   6. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）
+   7. 指休、BL/AL、週律（固定休／固定班）為硬條件
 ============================================================ */
 const DOW = ['日','一','二','三','四','五','六'];
 const SHIFT_NAME = ['早','中','晚','休'];
-const LS_KEY = 'mk-scheduler-v1';
+const ROLES = ['店長','Sup','SSA','SA'];
+const LS_KEY = 'mk-scheduler-v2';
 
 let S = loadState() || defaultState();
-let RESULT = null;   // { grid: staff x days (0早 1中 2晚 3休), month, days }
+normalize(S);
+let RESULT = null;
 let selPerson = 0;
 
 function defaultState(){
@@ -250,16 +284,25 @@ function defaultState(){
   const next = new Date(now.getFullYear(), now.getMonth()+1, 1);
   return {
     month: `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`,
-    midWeekday: true,
     staff: [
-      { name:'Yvette', quota:10 }, { name:'Liv', quota:10 }, { name:'Alvin', quota:10 },
-      { name:'Kai', quota:10 }, { name:'Bailey', quota:10 }, { name:'Vina', quota:10 },
-      { name:'Demi', quota:10 }, { name:'Wiggie', quota:10 },
+      { name:'Wiggie', role:'店長', quota:10, week:{ 0:'work', 1:'work', 2:'off' } },
+      { name:'Liv',    role:'Sup', quota:10, week:{} },
+      { name:'Demi',   role:'SSA', quota:10, week:{} },
+      { name:'Yvette', role:'SA',  quota:10, week:{} },
+      { name:'Alvin',  role:'SA',  quota:10, week:{} },
+      { name:'Kai',    role:'SA',  quota:10, week:{} },
+      { name:'Bailey', role:'SA',  quota:10, week:{} },
+      { name:'Vina',   role:'SA',  quota:10, week:{} },
     ],
     trio: ['Wiggie','Liv','Demi'],
-    holidays: {},   // {'2026-08':[days...]}
-    fixed: {},      // {'2026-08': {staffIdx:[days...]}}
+    trioMode: 'all3',
+    holidays: {},
+    fixed: {},      // {'YYYY-MM': {staffIdx:[days]}} 手動指休
   };
+}
+function normalize(s){
+  s.staff.forEach(p => { if (!p.role) p.role = 'SA'; if (!p.week) p.week = {}; });
+  if (!s.trioMode) s.trioMode = 'all3';
 }
 function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} }
 function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ return null; } }
@@ -267,50 +310,68 @@ function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } c
 /* ---------- month helpers ---------- */
 function monthInfo(){
   const [y,m] = S.month.split('-').map(Number);
-  const days = new Date(y, m, 0).getDate();
-  const firstDow = new Date(y, m-1, 1).getDay();
-  return { y, m, days, firstDow };
+  return { y, m, days: new Date(y, m, 0).getDate(), firstDow: new Date(y, m-1, 1).getDay() };
 }
 const dowOf = d => { const {y,m} = monthInfo(); return new Date(y, m-1, d).getDay(); };
 const holiSet = () => new Set(S.holidays[S.month] || []);
-const isRest = d => { const w = dowOf(d); return w===0 || w===6 || holiSet().has(d); };  // 假日(週末+國定)
+const isRest = d => { const w = dowOf(d); return w===0 || w===6 || holiSet().has(d); };
 const isFri = d => dowOf(d) === 5;
-/* 需求：[早,中,晚] — 平日中班為彈性 */
-function demand(d){
-  if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5, flexMid:false };
-  return { m:1, mid:S.midWeekday?0:0, e:3, min:4, flexMid:S.midWeekday };
+
+const manualFixed = i => new Set((S.fixed[S.month]||{})[i] || []);
+/* BL/AL 特殊假：{day: 'BL'|'AL'} */
+const specialOf = i => ((S.special||{})[S.month]||{})[i] || {};
+const specialSet = i => new Set(Object.keys(specialOf(i)).map(Number));
+/* 週律展開 */
+function weeklyDays(i, kind){
+  const { days } = monthInfo();
+  const w = S.staff[i].week || {};
+  const out = new Set();
+  for (let d=1; d<=days; d++) if (w[dowOf(d)] === kind) out.add(d);
+  return out;
 }
-const fixedOf = i => new Set((S.fixed[S.month]||{})[i] || []);
+/* 固定休 = 手動指休 + BL/AL + 週律休；固定班 = 週律班（不可休） */
+function fixedOf(i){
+  const s = new Set(manualFixed(i));
+  for (const d of weeklyDays(i,'off')) s.add(d);
+  for (const d of specialSet(i)) s.add(d);
+  return s;
+}
+const blockedOf = i => weeklyDays(i,'work');
+/* 總休假目標 = 正常額度 + 特殊假天數 */
+const totalQuota = i => S.staff[i].quota + specialSet(i).size;
+
+/* 每日需求：基本 4 人（早1晚3），第 5 人開中班；週五/假日偏好 5 人 */
+function demand(d){
+  return { m:1, e:3, min:4, cap:5, wantMid: isRest(d) || isFri(d) };
+}
 
 /* ============================================================
-   PHASE 1 — 休假日分配（模擬退火）
+   PHASE 1 — 休假日分配
 ============================================================ */
 function scoreOff(off, cfg){
-  const { days, N, quotas, fixed, trioIdx } = cfg;
+  const { days, N, quotas, trioIdx, special } = cfg;
   let sc = 0;
   const offCount = new Array(days+1).fill(0);
   for (let i=0;i<N;i++){
     let restDays = 0;
-    for (const d of off[i]) { offCount[d]++; if (isRest(d)) restDays++; }
+    for (const d of off[i]) { offCount[d]++; if (isRest(d) && !special[i].has(d)) restDays++; }
     if (off[i].size !== quotas[i]) sc += 1000 * Math.abs(off[i].size - quotas[i]);
-    if (restDays > 2) sc += 800 * (restDays - 2);
-    /* 連上天數 */
+    if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3 */
+    if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
     let run = 0;
     for (let d=1; d<=days; d++){
       if (off[i].has(d)) { if (run === 1) sc += 5; run = 0; }
-      else { run++; if (run === 4) sc += 20; else if (run > 4) sc += 500; }
+      else { run++; if (run === 4) sc += 60; else if (run > 4) sc += 500; }  /* 連四哇哇叫、連五爆炸 */
     }
     if (run > 4) sc += 500 * (run - 4);
   }
-  /* 每日人力 */
   for (let d=1; d<=days; d++){
-    const workers = cfg.N - offCount[d];
+    const workers = N - offCount[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
-    const cap = dem.min + (dem.flexMid ? 1 : 0);
-    if (workers > cap) sc += 8 * (workers - cap);
+    if (workers > dem.cap) sc += 8 * (workers - dem.cap);
+    if (dem.wantMid && workers < dem.cap) sc += 15;   /* 假日/週五偏好 5 人開中班 */
   }
-  /* 互斥休假 */
   if (trioIdx.length >= 2){
     const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
     for (let d=1; d<=days; d++){
@@ -323,13 +384,12 @@ function scoreOff(off, cfg){
 }
 
 function solveOff(cfg, rng){
-  const { days, N, quotas, fixed } = cfg;
-  /* 初始：指休 + 隨機補滿 */
+  const { days, N, quotas, fixed, blocked } = cfg;
   const off = [];
   for (let i=0;i<N;i++){
     const s = new Set(fixed[i]);
     const pool = [];
-    for (let d=1; d<=days; d++) if (!s.has(d)) pool.push(d);
+    for (let d=1; d<=days; d++) if (!s.has(d) && !blocked[i].has(d)) pool.push(d);
     while (s.size < quotas[i] && pool.length){
       const k = Math.floor(rng()*pool.length);
       s.add(pool.splice(k,1)[0]);
@@ -342,24 +402,22 @@ function solveOff(cfg, rng){
   for (let t=0; t<ITER; t++){
     T *= 0.99975;
     if (rng() < 0.5){
-      /* 單步：把某人一天休假搬到別天 */
       const i = Math.floor(rng()*N);
       const movable = [...off[i]].filter(d => !fixed[i].has(d));
       if (!movable.length) continue;
       const from = movable[Math.floor(rng()*movable.length)];
       const to = 1 + Math.floor(rng()*days);
-      if (off[i].has(to)) continue;
+      if (off[i].has(to) || blocked[i].has(to)) continue;
       off[i].delete(from); off[i].add(to);
       const ns = scoreOff(off, cfg);
       if (ns <= cur || rng() < Math.exp((cur-ns)/T)) cur = ns;
       else { off[i].delete(to); off[i].add(from); }
     } else {
-      /* 交換：兩人互換一天休假（互斥名單卡死時的唯一出路） */
       const i = Math.floor(rng()*N);
       let j = Math.floor(rng()*N);
       if (i === j) continue;
-      const mi = [...off[i]].filter(d => !fixed[i].has(d) && !off[j].has(d));
-      const mj = [...off[j]].filter(d => !fixed[j].has(d) && !off[i].has(d));
+      const mi = [...off[i]].filter(d => !fixed[i].has(d) && !off[j].has(d) && !blocked[j].has(d));
+      const mj = [...off[j]].filter(d => !fixed[j].has(d) && !off[i].has(d) && !blocked[i].has(d));
       if (!mi.length || !mj.length) continue;
       const a = mi[Math.floor(rng()*mi.length)];
       const b = mj[Math.floor(rng()*mj.length)];
@@ -377,11 +435,9 @@ function solveOff(cfg, rng){
   return { off, score: cur };
 }
 
-/* 修復階段：最陡下降 — 針對殘餘違規逐一嘗試所有搬移，取最優 */
 function repairOff(off, cfg, cur){
-  const { days, N, fixed } = cfg;
-  let guard = 0;
-  let improved = true;
+  const { days, N, fixed, blocked } = cfg;
+  let guard = 0, improved = true;
   while (improved && cur > 0 && guard++ < 14){
     improved = false;
     for (let i=0; i<N; i++){
@@ -389,7 +445,7 @@ function repairOff(off, cfg, cur){
       for (const from of movable){
         let bestTo = null, bestSc = cur;
         for (let to=1; to<=days; to++){
-          if (off[i].has(to)) continue;
+          if (off[i].has(to) || blocked[i].has(to)) continue;
           off[i].delete(from); off[i].add(to);
           const s = scoreOff(off, cfg);
           off[i].delete(to); off[i].add(from);
@@ -401,13 +457,12 @@ function repairOff(off, cfg, cur){
         }
       }
     }
-    /* 交換修復：兩人互換休假日 */
     if (!improved && cur > 0){
       outer:
       for (let i=0; i<N; i++){
         for (let j=i+1; j<N; j++){
-          const mi = [...off[i]].filter(d => !fixed[i].has(d) && !off[j].has(d));
-          const mj = [...off[j]].filter(d => !fixed[j].has(d) && !off[i].has(d));
+          const mi = [...off[i]].filter(d => !cfg.fixed[i].has(d) && !off[j].has(d) && !blocked[j].has(d));
+          const mj = [...off[j]].filter(d => !cfg.fixed[j].has(d) && !off[i].has(d) && !blocked[i].has(d));
           for (const a of mi){
             for (const b of mj){
               off[i].delete(a); off[i].add(b);
@@ -426,7 +481,7 @@ function repairOff(off, cfg, cur){
 }
 
 /* ============================================================
-   PHASE 2 — 班別分配（早班平衡 + 避免晚接早）
+   PHASE 2 — 班別分配
 ============================================================ */
 function assignShifts(off, cfg){
   const { days, N } = cfg;
@@ -436,7 +491,6 @@ function assignShifts(off, cfg){
     const workers = [];
     for (let i=0;i<N;i++) if (!off[i].has(d)) workers.push(i);
     const dem = demand(d);
-    /* 早班：早班數最少者優先；昨天上晚班者避開 */
     workers.sort((a,b) => {
       const ca = mCount[a] + (d>1 && grid[a][d-1]===2 ? 0.6 : 0);
       const cb = mCount[b] + (d>1 && grid[b][d-1]===2 ? 0.6 : 0);
@@ -445,16 +499,12 @@ function assignShifts(off, cfg){
     const morning = workers.slice(0, dem.m);
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
     let rest = workers.slice(dem.m);
-    /* 中班 */
-    let midN = dem.mid;
-    if (dem.flexMid && rest.length > dem.e) midN = 1;
-    /* 超出的人手也排中班 */
-    const extra = Math.max(0, rest.length - dem.e - midN);
-    midN += extra;
-    for (let k=0; k<midN && rest.length > dem.e; k++) grid[rest.shift()][d] = 1;
+    /* 晚班固定 3 人，其餘全部中班（第 5 人起） */
+    const mids = Math.max(0, rest.length - dem.e);
+    for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
   }
-  /* 早班平衡修復：max-min > 1 時做交換 */
+  /* 早班平衡修復 */
   for (let pass=0; pass<40; pass++){
     let hi=-1, lo=-1;
     for (let i=0;i<N;i++){
@@ -485,26 +535,39 @@ function generate(){
     const { days } = monthInfo();
     const N = S.staff.length;
     const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
-    /* 可行性預檢（僅最嚴格模式需要） */
-    if ((S.trioMode||'all3') === 'pair' && trioIdx.length >= 2){
-      const trioQuota = trioIdx.reduce((a,i) => a + S.staff[i].quota, 0);
+    /* 預檢 1：固定休超過額度 / 指休撞固定班 */
+    for (let i=0;i<N;i++){
+      const fx = fixedOf(i), bl = blockedOf(i);
+      if (fx.size > totalQuota(i)){
+        document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：固定休＋指休＋特殊假共 ${fx.size} 天 > 總額度 ${totalQuota(i)} 天（正常 ${S.staff[i].quota}＋特假 ${specialSet(i).size}）`;
+        btn.disabled = false; return;
+      }
+      for (const d of manualFixed(i)) if (bl.has(d)){
+        document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：${d} 日指休與週律固定上班衝突`;
+        btn.disabled = false; return;
+      }
+    }
+    /* 預檢 2：最嚴格互斥模式可行性 */
+    if (S.trioMode === 'pair' && trioIdx.length >= 2){
+      const trioQuota = trioIdx.reduce((a,i) => a + totalQuota(i), 0);
       let weekdays = 0;
       for (let d=1; d<=days; d++) if (!isRest(d)) weekdays++;
       const needRest = Math.max(0, trioQuota - weekdays);
       const allowRest = 2 * trioIdx.length;
       if (trioQuota > days || needRest > allowRest){
         document.getElementById('status').textContent =
-          `⚠ 無解：互斥 ${trioIdx.length} 人共 ${trioQuota} 天休假需完全不重疊，平日僅 ${weekdays} 天，至少 ${needRest} 天須落在假日，但假日上限共 ${allowRest} 天。請改用「至少一人在班」模式。`;
-        btn.disabled = false;
-        return;
+          `⚠ 無解：互斥 ${trioIdx.length} 人共 ${trioQuota} 天休假需完全不重疊，平日僅 ${weekdays} 天，至少 ${needRest} 天須落在假日，但假日上限共 ${allowRest} 天。請改用「至少一人在班」。`;
+        btn.disabled = false; return;
       }
     }
     const cfg = {
       days, N,
-      quotas: S.staff.map(s => s.quota),
+      quotas: S.staff.map((_,i) => totalQuota(i)),
       fixed: S.staff.map((_,i) => fixedOf(i)),
+      blocked: S.staff.map((_,i) => blockedOf(i)),
+      special: S.staff.map((_,i) => specialSet(i)),
       trioIdx,
-      trioMode: S.trioMode || 'all3',
+      trioMode: S.trioMode,
     };
     let best = null;
     let seed = Date.now() % 100000;
@@ -536,33 +599,40 @@ function validate(){
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
   const mCounts = [];
   for (let i=0;i<N;i++){
-    let offN=0, restOff=0, m=0, mid=0, e=0, maxRun=0, run=0;
+    const sp = specialSet(i);
+    let offN=0, restOff=0, spN=0, m=0, mid=0, e=0, maxRun=0, run=0;
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
-      if (s===3){ offN++; if (isRest(d)) restOff++; run=0; }
+      if (s===3){
+        if (sp.has(d)) spN++; else offN++;
+        if (isRest(d) && !sp.has(d)) restOff++;
+        run=0;
+      }
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else e++; }
     }
     mCounts.push(m);
-    stats.push({ offN, restOff, m, mid, e, maxRun });
-    if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
-    if (restOff > 2) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 2 天）`);
-    if (maxRun > 4) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（超過 4 天）`);
-    /* 指休檢查 */
-    for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日指休被排班`);
+    stats.push({ offN, restOff, spN, m, mid, e, maxRun });
+    if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
+    if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
+    if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
+    if (maxRun > 4) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（連五爆炸，禁止）`);
+    for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日為指休/固定休/特殊假，卻被排班`);
+    for (const d of blockedOf(i)) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
   }
   const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
   if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1）`);
-  const th = (S.trioMode||'all3') === 'pair' ? 2 : Math.min(3, trioIdx.length);
+  const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
   for (let d=1; d<=days; d++){
     let c=0;
     for (const i of trioIdx) if (grid[i][d]===3) c++;
-    if (c>=th && th>=2) v.push(`${d} 日：互斥名單有 ${c} 人同日休（${trioIdx.filter(i=>grid[i][d]===3).map(i=>S.staff[i].name).join('、')}）`);
+    if (c>=th && th>=2) v.push(`${d} 日：互斥名單 ${c} 人同日休（${trioIdx.filter(i=>grid[i][d]===3).map(i=>S.staff[i].name).join('、')}）`);
+    let m=0, mid=0, e=0, workers=0;
+    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
-    let m=0, mid=0, e=0;
-    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
+    if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
     if (m < dem.m) v.push(`${d} 日：早班缺 ${dem.m-m} 人`);
-    if (mid < dem.mid) v.push(`${d} 日：中班缺 ${dem.mid-mid} 人`);
     if (e < dem.e) v.push(`${d} 日：晚班缺 ${dem.e-e} 人`);
+    if (workers >= dem.cap && mid === 0) v.push(`${d} 日：有 ${workers} 人上班但未開中班`);
   }
   return { violations: v, stats };
 }
@@ -579,7 +649,6 @@ function render(){
   const [y,m] = S.month.split('-');
   document.getElementById('resultTitle').textContent = `${y} 年 ${Number(m)} 月排班表`;
 
-  /* header */
   let h = '<thead><tr><th class="name-col">員工</th>';
   for (let d=1; d<=days; d++){
     const w = dowOf(d), holi = holiSet().has(d);
@@ -587,42 +656,46 @@ function render(){
   }
   h += '</tr></thead><tbody>';
   for (let i=0;i<N;i++){
-    h += `<tr><td class="name-col">${S.staff[i].name}</td>`;
+    h += `<tr><td class="name-col">${S.staff[i].name}<span class="role-tag">${S.staff[i].role}</span></td>`;
     const fx = fixedOf(i);
+    const sp = specialOf(i);
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
-      h += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
+      if (s===3 && sp[d]){
+        h += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
+      } else {
+        h += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
+      }
     }
     h += '</tr>';
   }
   h += '</tbody><tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    let m=0, mid=0, e=0;
-    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
-    const short = m<dem.m || mid<dem.mid || e<dem.e;
+    let m=0, mid=0, e=0, workers=0;
+    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
+    const short = m<dem.m || e<dem.e || workers<dem.min;
     h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
 
-  /* stats */
-  let st = `<thead><tr><th>員工</th><th>上班</th><th>休假</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
+  let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
   for (let i=0;i<N;i++){
     const s = stats[i];
-    st += `<tr><td>${S.staff[i].name}</td><td class="num">${days - s.offN}</td>
+    st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN}</td>
       <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
-      <td class="num ${s.restOff>2?'bad':''}">${s.restOff}</td>
+      <td class="num">${s.spN}</td>
+      <td class="num ${s.restOff>3||s.restOff<2?'bad':''}">${s.restOff}</td>
       <td class="num">${s.m}</td><td class="num">${s.mid}</td><td class="num">${s.e}</td>
       <td class="num ${s.maxRun>4?'bad':''}">${s.maxRun}</td></tr>`;
   }
   st += '</tbody>';
   document.getElementById('statTable').innerHTML = st;
 
-  /* violations */
   document.getElementById('violBox').innerHTML = violations.length
     ? violations.map(x => `<div class="viol">⚠ ${x}</div>`).join('')
-    : '<div class="ok-note">✓ 所有排班條件皆滿足：休假額度、假日上限、連上天數、早班平衡、互斥休假、每日人力。</div>';
+    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天、連上不超過四天、早班平衡 ±1、管理職互斥、週律、每日人力與中班規則。</div>';
 }
 
 function cycle(i, d){
@@ -637,9 +710,13 @@ function cycle(i, d){
 function exportCsv(){
   if (!RESULT) return alert('請先產生排班表');
   const { grid, days } = RESULT;
-  let rows = ['員工,' + Array.from({length:days}, (_,k) => `${k+1}(${DOW[dowOf(k+1)]})`).join(',')];
+  let rows = ['員工,職級,' + Array.from({length:days}, (_,k) => `${k+1}(${DOW[dowOf(k+1)]})`).join(',')];
   S.staff.forEach((p,i) => {
-    rows.push(p.name + ',' + Array.from({length:days}, (_,k) => SHIFT_NAME[grid[i][k+1]]).join(','));
+    const sp = specialOf(i);
+    rows.push(p.name + ',' + p.role + ',' + Array.from({length:days}, (_,k) => {
+      const d = k+1, s = grid[i][d];
+      return (s===3 && sp[d]) ? sp[d] : SHIFT_NAME[s];
+    }).join(','));
   });
   const blob = new Blob(['﻿' + rows.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -651,11 +728,27 @@ function exportCsv(){
 /* ============================================================
    SETTINGS UI
 ============================================================ */
+function weekCells(i){
+  const w = S.staff[i].week || {};
+  return `<div class="wkrow">` + DOW.map((lab, k) => {
+    const st = w[k] === 'off' ? 'off' : (w[k] === 'work' ? 'work' : '');
+    const stLab = w[k] === 'off' ? '休' : (w[k] === 'work' ? '班' : '·');
+    return `<button class="wk ${st}" onclick="cycleWeek(${i},${k})" title="週${lab}">${lab}<span class="st">${stLab}</span></button>`;
+  }).join('') + `</div>`;
+}
+function cycleWeek(i, k){
+  const w = S.staff[i].week || (S.staff[i].week = {});
+  w[k] = w[k] === 'off' ? 'work' : (w[k] === 'work' ? undefined : 'off');
+  if (w[k] === undefined) delete w[k];
+  syncAll();
+}
 function renderStaff(){
   document.getElementById('staffBody').innerHTML = S.staff.map((p,i) => `
     <tr>
       <td><input type="text" value="${p.name}" onchange="S.staff[${i}].name=this.value;syncAll()"></td>
-      <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState()"> 天</td>
+      <td><select onchange="S.staff[${i}].role=this.value;saveState();if(RESULT)render()">${ROLES.map(r=>`<option ${p.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
+      <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState();renderFixChips()"> 天</td>
+      <td>${weekCells(i)}</td>
       <td><button class="del" onclick="delStaff(${i})">✕</button></td>
     </tr>`).join('');
   renderTrio(); renderFixChips(); saveState();
@@ -690,7 +783,7 @@ function renderHoliCal(){
 }
 function toggleHoli(d){
   const w = dowOf(d);
-  if (w===0 || w===6) return;   // 週末本來就是假日
+  if (w===0 || w===6) return;
   const arr = S.holidays[S.month] || [];
   const k = arr.indexOf(d);
   if (k>=0) arr.splice(k,1); else arr.push(d);
@@ -699,47 +792,74 @@ function toggleHoli(d){
 }
 function renderFixChips(){
   document.getElementById('fixChips').innerHTML = S.staff.map((p,i) =>
-    `<button class="pchip ${i===selPerson?'active':''}" onclick="selPerson=${i};renderFixChips();renderFixCal()">${p.name}<span class="cnt num">${fixedOf(i).size}/${p.quota}</span></button>`).join('');
+    `<button class="pchip ${i===selPerson?'active':''}" onclick="selPerson=${i};renderFixChips();renderFixCal()">${p.name}<span class="cnt num">${fixedOf(i).size}/${totalQuota(i)}</span></button>`).join('');
 }
 function renderFixCal(){
   const { days, firstDow } = monthInfo();
-  const mine = fixedOf(selPerson);
+  const manual = manualFixed(selPerson);
+  const wkOff = weeklyDays(selPerson,'off');
+  const wkWork = weeklyDays(selPerson,'work');
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
   const iAmTrio = trioIdx.includes(selPerson);
   let h = DOW.map(d => `<div class="mc-h">${d}</div>`).join('');
   for (let k=0; k<firstDow; k++) h += '<div class="mc-d empty"></div>';
   for (let d=1; d<=days; d++){
     const w = dowOf(d);
+    if (wkWork.has(d)){ h += `<div class="mc-d blk">${d}<span class="sub">班</span></div>`; continue; }
+    if (wkOff.has(d)){ h += `<div class="mc-d lock">${d}<span class="sub">固休</span></div>`; continue; }
+    const sp = specialOf(selPerson)[d];
     let conflict = false;
-    if (iAmTrio && mine.has(d)){
+    if (iAmTrio && (manual.has(d) || sp)){
       for (const j of trioIdx) if (j!==selPerson && fixedOf(j).has(d)) conflict = true;
     }
-    h += `<div class="mc-d ${w===0||w===6?'wkend':''} ${holiSet().has(d)?'holi':''} ${mine.has(d)?'sel':''} ${conflict?'conflict':''}" onclick="toggleFix(${d})">${d}${mine.has(d)?'<span class="sub">休</span>':''}</div>`;
+    const selCls = (manual.has(d) || sp) ? 'sel' : '';
+    const sub = sp ? `<span class="sub">${sp}</span>` : (manual.has(d) ? '<span class="sub">休</span>' : '');
+    h += `<div class="mc-d ${w===0||w===6?'wkend':''} ${holiSet().has(d)?'holi':''} ${selCls} ${conflict?'conflict':''}" ${sp?'style="background:var(--gold-dark);border-color:var(--gold-dark)"':''} onclick="toggleFix(${d})">${d}${sub}</div>`;
   }
   document.getElementById('fixCal').innerHTML = h;
 }
+/* 點擊循環：空 → 指休 → BL → AL → 空 */
 function toggleFix(d){
   if (!S.fixed[S.month]) S.fixed[S.month] = {};
+  if (!S.special) S.special = {};
+  if (!S.special[S.month]) S.special[S.month] = {};
   const fx = S.fixed[S.month];
+  const sp = S.special[S.month];
   if (!fx[selPerson]) fx[selPerson] = [];
+  if (!sp[selPerson]) sp[selPerson] = {};
   const k = fx[selPerson].indexOf(d);
-  if (k>=0) fx[selPerson].splice(k,1); else fx[selPerson].push(d);
+  if (k >= 0){                       /* 指休 → BL */
+    fx[selPerson].splice(k,1);
+    sp[selPerson][d] = 'BL';
+  } else if (sp[selPerson][d] === 'BL'){   /* BL → AL */
+    sp[selPerson][d] = 'AL';
+  } else if (sp[selPerson][d] === 'AL'){   /* AL → 空 */
+    delete sp[selPerson][d];
+  } else {                           /* 空 → 指休 */
+    fx[selPerson].push(d);
+  }
   saveState(); renderFixChips(); renderFixCal();
 }
 function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); }
 
 /* ---------- init ---------- */
-if (!S.trioMode) S.trioMode = 'all3';
 document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = true;
 document.querySelectorAll('input[name="trioMode"]').forEach(r =>
   r.addEventListener('change', () => { S.trioMode = document.getElementById('tmPair').checked ? 'pair' : 'all3'; saveState(); }));
 document.getElementById('monthInput').value = S.month;
 document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; RESULT = null; document.getElementById('resultSec').style.display='none'; syncAll(); });
-document.getElementById('midWeekday').checked = S.midWeekday;
-document.getElementById('midWeekday').addEventListener('change', e => { S.midWeekday = e.target.checked; saveState(); });
-document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', quota:10 }); syncAll(); });
+document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
+document.getElementById('pdfBtn').addEventListener('click', () => {
+  if (!RESULT) return alert('請先產生排班表');
+  const [y,m] = S.month.split('-');
+  document.getElementById('printTitle').textContent = `${y} 年 ${Number(m)} 月排班表`;
+  const now = new Date();
+  document.getElementById('printMeta').textContent =
+    `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · 早/中/晚/休 · BL/AL = 特殊假 · 底線 = 指休`;
+  window.print();   /* 列印對話框選「另存為 PDF」即可 */
+});
 renderStaff(); renderHoliCal(); renderFixCal();
 </script>
 </body>
