@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redirecting… | MICHAEL KORS Monthly Review</title>
+<script>
+// GitHub Pages 路徑大小寫敏感：把任何大小寫的 /mk-monthly/... 導向正確路徑
+(function(){
+  var CORRECT = '/MK-monthly/';
+  var path = location.pathname;
+  var lower = path.toLowerCase();
+  var idx = lower.indexOf('/mk-monthly/');
+  if (idx === 0 && path.indexOf(CORRECT) !== 0) {
+    var rest = path.slice('/mk-monthly/'.length);
+    location.replace(CORRECT + rest + location.search + location.hash);
+  } else if (lower === '/mk-monthly' ) {
+    location.replace(CORRECT + location.search + location.hash);
+  } else {
+    // 未知路徑 → 回首頁
+    location.replace(CORRECT);
+  }
+})();
+</script>
+<style>
+body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; color: #111; }
+p { font-size: 13px; letter-spacing: .2em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<p>Redirecting…<br><a href="/MK-monthly/">MK Monthly Review</a></p>
+</body>
+</html>
