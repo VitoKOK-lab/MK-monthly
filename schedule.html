@@ -239,6 +239,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="sec-title">自動排班</div>
   <div class="card" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
     <button class="btn gold" id="genBtn">⚙ 自動排班</button>
+    <button class="btn ghost" id="lockBtn" style="display:none">🔒 鎖定班表</button>
+    <button class="btn ghost" id="clearBtn" style="display:none">🗑 清除重來</button>
     <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
     <button class="btn ghost" id="csvBtn">匯出 CSV</button>
     <span class="status" id="status"></span>
@@ -302,7 +304,60 @@ const LS_KEY = 'mk-scheduler-v2';
 let S = loadState() || defaultState();
 normalize(S);
 let RESULT = null;
+let LOCKED = false;
 let selPerson = 0;
+
+/* ---------- 班表存檔（每月一份，可鎖定回顧） ---------- */
+const SAVE_KEY = 'mk-sched-results-v1';
+function loadSavedAll(){ try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch(e){ return {}; } }
+function persistResult(){
+  if (!RESULT) return;
+  const all = loadSavedAll();
+  all[S.month] = {
+    grid: RESULT.grid, days: RESULT.days, locked: LOCKED,
+    manual: [...manualEdits], savedAt: new Date().toISOString().slice(0,10),
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
+}
+function restoreResult(){
+  const rec = loadSavedAll()[S.month];
+  if (!rec){ RESULT = null; LOCKED = false; manualEdits.clear(); UNDO.length = 0;
+    document.getElementById('resultSec').style.display = 'none'; updateButtons(); return; }
+  RESULT = { grid: rec.grid, days: rec.days, month: S.month, offScore: 0 };
+  LOCKED = !!rec.locked;
+  manualEdits.clear(); (rec.manual||[]).forEach(k => manualEdits.add(k));
+  UNDO.length = 0;
+  render();
+  document.getElementById('status').textContent = LOCKED
+    ? `🔒 此月班表已於 ${rec.savedAt} 鎖定 — 唯讀回顧中（可按「解除鎖定」修改）`
+    : `已載入先前儲存的班表（${rec.savedAt}）`;
+}
+function clearResult(){
+  if (LOCKED){ alert('班表已鎖定，請先解除鎖定再清除。'); return; }
+  if (!confirm(`確定清除 ${S.month} 的班表重新開始？（指休與設定會保留）`)) return;
+  const all = loadSavedAll();
+  delete all[S.month];
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
+  RESULT = null; manualEdits.clear(); UNDO.length = 0;
+  document.getElementById('resultSec').style.display = 'none';
+  document.getElementById('status').textContent = '已清除，可重新排班';
+  updateButtons();
+}
+function toggleLock(){
+  if (!RESULT) return;
+  LOCKED = !LOCKED;
+  persistResult(); render();
+  document.getElementById('status').textContent = LOCKED
+    ? '🔒 班表已鎖定 — 不可再修改；切換月份即可回顧歷史班表'
+    : '🔓 已解除鎖定，可繼續調整';
+}
+function updateButtons(){
+  const has = !!RESULT;
+  document.getElementById('lockBtn').style.display = has ? '' : 'none';
+  document.getElementById('clearBtn').style.display = has ? '' : 'none';
+  document.getElementById('lockBtn').textContent = LOCKED ? '🔓 解除鎖定' : '🔒 鎖定班表';
+  document.getElementById('genBtn').disabled = LOCKED;
+}
 
 function defaultState(){
   const now = new Date();
@@ -554,6 +609,7 @@ function assignShifts(off, cfg){
    產生
 ============================================================ */
 function generate(){
+  if (LOCKED){ document.getElementById('status').textContent = '🔒 班表已鎖定，請先解除鎖定'; return; }
   const btn = document.getElementById('genBtn');
   btn.disabled = true;
   document.getElementById('status').textContent = '計算中…（嘗試上萬種組合）';
@@ -725,7 +781,9 @@ function render(){
     ? violations.map(x => `<div class="viol">⚠ ${x}</div>`).join('')
     : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天（優先 2）、連上不超過四天、早班平衡 ±1、管理職互斥、週律、每日人力與中班規則。</div>';
   const ub = document.getElementById('undoBtn');
-  if (ub) ub.disabled = UNDO.length === 0;
+  if (ub) ub.disabled = UNDO.length === 0 || LOCKED;
+  updateButtons();
+  persistResult();   /* 每次變動即自動存檔 — 重新整理或換月都不會遺失 */
 }
 
 /* 手動微調：允許違背規定（違規只會顯示警告）；支援復原 */
@@ -733,6 +791,7 @@ const UNDO = [];
 const manualEdits = new Set();
 function cycle(i, d){
   if (!RESULT) return;
+  if (LOCKED){ document.getElementById('status').textContent = '🔒 班表已鎖定，如需修改請先按「解除鎖定」'; return; }
   UNDO.push({ i, d, val: RESULT.grid[i][d] });
   if (UNDO.length > 50) UNDO.shift();
   manualEdits.add(i + ':' + d);
@@ -741,7 +800,7 @@ function cycle(i, d){
 }
 function undo(){
   const u = UNDO.pop();
-  if (!u || !RESULT) return;
+  if (!u || !RESULT || LOCKED) return;
   RESULT.grid[u.i][u.d] = u.val;
   /* 若該格已回到未改狀態就清除紅點（簡化：只要沒有其他紀錄就移除） */
   if (!UNDO.some(x => x.i===u.i && x.d===u.d)) manualEdits.delete(u.i + ':' + u.d);
@@ -891,11 +950,13 @@ document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = t
 document.querySelectorAll('input[name="trioMode"]').forEach(r =>
   r.addEventListener('change', () => { S.trioMode = document.getElementById('tmPair').checked ? 'pair' : 'all3'; saveState(); }));
 document.getElementById('monthInput').value = S.month;
-document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; RESULT = null; document.getElementById('resultSec').style.display='none'; syncAll(); });
+document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; syncAll(); restoreResult(); });
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
 document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('lockBtn').addEventListener('click', toggleLock);
+document.getElementById('clearBtn').addEventListener('click', clearResult);
 document.getElementById('pdfBtn').addEventListener('click', () => {
   if (!RESULT) return alert('請先產生排班表');
   const [y,m] = S.month.split('-');
@@ -906,6 +967,7 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
 renderStaff(); renderHoliCal(); renderFixCal();
+restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
 </script>
 </body>
 </html>
