@@ -3,391 +3,358 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>MK 六月戰報 — 我們一起做到了 | Taoyuan Gloria Outlets</title>
+<title>MICHAEL KORS — Monthly Review | Taoyuan Gloria Outlets</title>
 <style>
-/* ============ DESIGN TOKENS ============ */
+/* ============ MK CIS TOKENS ============ */
 :root {
-  --page: #0d0d0d;
-  --card: #191918;
-  --card2: #201f1e;
-  --hairline: rgba(255,255,255,0.08);
-  --ink: #ffffff;
-  --ink2: #c3c2b7;
-  --muted: #898781;
-  --grid: #2c2c2a;
-  --gold: #C9A84C;
-  --gold-hi: #F0D080;
-  --good: #0ca30c;
-  --good-text: #4ade4a;
-  --warn: #fab219;
-  --crit: #d03b3b;
-  --crit-text: #f07575;
-  /* validated categorical palette (dark) — color follows the person */
-  --c-yvette: #3987e5;
-  --c-liv: #199e70;
-  --c-alvin: #c98500;
-  --c-kai: #e66767;
-  --c-bailey: #d55181;
-  --c-vina: #d95926;
-  --c-demi: #9085e9;
-  --radius: 16px;
-  --nav-h: 62px;
+  --bg: #ffffff;
+  --paper: #faf9f7;
+  --ink: #111111;
+  --ink2: #4a4a48;
+  --muted: #8a887f;
+  --hair: rgba(17,17,17,0.14);
+  --hair-soft: rgba(17,17,17,0.08);
+  --gold: #B4975A;
+  --gold-dark: #8f7439;
+  --gold-wash: rgba(180,151,90,0.10);
+  --good: #006300;
+  --good-wash: rgba(12,163,12,0.10);
+  --crit: #b32424;
+  --crit-wash: rgba(208,59,59,0.08);
+  --track: #ecebe7;
+  --serif: 'Didot', 'Bodoni MT', 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+  --nav-h: 58px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--page); color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
-  line-height: 1.6; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
-}
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.65; }
 .num { font-variant-numeric: tabular-nums; }
+b { font-weight: 700; }
 
-/* ============ TOP BRAND BAR ============ */
-.topbar {
-  position: sticky; top: 0; z-index: 90;
-  background: rgba(13,13,13,0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--hairline);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 18px;
+/* ============ MASTHEAD (MK wordmark) ============ */
+.masthead {
+  text-align: center; padding: 26px 16px 18px; background: var(--bg);
+  border-bottom: 1px solid var(--ink);
 }
-.topbar .brand { font-size: 11px; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; font-weight: 600; }
-.topbar .period { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+.masthead .wordmark {
+  font-size: clamp(20px, 4.5vw, 30px); font-weight: 400; letter-spacing: .42em;
+  text-transform: uppercase; color: var(--ink); font-family: var(--sans);
+  margin-right: -.42em; /* optical centering of tracked text */
+}
+.masthead .storeline {
+  font-size: 10px; letter-spacing: .32em; text-transform: uppercase; color: var(--muted);
+  margin-top: 6px; margin-right: -.32em;
+}
+.masthead .month-row { margin-top: 14px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.month-select {
+  appearance: none; -webkit-appearance: none; background: var(--bg); color: var(--ink);
+  border: 1px solid var(--ink); border-radius: 0; padding: 7px 34px 7px 16px;
+  font-family: var(--sans); font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%23111'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.month-fy { font-size: 10px; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
 
-/* ============ TABS / NAV ============ */
+/* ============ TAB NAV ============ */
 .tabnav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: rgba(16,16,15,0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(201,168,76,0.22);
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hair);
 }
-.tabnav ul { list-style: none; display: flex; max-width: 560px; margin: 0 auto; }
-.tabnav li { flex: 1; }
+.tabnav ul { list-style: none; display: flex; justify-content: center; max-width: 760px; margin: 0 auto; }
+.tabnav li { flex: 1; max-width: 130px; }
 .tabnav button {
-  width: 100%; background: none; border: none; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  color: var(--muted); font-size: 10px; letter-spacing: 1px; font-family: inherit;
-  padding: 6px 2px; border-radius: 10px; transition: color .18s;
+  width: 100%; background: none; border: none; cursor: pointer; font-family: var(--sans);
+  font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
+  padding: 15px 4px 13px; position: relative; transition: color .18s;
 }
-.tabnav button .ico { font-size: 20px; line-height: 1.15; filter: grayscale(1) opacity(.65); transition: filter .18s; }
-.tabnav button.active { color: var(--gold-hi); }
-.tabnav button.active .ico { filter: none; }
+.tabnav button::after {
+  content: ''; position: absolute; left: 22%; right: 22%; bottom: 0; height: 2px;
+  background: var(--ink); transform: scaleX(0); transition: transform .22s ease;
+}
+.tabnav button.active { color: var(--ink); font-weight: 600; }
+.tabnav button.active::after { transform: scaleX(1); }
 
 /* ============ LAYOUT ============ */
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-.tab-panel { display: none; animation: fadeUp .35s ease; }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 18px; }
+.tab-panel { display: none; animation: fadeUp .3s ease; }
 .tab-panel.active { display: block; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.sec { padding: 26px 0 8px; }
-.sec-kicker { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
-.sec-title { font-size: 21px; font-weight: 700; margin-bottom: 16px; }
-.sec-note { font-size: 12px; color: var(--muted); margin: -10px 0 16px; }
+.sec { padding: 34px 0 10px; }
+.sec-kicker { font-size: 10px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold-dark); margin-bottom: 6px; font-weight: 600; }
+.sec-title { font-size: 22px; font-weight: 700; margin-bottom: 18px; letter-spacing: .02em; }
+.sec-note { font-size: 12.5px; color: var(--muted); margin: -12px 0 18px; }
 
-.card {
-  background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius);
-  padding: 18px; margin-bottom: 14px;
-}
+.card { background: var(--bg); border: 1px solid var(--hair); padding: 20px; margin-bottom: 14px; }
+.card.paper { background: var(--paper); border-color: var(--hair-soft); }
 
-/* ============ HERO (overview) ============ */
-.hero {
-  text-align: center; padding: 38px 20px 30px;
-  background:
-    radial-gradient(ellipse 70% 55% at 50% 110%, rgba(201,168,76,0.14) 0%, transparent 70%),
-    linear-gradient(180deg, #121210 0%, #0d0d0d 100%);
-  border-bottom: 1px solid var(--hairline);
-}
-.hero .h-kicker { font-size: 10px; letter-spacing: 5px; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
-.hero h1 { font-size: clamp(26px, 6vw, 40px); font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; }
+/* ============ HERO ============ */
+.hero { text-align: center; padding: 44px 20px 38px; background: var(--paper); border-bottom: 1px solid var(--hair); }
+.hero .h-kicker { font-size: 10px; letter-spacing: .4em; color: var(--gold-dark); text-transform: uppercase; font-weight: 600; margin-bottom: 16px; margin-right: -.4em; }
+.hero h1 { font-family: var(--serif); font-size: clamp(30px, 6.5vw, 48px); font-weight: 500; letter-spacing: .06em; margin-bottom: 10px; }
 .hero .h-sub { color: var(--ink2); font-size: 14px; max-width: 520px; margin: 0 auto; }
-.hero .h-sub b { color: var(--gold-hi); font-weight: 700; }
+.hero .h-sub b { color: var(--ink); }
 
-.ring-wrap { display: flex; justify-content: center; margin: 26px 0 10px; }
+.ring-wrap { display: flex; justify-content: center; margin: 30px 0 8px; }
 .ring {
-  width: 190px; height: 190px; border-radius: 50%; position: relative;
-  background: conic-gradient(var(--gold) 0deg, var(--gold-hi) var(--deg,0deg), #262523 var(--deg,0deg));
+  width: 200px; height: 200px; border-radius: 50%; position: relative;
   display: flex; align-items: center; justify-content: center;
-  transition: --deg 1s;
 }
-.ring::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; background: var(--page); }
+.ring::before { content: ''; position: absolute; inset: 10px; border-radius: 50%; background: var(--paper); }
 .ring .ring-inner { position: relative; text-align: center; }
-.ring .ring-num { font-size: 42px; font-weight: 800; color: var(--gold-hi); line-height: 1.1; }
-.ring .ring-lab { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+.ring .ring-num { font-family: var(--serif); font-size: 46px; font-weight: 500; color: var(--ink); line-height: 1.1; }
+.ring .ring-lab { font-size: 9px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; margin-top: 2px; margin-right: -.3em; }
 
-.hero-stats { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
-.hstat {
-  background: rgba(255,255,255,0.04); border: 1px solid var(--hairline); border-radius: 12px;
-  padding: 10px 18px; min-width: 104px;
+.hero-stats { display: flex; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 24px; }
+.hstat { padding: 6px 26px; border-right: 1px solid var(--hair); min-width: 108px; }
+.hstat:last-child { border-right: none; }
+.hstat .v { font-family: var(--serif); font-size: 24px; color: var(--ink); }
+.hstat .v.up { color: var(--good); }
+.hstat .l { font-size: 9px; letter-spacing: .26em; color: var(--muted); text-transform: uppercase; margin-right: -.26em; }
+
+/* trend strip */
+.trend { display: flex; justify-content: center; gap: 8px; margin-top: 26px; flex-wrap: wrap; }
+.trend-chip {
+  border: 1px solid var(--hair); padding: 8px 16px; font-size: 11px; color: var(--ink2);
+  display: flex; align-items: center; gap: 10px; background: var(--bg); cursor: pointer;
 }
-.hstat .v { font-size: 19px; font-weight: 700; }
-.hstat .l { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
-.hstat .v.up { color: var(--good-text); }
-.hstat .v.gold { color: var(--gold-hi); }
+.trend-chip.cur { border-color: var(--gold); background: var(--gold-wash); }
+.trend-chip .t-m { letter-spacing: .12em; text-transform: uppercase; font-size: 10px; color: var(--muted); }
+.trend-chip .t-a { font-weight: 700; color: var(--ink); }
 
-/* ============ STAT TILES ============ */
-.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
-.tile { background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 12px; }
-.tile .t-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.tile .t-value { font-size: 21px; font-weight: 700; }
-.tile .t-delta { font-size: 11px; margin-top: 2px; color: var(--muted); }
-.tile .t-delta.up { color: var(--good-text); }
-.tile .t-delta.down { color: var(--crit-text); }
+/* ============ TILES ============ */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+.tile { background: var(--bg); border: 1px solid var(--hair); padding: 16px 14px; }
+.tile .t-label { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.tile .t-value { font-family: var(--serif); font-size: 26px; }
+.tile .t-delta { font-size: 11px; margin-top: 3px; color: var(--muted); }
+.tile .t-delta.up { color: var(--good); }
+.tile .t-delta.down { color: var(--crit); }
 
-/* ============ CATEGORY BARS (store) ============ */
-.cbar-row { display: grid; grid-template-columns: 132px 1fr 52px; align-items: center; gap: 10px; margin-bottom: 9px; }
+/* ============ STORE CATEGORY BARS ============ */
+.cbar-row { display: grid; grid-template-columns: 128px 1fr 52px; align-items: center; gap: 12px; margin-bottom: 10px; }
 .cbar-name { font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cbar-track { height: 14px; background: #262523; border-radius: 4px; overflow: hidden; }
-.cbar-fill { height: 100%; border-radius: 0 4px 4px 0; background: var(--gold); transform-origin: left; animation: growX .8s ease both; }
+.cbar-track { height: 13px; background: var(--track); overflow: hidden; }
+.cbar-fill { height: 100%; background: var(--ink); animation: growX .8s ease both; transform-origin: left; }
 @keyframes growX { from { transform: scaleX(0); } }
 .cbar-val { font-size: 12px; font-weight: 600; text-align: right; }
 
 /* ============ BADGE WALL ============ */
-.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 12px; }
 .badge-card {
-  border-radius: 14px; padding: 14px 16px; border: 1px solid var(--hairline);
-  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-  display: flex; gap: 12px; align-items: center;
-  border-left: 3px solid var(--pc, var(--gold));
+  border: 1px solid var(--hair); border-top: 3px solid var(--pc, var(--gold));
+  background: var(--bg); padding: 16px; display: flex; gap: 12px; align-items: center;
 }
-.badge-card .b-ico { font-size: 28px; }
-.badge-card .b-title { font-size: 15px; font-weight: 700; }
+.badge-card .b-ico { font-size: 26px; }
+.badge-card .b-title { font-size: 14px; font-weight: 700; }
 .badge-card .b-who { font-size: 12px; color: var(--ink2); }
 .badge-card .b-why { font-size: 11px; color: var(--muted); }
 
 /* ============ LEADERBOARD ============ */
-.podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin: 18px 0 22px; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 14px; margin: 22px 0 26px; }
 .pod { text-align: center; flex: 1; max-width: 150px; }
 .pod .p-avatar {
-  width: 58px; height: 58px; border-radius: 50%; margin: 0 auto 6px;
-  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 19px; color: #0d0d0d;
-  border: 2px solid rgba(255,255,255,0.25);
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; color: #fff;
 }
 .pod .p-name { font-size: 13px; font-weight: 700; }
-.pod .p-num { font-size: 12px; color: var(--gold-hi); font-weight: 600; }
-.pod .p-col { border-radius: 10px 10px 0 0; margin-top: 8px; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px; font-size: 18px; }
-.pod.first .p-col { height: 86px; background: linear-gradient(180deg, rgba(201,168,76,0.5), rgba(201,168,76,0.12)); }
-.pod.second .p-col { height: 62px; background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.05)); }
-.pod.third .p-col { height: 46px; background: linear-gradient(180deg, rgba(205,127,50,0.4), rgba(205,127,50,0.1)); }
-.pod.first .p-avatar { width: 70px; height: 70px; border-color: var(--gold); box-shadow: 0 0 24px rgba(201,168,76,0.35); }
+.pod .p-num { font-size: 11.5px; color: var(--ink2); }
+.pod .p-col { margin-top: 10px; display: flex; align-items: flex-start; justify-content: center; padding-top: 7px; font-size: 17px; border: 1px solid var(--hair); border-bottom: 2px solid var(--ink); }
+.pod.first .p-col { height: 84px; background: var(--gold-wash); border-color: var(--gold); border-bottom-color: var(--gold-dark); }
+.pod.second .p-col { height: 60px; background: var(--paper); }
+.pod.third .p-col { height: 44px; background: var(--paper); }
+.pod.first .p-avatar { width: 70px; height: 70px; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }
 
 .lb-row {
-  display: grid; grid-template-columns: 30px 40px 1fr 92px; gap: 10px; align-items: center;
-  padding: 12px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;
-  border-radius: 10px; transition: background .15s;
+  display: grid; grid-template-columns: 28px 40px 1fr 96px; gap: 12px; align-items: center;
+  padding: 14px 4px; border-bottom: 1px solid var(--hair-soft); cursor: pointer; transition: background .15s;
 }
-.lb-row:hover { background: rgba(255,255,255,0.03); }
-.lb-rank { font-size: 15px; font-weight: 800; color: var(--muted); text-align: center; }
-.lb-avatar {
-  width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 13px; color: #0d0d0d;
-}
+.lb-row:hover { background: var(--paper); }
+.lb-rank { font-family: var(--serif); font-size: 17px; color: var(--muted); text-align: center; }
+.lb-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #fff; }
 .lb-main .lb-name { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.lb-name .mini-badge { font-size: 10px; padding: 1px 7px; border-radius: 8px; background: rgba(201,168,76,0.15); color: var(--gold-hi); font-weight: 600; }
-.lb-name .mini-badge.alert { background: rgba(208,59,59,0.18); color: var(--crit-text); }
-.lb-track { height: 8px; background: #262523; border-radius: 4px; margin-top: 6px; overflow: hidden; position: relative; }
-.lb-fill { height: 100%; border-radius: 0 4px 4px 0; animation: growX .9s ease both; }
-.lb-goalmark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: rgba(255,255,255,0.5); }
-.lb-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.lb-name .mini-badge { font-size: 10px; padding: 1px 8px; background: var(--gold-wash); color: var(--gold-dark); font-weight: 600; border: 1px solid rgba(180,151,90,0.35); }
+.lb-name .mini-badge.alert { background: var(--crit-wash); color: var(--crit); border-color: rgba(179,36,36,0.3); }
+.lb-track { height: 7px; background: var(--track); margin-top: 7px; overflow: hidden; position: relative; }
+.lb-fill { height: 100%; animation: growX .9s ease both; transform-origin: left; }
+.lb-goalmark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--gold-dark); }
+.lb-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
 .lb-right { text-align: right; }
-.lb-ach { font-size: 17px; font-weight: 800; }
-.lb-gap { font-size: 11px; }
-.lb-gap.up { color: var(--good-text); }
-.lb-gap.down { color: var(--crit-text); }
+.lb-ach { font-family: var(--serif); font-size: 19px; }
+.lb-gap { font-size: 11px; font-weight: 600; }
+.lb-gap.up { color: var(--good); }
+.lb-gap.down { color: var(--crit); }
 
-.callout {
-  border-radius: 14px; padding: 14px 16px; margin-top: 14px;
-  border: 1px solid rgba(208,59,59,0.3); background: rgba(208,59,59,0.07);
-  font-size: 13px; color: var(--ink2);
-}
-.callout.gold { border-color: rgba(201,168,76,0.3); background: rgba(201,168,76,0.07); }
+.callout { border: 1px solid var(--hair); border-left: 3px solid var(--crit); background: var(--crit-wash); padding: 15px 18px; margin-top: 14px; font-size: 13px; color: var(--ink2); }
+.callout.gold { border-left-color: var(--gold); background: var(--gold-wash); }
 .callout b { color: var(--ink); }
 
 /* ============ PERSON SELECTOR ============ */
-.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: none; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 14px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
   flex-shrink: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--hairline); border-radius: 999px;
-  padding: 6px 14px 6px 6px; font-size: 13px; font-weight: 600; color: var(--ink2);
-  font-family: inherit; transition: all .18s;
+  background: var(--bg); border: 1px solid var(--hair); border-radius: 999px;
+  padding: 5px 14px 5px 5px; font-size: 13px; font-weight: 600; color: var(--ink2); font-family: var(--sans);
+  transition: all .16s;
 }
-.chip .c-dot {
-  width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800; color: #0d0d0d;
-}
-.chip.active { border-color: var(--pc); color: var(--ink); background: var(--card2); box-shadow: 0 0 0 1px var(--pc); }
+.chip .c-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+.chip.active { border-color: var(--ink); color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 
-/* ============ PERSONAL PROFILE ============ */
-.profile-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+/* ============ PROFILE ============ */
+.profile-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .profile-avatar {
   width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 24px; font-weight: 800; color: #0d0d0d; flex-shrink: 0;
-  box-shadow: 0 0 0 3px var(--page), 0 0 0 5px var(--pc);
+  font-size: 23px; font-weight: 700; color: #fff; flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--pc);
 }
-.profile-name { font-size: 24px; font-weight: 800; }
-.profile-role { font-size: 12px; color: var(--muted); }
-.profile-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-.pbadge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: rgba(201,168,76,0.14); color: var(--gold-hi); border: 1px solid rgba(201,168,76,0.3); }
-.pbadge.alert { background: rgba(208,59,59,0.14); color: var(--crit-text); border-color: rgba(208,59,59,0.3); }
+.profile-name { font-family: var(--serif); font-size: 26px; }
+.profile-role { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.profile-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.pbadge { font-size: 11px; font-weight: 600; padding: 3px 11px; background: var(--gold-wash); color: var(--gold-dark); border: 1px solid rgba(180,151,90,0.35); }
+.pbadge.alert { background: var(--crit-wash); color: var(--crit); border-color: rgba(179,36,36,0.3); }
 .profile-ach { margin-left: auto; text-align: center; }
-.mini-ring {
-  width: 88px; height: 88px; border-radius: 50%; position: relative;
-  background: conic-gradient(var(--pc) var(--deg,0deg), #262523 var(--deg,0deg));
-  display: flex; align-items: center; justify-content: center;
-}
-.mini-ring::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: var(--card); }
-.mini-ring span { position: relative; font-size: 17px; font-weight: 800; }
-.mini-ring-lab { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; }
+.mini-ring { width: 92px; height: 92px; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; }
+.mini-ring::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: var(--bg); }
+.mini-ring span { position: relative; font-family: var(--serif); font-size: 18px; }
+.mini-ring-lab { font-size: 9px; color: var(--muted); letter-spacing: .26em; margin-top: 5px; text-transform: uppercase; margin-right: -.26em; }
 
-.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.kpi { background: var(--card2); border: 1px solid var(--hairline); border-radius: 12px; padding: 12px; }
-.kpi .k-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
-.kpi .k-value { font-size: 19px; font-weight: 800; margin: 2px 0; }
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kpi { border: 1px solid var(--hair-soft); background: var(--paper); padding: 13px 14px; }
+.kpi .k-label { font-size: 9px; letter-spacing: .2em; color: var(--muted); text-transform: uppercase; }
+.kpi .k-value { font-family: var(--serif); font-size: 22px; margin: 2px 0; }
 .kpi .k-delta { font-size: 11px; font-weight: 600; }
-.kpi .k-delta.up { color: var(--good-text); }
-.kpi .k-delta.down { color: var(--crit-text); }
+.kpi .k-delta.up { color: var(--good); }
+.kpi .k-delta.down { color: var(--crit); }
 .kpi .k-delta.flat { color: var(--muted); }
 
-.subhead { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--ink2); margin: 4px 0 12px; display: flex; align-items: center; gap: 8px; }
-.subhead::after { content: ''; flex: 1; height: 1px; background: var(--hairline); }
+.subhead { font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--ink2); margin: 4px 0 14px; display: flex; align-items: center; gap: 10px; }
+.subhead::after { content: ''; flex: 1; height: 1px; background: var(--hair); }
 
-/* paired bars: me vs store avg */
-.pair-row { margin-bottom: 12px; }
+.pair-row { margin-bottom: 13px; }
 .pair-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
 .pair-top .pn { color: var(--ink2); font-weight: 600; }
 .pair-top .pv { font-weight: 700; }
-.pair-track { height: 12px; background: #262523; border-radius: 4px; overflow: hidden; margin-bottom: 3px; }
-.pair-me { height: 100%; border-radius: 0 4px 4px 0; background: var(--pc); animation: growX .7s ease both; }
-.pair-track.avg { height: 5px; opacity: .85; }
-.pair-avg { height: 100%; border-radius: 0 3px 3px 0; background: #57554f; animation: growX .7s ease both; }
-.pair-legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin: 2px 0 14px; }
-.pair-legend i { display: inline-block; width: 14px; height: 7px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; }
+.pair-top .pv .avg-note { color: var(--muted); font-weight: 400; }
+.pair-track { height: 12px; background: var(--track); overflow: hidden; margin-bottom: 3px; }
+.pair-me { height: 100%; animation: growX .7s ease both; transform-origin: left; }
+.pair-track.avg { height: 5px; }
+.pair-avg { height: 100%; background: #b9b7ae; animation: growX .7s ease both; transform-origin: left; }
+.pair-legend { display: flex; gap: 18px; font-size: 11px; color: var(--muted); margin: 2px 0 16px; }
+.pair-legend i { display: inline-block; width: 14px; height: 7px; margin-right: 6px; vertical-align: 1px; }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 .insight { display: flex; gap: 10px; margin-bottom: 12px; font-size: 13px; }
-.insight .i-ico { flex-shrink: 0; font-size: 16px; width: 22px; text-align: center; }
+.insight .i-ico { flex-shrink: 0; font-size: 15px; width: 22px; text-align: center; }
 .insight b { color: var(--ink); }
 .insight span { color: var(--ink2); }
 
-.teach-learn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tl-box { border-radius: 12px; padding: 12px 14px; border: 1px solid var(--hairline); }
-.tl-box.teach { background: rgba(12,163,12,0.07); border-color: rgba(12,163,12,0.25); }
-.tl-box.learn { background: rgba(57,135,229,0.07); border-color: rgba(57,135,229,0.25); }
-.tl-box .tl-h { font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
-.tl-box.teach .tl-h { color: var(--good-text); }
-.tl-box.learn .tl-h { color: #7db4f0; }
+.teach-learn { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tl-box { padding: 13px 15px; border: 1px solid var(--hair-soft); }
+.tl-box.teach { background: var(--good-wash); border-left: 3px solid var(--good); }
+.tl-box.learn { background: rgba(42,120,214,0.07); border-left: 3px solid #2a78d6; }
+.tl-box .tl-h { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 7px; }
+.tl-box.teach .tl-h { color: var(--good); }
+.tl-box.learn .tl-h { color: #1c5cab; }
 .tl-box ul { list-style: none; }
-.tl-box li { font-size: 12px; color: var(--ink2); padding: 2px 0 2px 14px; position: relative; }
+.tl-box li { font-size: 12.5px; color: var(--ink2); padding: 2px 0 2px 14px; position: relative; }
 .tl-box li::before { content: '·'; position: absolute; left: 2px; color: var(--muted); font-weight: 800; }
 
-.action-hero {
-  border-radius: 14px; padding: 16px 18px; margin-top: 14px;
-  background: linear-gradient(135deg, rgba(201,168,76,0.16), rgba(201,168,76,0.04));
-  border: 1px solid rgba(201,168,76,0.35);
-}
-.action-hero .a-kicker { font-size: 10px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; font-weight: 700; }
-.action-hero .a-main { font-size: 16px; font-weight: 800; margin: 4px 0 2px; color: var(--gold-hi); }
+.action-hero { padding: 17px 19px; margin-top: 14px; background: var(--gold-wash); border: 1px solid rgba(180,151,90,0.4); border-left: 3px solid var(--gold); }
+.action-hero .a-kicker { font-size: 9px; letter-spacing: .3em; color: var(--gold-dark); text-transform: uppercase; font-weight: 700; }
+.action-hero .a-main { font-family: var(--serif); font-size: 18px; margin: 5px 0 3px; color: var(--ink); }
 .action-hero .a-how { font-size: 13px; color: var(--ink2); }
 
 .radar-card svg { max-width: 400px; margin: 0 auto; display: block; width: 100%; height: auto; }
-.radar-legend { display: flex; justify-content: center; gap: 18px; font-size: 12px; color: var(--ink2); margin-top: 8px; }
+.radar-legend { display: flex; justify-content: center; gap: 20px; font-size: 12px; color: var(--ink2); margin-top: 8px; }
 .radar-legend .rl-line { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; margin-right: 6px; vertical-align: 3px; }
-.radar-legend .rl-line.dash { border-top-style: dashed; border-color: #898781; }
+.radar-legend .rl-line.dash { border-top-style: dashed; border-color: #8a887f; }
 
 /* ============ CATEGORY TAB ============ */
-.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 8px; }
-.teacher-card {
-  background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; padding: 12px 14px;
-  border-top: 3px solid var(--pc, var(--gold));
-}
-.teacher-card .tc-cat { font-size: 11px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
-.teacher-card .tc-who { font-size: 15px; font-weight: 800; margin: 2px 0; }
+.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.teacher-card { background: var(--bg); border: 1px solid var(--hair); border-top: 3px solid var(--pc, var(--gold)); padding: 13px 15px; }
+.teacher-card .tc-cat { font-size: 10px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+.teacher-card .tc-who { font-size: 15px; font-weight: 700; margin: 2px 0; }
 .teacher-card .tc-stat { font-size: 11px; color: var(--ink2); }
 
-.hm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; border: 1px solid var(--hairline); }
-table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--card); }
-.hm th {
-  font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
-  padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--hairline); white-space: nowrap;
-}
-.hm th.sticky-col, .hm td.sticky-col {
-  position: sticky; left: 0; background: var(--card); text-align: left; z-index: 2;
-  border-right: 1px solid var(--hairline); font-weight: 700;
-}
-.hm td { padding: 9px 8px; text-align: center; font-size: 12px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap; }
-.hm .above { background: rgba(12,163,12,0.16); color: #a9e8a9; }
-.hm .strong { background: rgba(12,163,12,0.32); color: #c9f5c9; }
+.hm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--hair); }
+table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg); }
+.hm th { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 11px 8px; text-align: center; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+.hm th.sticky-col, .hm td.sticky-col { position: sticky; left: 0; background: var(--bg); text-align: left; z-index: 2; border-right: 1px solid var(--hair); font-weight: 700; }
+.hm td { padding: 10px 8px; text-align: center; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--hair-soft); white-space: nowrap; }
+.hm .above { background: rgba(12,163,12,0.10); color: #1d5a1d; }
+.hm .strong { background: rgba(12,163,12,0.22); color: #124312; }
 .hm .near { color: var(--ink2); }
-.hm .below { background: rgba(208,59,59,0.14); color: #f3b8b8; }
-.hm .weak { background: rgba(208,59,59,0.28); color: #ffd2d2; }
-.hm .none { color: rgba(255,255,255,0.18); }
+.hm .below { background: rgba(208,59,59,0.08); color: #8f2f2f; }
+.hm .weak { background: rgba(208,59,59,0.18); color: #7c1f1f; }
+.hm .none { color: rgba(17,17,17,0.22); }
 .hm-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 10px 2px; }
-.hm-key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.hm-key i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--hair-soft); }
 
 /* ============ ACTION TAB ============ */
 .play-card { border-left: 3px solid var(--gold); }
-.play-card .pl-t { font-size: 15px; font-weight: 800; color: var(--gold-hi); margin-bottom: 6px; }
+.play-card .pl-t { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
 .play-card ul { list-style: none; }
 .play-card li { font-size: 13px; color: var(--ink2); padding: 3px 0 3px 18px; position: relative; }
-.play-card li::before { content: '→'; position: absolute; left: 0; color: var(--gold); }
-.next-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-.next-card {
-  background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px;
-  border-left: 3px solid var(--pc);
-}
-.next-card .n-who { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.play-card li::before { content: '→'; position: absolute; left: 0; color: var(--gold-dark); }
+.next-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 12px; }
+.next-card { background: var(--bg); border: 1px solid var(--hair); border-left: 3px solid var(--pc); padding: 15px; }
+.next-card .n-who { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .next-card .n-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
-.next-card .n-goal { font-size: 13px; font-weight: 700; color: var(--gold-hi); }
-.next-card .n-how { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+.next-card .n-goal { font-family: var(--serif); font-size: 15px; color: var(--ink); }
+.next-card .n-how { font-size: 12px; color: var(--ink2); margin-top: 3px; }
 
 /* ============ FOOTER ============ */
-.footer { text-align: center; padding: 26px 16px 18px; font-size: 10px; letter-spacing: 2px; color: var(--muted); }
+.footer { text-align: center; padding: 34px 16px 22px; font-size: 9px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; border-top: 1px solid var(--hair); margin-top: 30px; }
 
-/* ============ RESPONSIVE ============ */
+/* ============ MOBILE ============ */
 @media (max-width: 720px) {
+  .tabnav { top: 0; }
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .two-col { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-  .kpi .k-value { font-size: 16px; }
+  .kpi .k-value { font-size: 17px; }
   .profile-ach { margin-left: 0; }
   .teach-learn { grid-template-columns: 1fr; }
-  .cbar-row { grid-template-columns: 100px 1fr 48px; }
+  .cbar-row { grid-template-columns: 96px 1fr 48px; }
   .sec-title { font-size: 19px; }
-}
-@media (min-width: 721px) {
-  .tabnav { top: 49px; bottom: auto; border-top: none; border-bottom: 1px solid rgba(201,168,76,0.22); padding: 4px; }
-  .tabnav button { flex-direction: row; gap: 7px; font-size: 13px; padding: 9px; justify-content: center; }
-  .tabnav button .ico { font-size: 17px; }
-  body { padding-bottom: 30px; padding-top: 52px; }
+  .hstat { padding: 6px 16px; min-width: 88px; }
+  .hstat .v { font-size: 20px; }
+  .tabnav button { font-size: 10px; letter-spacing: .14em; padding: 13px 2px 11px; }
+  .masthead { padding: 20px 12px 14px; }
 }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand">Michael Kors · Gloria Outlets</div>
-  <div class="period num">June 2026 · FY27 P3</div>
-</div>
+<header class="masthead">
+  <div class="wordmark">Michael Kors</div>
+  <div class="storeline">Taoyuan Gloria Outlets · Monthly Review</div>
+  <div class="month-row">
+    <select class="month-select" id="monthSelect" aria-label="選擇月份"></select>
+    <span class="month-fy num" id="monthFy"></span>
+  </div>
+</header>
 
 <nav class="tabnav" aria-label="主導航">
   <ul>
-    <li><button data-tab="overview" class="active"><span class="ico">🏆</span>總覽</button></li>
-    <li><button data-tab="rank"><span class="ico">📊</span>排行</button></li>
-    <li><button data-tab="me"><span class="ico">💪</span>個人</button></li>
-    <li><button data-tab="cat"><span class="ico">🧭</span>品類</button></li>
-    <li><button data-tab="action"><span class="ico">🎯</span>行動</button></li>
+    <li><button data-tab="overview" class="active">總覽</button></li>
+    <li><button data-tab="rank">排行</button></li>
+    <li><button data-tab="me">個人</button></li>
+    <li><button data-tab="cat">品類</button></li>
+    <li><button data-tab="action">行動</button></li>
   </ul>
 </nav>
 
-<!-- ================================================== -->
-<!-- TAB 1 : OVERVIEW — 我們一起做到了 -->
-<!-- ================================================== -->
+<!-- TAB 1 : OVERVIEW -->
 <div class="tab-panel active" id="tab-overview">
-
   <div class="hero">
-    <div class="h-kicker">June 2026 Team Result</div>
-    <h1>我們一起做到了 🎉</h1>
-    <div class="h-sub">6 月全店業績 <b>NT$ 600 萬</b>，超越目標 <b>125 萬</b>。<br>這不是一個人的成績——是 7 位夥伴每一單累積出來的。</div>
+    <div class="h-kicker" id="heroKicker"></div>
+    <h1 id="heroTitle"></h1>
+    <div class="h-sub" id="heroSub"></div>
     <div class="ring-wrap">
       <div class="ring" id="heroRing">
         <div class="ring-inner">
@@ -396,28 +363,16 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
         </div>
       </div>
     </div>
-    <div class="hero-stats">
-      <div class="hstat"><div class="v gold num">475萬</div><div class="l">目標</div></div>
-      <div class="hstat"><div class="v up num">600萬</div><div class="l">實績</div></div>
-      <div class="hstat"><div class="v up num">+125萬</div><div class="l">超標</div></div>
-      <div class="hstat"><div class="v num">5<span style="font-size:13px;color:var(--muted)">/7</span></div><div class="l">達標人數</div></div>
-    </div>
+    <div class="hero-stats" id="heroStats"></div>
+    <div class="trend" id="trendStrip"></div>
   </div>
 
   <div class="wrap">
     <section class="sec">
       <div class="sec-kicker">Store KPI</div>
       <div class="sec-title">門市體質一眼看</div>
-      <div class="tiles">
-        <div class="tile"><div class="t-label">客單數 Trans</div><div class="t-value num">579</div><div class="t-delta down">YoY −37.3%</div></div>
-        <div class="tile"><div class="t-label">連帶率 UPT</div><div class="t-value num">1.96</div><div class="t-delta down">YoY −2.0%</div></div>
-        <div class="tile"><div class="t-label">客均消費 ADS</div><div class="t-value num">10,366</div><div class="t-delta up">YoY +0.7%</div></div>
-        <div class="tile"><div class="t-label">件均價 AUR</div><div class="t-value num">5,293</div><div class="t-delta up">YoY +2.9%</div></div>
-      </div>
-      <div class="callout">
-        <b>店長解讀：</b>今年客流比去年少了近 4 成，但我們把「每一位進店客人」的價值做得更高（ADS、AUR 都成長）。
-        下一步不是等客人變多，而是<b>把連帶率 UPT 從 1.96 推向 2.2</b>——每 5 單多 1 件，業績就多一成。
-      </div>
+      <div class="tiles" id="kpiTiles"></div>
+      <div class="callout gold" id="storeRead"></div>
     </section>
 
     <section class="sec">
@@ -435,70 +390,36 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
   </div>
 </div>
 
-<!-- ================================================== -->
-<!-- TAB 2 : RANK — 排行與達標挑戰 -->
-<!-- ================================================== -->
+<!-- TAB 2 : RANK -->
 <div class="tab-panel" id="tab-rank">
   <div class="wrap">
     <section class="sec">
       <div class="sec-kicker">Leaderboard</div>
       <div class="sec-title">本月業績排行</div>
-      <div class="podium">
-        <div class="pod second">
-          <div class="p-avatar" style="background:var(--c-liv)">LY</div>
-          <div class="p-name">Liv Yang</div>
-          <div class="p-num num">103.4萬 · 187.9%</div>
-          <div class="p-col">🥈</div>
-        </div>
-        <div class="pod first">
-          <div class="p-avatar" style="background:var(--c-yvette)">YW</div>
-          <div class="p-name">Yvette Wang</div>
-          <div class="p-num num">110.9萬 · 158.4%</div>
-          <div class="p-col">👑</div>
-        </div>
-        <div class="pod third">
-          <div class="p-avatar" style="background:var(--c-alvin)">AP</div>
-          <div class="p-name">Alvin Pan</div>
-          <div class="p-num num">86.7萬 · 123.9%</div>
-          <div class="p-col">🥉</div>
-        </div>
-      </div>
-
+      <div class="podium" id="podium"></div>
       <div class="card" id="lbList"></div>
-
-      <div class="callout">
-        <b>⚠️ 本月漏單王：Demi Chen（差 2.5 萬，96.4%）。</b><br>
-        換個角度看：Demi 的 UPT 是 1.57，只要<b>每 3 單多推 1 件配件</b>，這 2.5 萬就回來了——這是全隊最容易逆轉的差距。
-        Vina 也一樣（差 2.3 萬）：她的客單價全店最高，<b>每天多成交 1 單就直接達標</b>。
-      </div>
-      <div class="callout gold">
-        <b>💡 給所有人：</b>排名比的不是人，是「方法」。點進「個人」頁看看第一名在做什麼不一樣的事——那些方法你明天就能用。
-      </div>
+      <div class="callout" id="calloutAlert"></div>
+      <div class="callout gold" id="calloutTip"></div>
     </section>
   </div>
 </div>
 
-<!-- ================================================== -->
-<!-- TAB 3 : ME — 個人儀表板 -->
-<!-- ================================================== -->
+<!-- TAB 3 : ME -->
 <div class="tab-panel" id="tab-me">
   <div class="wrap">
     <section class="sec">
       <div class="sec-kicker">My Dashboard</div>
       <div class="sec-title">找到自己 — 看見強項、補上缺口</div>
       <div class="chips" id="chips"></div>
-
       <div class="card" id="profileCard"></div>
-
       <div class="card">
         <div class="subhead">六大指標 vs 團隊平均</div>
         <div class="kpi-grid" id="kpiGrid"></div>
       </div>
-
       <div class="two-col">
         <div class="card">
           <div class="subhead">我的品類 vs 門市平均</div>
-          <div class="pair-legend"><span><i id="legendMe"></i>我的佔比</span><span><i style="background:#57554f"></i>門市平均</span></div>
+          <div class="pair-legend"><span><i id="legendMe"></i>我的佔比</span><span><i style="background:#b9b7ae"></i>門市平均</span></div>
           <div id="pairBars"></div>
         </div>
         <div class="card radar-card">
@@ -507,7 +428,6 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
           <div class="radar-legend"><span><i class="rl-line" id="radarLegendMe"></i><span id="radarLegendName">我</span></span><span><i class="rl-line dash"></i>團隊平均</span></div>
         </div>
       </div>
-
       <div class="card">
         <div class="subhead">教練筆記</div>
         <div id="insights"></div>
@@ -518,9 +438,7 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
   </div>
 </div>
 
-<!-- ================================================== -->
-<!-- TAB 4 : CATEGORY — 品類老師 & 熱力圖 -->
-<!-- ================================================== -->
+<!-- TAB 4 : CATEGORY -->
 <div class="tab-panel" id="tab-cat">
   <div class="wrap">
     <section class="sec">
@@ -529,16 +447,15 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
       <div class="sec-note">每個品類由當月表現最強的夥伴擔任「老師」。想提升哪個品類，直接請教該品類的老師。</div>
       <div class="teacher-grid" id="teacherGrid"></div>
     </section>
-
     <section class="sec">
       <div class="sec-kicker">Heatmap</div>
       <div class="sec-title">品類強弱熱力圖</div>
       <div class="hm-key">
-        <span><i style="background:rgba(12,163,12,0.32)"></i>明顯高於店均</span>
-        <span><i style="background:rgba(12,163,12,0.16)"></i>高於店均</span>
-        <span><i style="background:transparent;border:1px solid var(--hairline)"></i>接近店均</span>
-        <span><i style="background:rgba(208,59,59,0.14)"></i>低於店均</span>
-        <span><i style="background:rgba(208,59,59,0.28)"></i>明顯低於店均</span>
+        <span><i style="background:rgba(12,163,12,0.22)"></i>明顯高於店均</span>
+        <span><i style="background:rgba(12,163,12,0.10)"></i>高於店均</span>
+        <span><i style="background:#fff"></i>接近店均</span>
+        <span><i style="background:rgba(208,59,59,0.08)"></i>低於店均</span>
+        <span><i style="background:rgba(208,59,59,0.18)"></i>明顯低於店均</span>
       </div>
       <div class="hm-scroll" id="heatmap"></div>
       <div class="callout gold" style="margin-top:14px">
@@ -549,48 +466,19 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
   </div>
 </div>
 
-<!-- ================================================== -->
-<!-- TAB 5 : ACTION — 下月行動 -->
-<!-- ================================================== -->
+<!-- TAB 5 : ACTION -->
 <div class="tab-panel" id="tab-action">
   <div class="wrap">
     <section class="sec">
-      <div class="sec-kicker">July Preview</div>
-      <div class="sec-title">下月挑戰 — 7 月目標 420 萬</div>
-      <div class="callout gold">
-        7 月目標比 6 月低 55 萬，是<b>乘勝追擊的好月份</b>。維持這個月的節奏，就有機會全員達標＋刷新達成率紀錄。
-      </div>
+      <div class="sec-kicker">Next Month</div>
+      <div class="sec-title" id="nextTitle"></div>
+      <div class="callout gold" id="nextNote"></div>
     </section>
-
     <section class="sec">
       <div class="sec-kicker">Team Plays</div>
       <div class="sec-title">團隊三大戰役</div>
-      <div class="card play-card">
-        <div class="pl-t">① 一包一配 — 全店 UPT 衝 2.2</div>
-        <ul>
-          <li>每售出 1 個包，必定開口推薦 1 個 SLG 或配件（開口率 100%）</li>
-          <li>話術由 Yvette（UPT 2.32）主持一場 30 分鐘內訓統一</li>
-          <li>週會公布各自 UPT，進步最多者由店內表揚</li>
-        </ul>
-      </div>
-      <div class="card play-card">
-        <div class="pl-t">② 老客回流 — 對抗客流 YoY −37%</div>
-        <ul>
-          <li>每人每週主動聯繫 10 位去年成交的老客戶（新品到貨、專屬優惠）</li>
-          <li>由 Liv（老客經營最強、Trans 100 筆）示範聯繫話術</li>
-          <li>目標：7 月回流客佔比提升 10%</li>
-        </ul>
-      </div>
-      <div class="card play-card">
-        <div class="pl-t">③ 品類交換週 — 每人拆掉一個紅格</div>
-        <ul>
-          <li>每人從熱力圖挑 1 個紅色品類，找該品類老師學 1 個方法</li>
-          <li>腕表找 Demi、穿搭找 Bailey、男士客群找 Alvin、高價包找 Vina</li>
-          <li>月底檢視：紅格佔比是否縮小</li>
-        </ul>
-      </div>
+      <div id="playsList"></div>
     </section>
-
     <section class="sec">
       <div class="sec-kicker">One Thing Each</div>
       <div class="sec-title">每人一個行動 — 小改變，大不同</div>
@@ -600,122 +488,22 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
   </div>
 </div>
 
-<div class="footer">MICHAEL KORS · TAOYUAN GLORIA OUTLETS · JUNE 2026 REVIEW · TEAM CONFIDENTIAL</div>
+<div class="footer">Michael Kors · Taoyuan Gloria Outlets · Team Confidential</div>
 
+<script src="data/manifest.js"></script>
 <script>
-/* ==================================================
-   DATA — single source of truth
-================================================== */
-const TEAM_AVG = { sales: 856963, ach: 1.282, upt: 1.97, ads: 10482, aur: 5355, trans: 82 };
-const STORE_CAT = { 'MMK 女包': 50.0, 'MMK 小皮件': 23.6, 'MMK 女裝': 9.0, '男士包款': 8.9, '男士小皮件': 2.8, '香氛': 1.4, '腕表': 1.2, '眼鏡': 0.9 };
+/* ============================================================
+   SHELL — 版型永遠不變；每月只新增 data/YYYY-MM.js
+============================================================ */
+let CUR = null;   // current month data
+let CUR_ID = null;
 
-const P = [
-  {
-    id:'yvette', name:'Yvette Wang', init:'YW', color:'var(--c-yvette)', hex:'#3987e5', role:'Sales Associate',
-    rank:1, sales:1108740, target:700000, ach:1.584, gap:408740,
-    upt:2.32, ads:12052, aur:5205, trans:92,
-    badges:['👑 業績完成王','⚡ 連帶王 UPT 2.32'],
-    cats:{ 'MMK 女包':48.4, 'MMK 小皮件':23.7, 'MMK 女裝':10.2, '男士包款':9.8, '香氛':4.3, '男士小皮件':2.3 },
-    strengths:'全店業績第一。UPT 2.32、ADS 12,052 都是團隊最高——代表她「每一位客人都被服務到最大值」。香氛佔比 4.3% 全店唯一，證明加購品項也能規模化。',
-    trait:'連帶推薦大師。客人買一件，她總能自然地讓客人「順便」帶走第二、三件。',
-    gapNote:'腕表、鞋履佔比是 0——高手還有一片沒開發的地。Trans 92 筆不是最多，成長還有空間。',
-    teach:['連帶話術：怎麼讓客人自然加購','香氛推廣：把 4.3% 變成全店標配'],
-    learn:['腕表知識 → 找 Demi','老客經營 → 找 Liv'],
-    action:{ goal:'本月挑戰：腕表 + 珠寶合計 2 件', how:'把連帶的最後一步從「小皮件」延伸到「腕表」——你的連帶功力，缺的只是品類知識。' }
-  },
-  {
-    id:'liv', name:'Liv Yang', init:'LY', color:'var(--c-liv)', hex:'#199e70', role:'Sales Supervisor',
-    rank:2, sales:1033520, target:550000, ach:1.879, gap:483520,
-    upt:1.91, ads:10335, aur:5411, trans:100,
-    badges:['🔥 達成率王 187.9%','🧩 全品類均衡王'],
-    cats:{ 'MMK 女包':47.6, 'MMK 小皮件':26.9, 'MMK 女裝':7.6, '男士包款':7.5, '男士小皮件':4.1, '香氛':1.8 },
-    strengths:'達成率 187.9% 全店最高、Trans 100 筆全店最多。8 個品類全部有產出——沒有明顯短板，是團隊唯一的「全能型」選手。',
-    trait:'老客戶黏著度極高，身為主管以身作則，是團隊的定海神針。',
-    gapNote:'UPT 1.91 略低於平均——接的客多，每單再多半件，數字會很可怕。YoY −10.7% 提醒我們老客市場也在縮，要開新客。',
-    teach:['全品類均衡：怎麼讓每個品類都出單','老客經營：100 筆 Trans 的秘密'],
-    learn:['連帶話術 → 找 Yvette'],
-    action:{ goal:'UPT 1.91 → 2.10', how:'妳的客流全店最大，每 10 單多加 2 件，等於多一位半兼職同事的業績。' }
-  },
-  {
-    id:'alvin', name:'Alvin Pan', init:'AP', color:'var(--c-alvin)', hex:'#c98500', role:'Sales Associate',
-    rank:3, sales:867246, target:700000, ach:1.239, gap:167246,
-    upt:2.00, ads:10841, aur:5420, trans:80,
-    badges:['🤵 男士客群王 12.8%'],
-    cats:{ 'MMK 女包':52.0, 'MMK 小皮件':18.1, '男士包款':12.8, 'MMK 女裝':10.9, '眼鏡':1.6, '男士小皮件':2.5 },
-    strengths:'男士包款佔比 12.8% 全店最高——最會接男性客人與陪同者的人。ADS 10,841 第二高，女裝 10.9% 也在前段班。',
-    trait:'客群開發型選手：別人看到「陪逛的男伴」，他看到的是「還沒開發的訂單」。',
-    gapNote:'小皮件 18.1% 低於店均 23.6%——最容易連帶的品類反而是他的短板。Trans 80 筆偏少。',
-    teach:['男士客群開發：讓陪同者變成顧客'],
-    learn:['小皮件連帶 → 找 Kai 或 Demi'],
-    action:{ goal:'小皮件佔比 18% → 22%', how:'每賣 2 個包，開口加推 1 個小皮件。你的客單價高，加一件就是別人的一單半。' }
-  },
-  {
-    id:'kai', name:'Kai Huang', init:'KH', color:'var(--c-kai)', hex:'#e66767', role:'Sales Associate',
-    rank:4, sales:847538, target:700000, ach:1.211, gap:147538,
-    upt:1.81, ads:9113, aur:5045, trans:93,
-    badges:['🏃 接客王 93 筆','👝 小皮件件數王 67 件'],
-    cats:{ 'MMK 女包':53.8, 'MMK 小皮件':27.5, 'MMK 女裝':6.0, '男士包款':6.5, '男士小皮件':3.7, '腕表':0.8 },
-    strengths:'Trans 93 筆 SA 中最多、小皮件 67 件全店第一——最勤快、轉換最快的引擎型選手。',
-    trait:'高速轉換型：接客快、成交快，靠量取勝的鐵人。',
-    gapNote:'ADS 9,113 全隊最低——量有了，價還沒上來。同樣 93 筆，如果 ADS 到店均，業績直接多 12 萬。',
-    teach:['接客轉換：快速建立信任的開場','小皮件走量的節奏'],
-    learn:['價位升級引導 → 找 Vina'],
-    action:{ goal:'ADS 9,113 → 10,000', how:'每一單多問一句：「這款還有一個尺寸／皮革更好的版本，要不要看看？」讓客人自己選貴的。' }
-  },
-  {
-    id:'bailey', name:'Bailey Chou', init:'BC', color:'var(--c-bailey)', hex:'#d55181', role:'Sales Associate',
-    rank:5, sales:790300, target:700000, ach:1.129, gap:90300,
-    upt:2.20, ads:10399, aur:4732, trans:76,
-    badges:['👗 穿搭王 RTW 19.9%'],
-    cats:{ 'MMK 女包':40.1, 'MMK 小皮件':21.7, 'MMK 女裝':19.9, '男士包款':9.3, '男士服飾':3.0, '香氛':0.8 },
-    strengths:'女裝佔比 19.9% 是店均的 2.2 倍、全店最高，UPT 2.20 第二——用「整套穿搭」的思維做銷售，天生的造型師。',
-    trait:'搭配敘事型：不賣單品，賣「這一整套妳穿起來的樣子」。',
-    gapNote:'女包佔比 40.1% 全店最低、AUR 4,732 最低——衣服帶得動，包還沒跟上。把包放進穿搭敘事裡，數字會翻。',
-    teach:['穿搭連帶：讓客人一次帶走整套'],
-    learn:['高價包銷售 → 找 Vina'],
-    action:{ goal:'女包佔比 40% → 46%', how:'每套穿搭 demo 固定搭 1 款中高價包：「這套配這顆包才完整」。' }
-  },
-  {
-    id:'vina', name:'Vina Chung', init:'VC', color:'var(--c-vina)', hex:'#d95926', role:'Sales Associate',
-    rank:6, sales:676590, target:700000, ach:0.967, gap:-23410,
-    upt:1.95, ads:11870, aur:6095, trans:57,
-    badges:['💎 尊榮服務王 ADS/AUR 雙冠'],
-    cats:{ 'MMK 女包':59.3, 'MMK 小皮件':19.0, '男士包款':8.9, 'MMK 女裝':3.4, '眼鏡':2.3, '香氛':1.9 },
-    strengths:'ADS 11,870、AUR 6,095 雙雙全店最高——每一位她服務的客人，價值都被做到最大。眼鏡佔比全店第一，品項觸角廣。',
-    trait:'精品級服務：慢工出細活，客人願意為她的服務付更高的價。',
-    gapNote:'Trans 只有 57 筆、全店最少，是唯一沒達標的原因（差 2.3 萬）。不是能力問題，是「接觸量」問題。',
-    teach:['升級銷售：怎麼讓客人選更高價位','高端客戶的服務儀式感'],
-    learn:['接客效率 → 找 Kai'],
-    action:{ goal:'Trans 57 → 70 筆', how:'妳的客單價全店最高——每天只要多成交 1 單，不但達標，還會進前四。' }
-  },
-  {
-    id:'demi', name:'Demi Chen', init:'DC', color:'var(--c-demi)', hex:'#9085e9', role:'Sales Associate',
-    rank:7, sales:674811, target:700000, ach:0.964, gap:-25189,
-    upt:1.57, ads:8764, aur:5577, trans:77,
-    badges:['⌚ 腕表老師 4.5%','👝 小皮件佔比王 27.8%','⚠️ 本月漏單王'],
-    cats:{ 'MMK 女包':52.1, 'MMK 小皮件':27.8, '腕表':4.5, 'MMK 女裝':3.8, '男士包款':6.5, '鞋履':1.7 },
-    strengths:'腕表佔比 4.5% 是店均的 3.75 倍、全店唯一的腕表專家；小皮件佔比 27.8% 也是全店最高。專業知識深度沒人能比。',
-    trait:'專家型選手：講得出每一顆表的機芯與皮革的產地，客人信任感極高。',
-    gapNote:'UPT 1.57 全隊最低——知識深但「開口加購」少了。差距只有 2.5 萬：每 3 單多 1 件配件，下個月就翻紅。',
-    teach:['腕表／配件專業知識：建立顧客信任'],
-    learn:['連帶開口 → 找 Yvette','穿搭敘事 → 找 Bailey'],
-    action:{ goal:'UPT 1.57 → 1.90', how:'你最懂產品——結帳前固定加一句：「這款配這條表帶／卡夾剛好一組」。知識就是你的連帶武器。' }
-  },
-];
-
-const RADAR_MAX = { ach: 1.879, upt: 2.32, ads: 12052, aur: 6095, trans: 100, breadth: 8 };
-
-/* ==================================================
-   HELPERS
-================================================== */
 const fmtW = n => (n/10000).toFixed(1).replace('.0','') + '萬';
 const fmtN = n => n.toLocaleString('en-US');
-const pct = n => (n*100).toFixed(1) + '%';
 const breadth = p => Object.values(p.cats).filter(v => v >= 0.5).length;
+const EXTRA_AVG = { '男士服飾': 0.7, '鞋履': 0.4 };
 
-/* ==================================================
-   TAB NAV
-================================================== */
+/* ---- tab nav ---- */
 document.querySelectorAll('.tabnav button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tabnav button').forEach(b => b.classList.remove('active'));
@@ -725,87 +513,152 @@ document.querySelectorAll('.tabnav button').forEach(btn => {
     window.scrollTo({ top: 0 });
   });
 });
-
-/* ==================================================
-   HERO RING count-up
-================================================== */
-(function heroRing(){
-  const ring = document.getElementById('heroRing'), num = document.getElementById('heroNum');
-  const target = 126.4, start = performance.now(), dur = 1300;
-  function tick(t){
-    const k = Math.min(1, (t-start)/dur), e = 1 - Math.pow(1-k, 3);
-    const v = target * e;
-    num.textContent = v.toFixed(1) + '%';
-    ring.style.background = `conic-gradient(#C9A84C 0deg, #F0D080 ${Math.min(v/100,1)*360*e===0?0:Math.min(v,100)/100*360*e}deg, #262523 ${Math.min(v,100)/100*360*e}deg)`;
-    if (k < 1) requestAnimationFrame(tick);
-    else ring.style.background = `conic-gradient(#C9A84C 0deg, #F0D080 360deg, #262523 360deg)`;
-  }
-  requestAnimationFrame(tick);
-})();
-
-/* ==================================================
-   STORE CATEGORY BARS
-================================================== */
-document.getElementById('storeCatBars').innerHTML = Object.entries(STORE_CAT).map(([k,v],i) => `
-  <div class="cbar-row">
-    <div class="cbar-name">${k}</div>
-    <div class="cbar-track"><div class="cbar-fill" style="width:${v*2}%;animation-delay:${i*60}ms;opacity:${1 - i*0.07}"></div></div>
-    <div class="cbar-val num">${v}%</div>
-  </div>`).join('');
-
-/* ==================================================
-   BADGE WALL
-================================================== */
-document.getElementById('badgeWall').innerHTML = P.map(p => `
-  <div class="badge-card" style="--pc:${p.hex}">
-    <div class="b-ico">${p.badges[0].split(' ')[0]}</div>
-    <div>
-      <div class="b-title">${p.badges[0].slice(p.badges[0].indexOf(' ')+1)}</div>
-      <div class="b-who">${p.name}</div>
-      <div class="b-why">${p.trait.split('：')[0]}</div>
-    </div>
-  </div>`).join('');
-
-/* ==================================================
-   LEADERBOARD LIST
-================================================== */
-document.getElementById('lbList').innerHTML = P.map(p => {
-  const over = p.ach >= 1;
-  const w = Math.min(p.ach, 2) / 2 * 100;           // scale: 200% = full bar
-  const goalPos = 50;                                 // 100% mark
-  return `
-  <div class="lb-row" onclick="selectPerson('${p.id}');switchTab('me')">
-    <div class="lb-rank num">${p.rank}</div>
-    <div class="lb-avatar" style="background:${p.hex}">${p.init}</div>
-    <div class="lb-main">
-      <div class="lb-name">${p.name}
-        ${p.badges.filter(b=>!b.includes('漏單')).slice(0,1).map(b=>`<span class="mini-badge">${b}</span>`).join('')}
-        ${p.badges.some(b=>b.includes('漏單')) ? '<span class="mini-badge alert">⚠️ 漏單王</span>' : ''}
-      </div>
-      <div class="lb-track">
-        <div class="lb-fill" style="width:${w}%;background:${over ? p.hex : 'var(--crit)'}"></div>
-        <div class="lb-goalmark" style="left:${goalPos}%"></div>
-      </div>
-      <div class="lb-meta num">業績 ${fmtW(p.sales)} ／ 目標 ${fmtW(p.target)} · UPT ${p.upt} · ADS ${fmtN(p.ads)}</div>
-    </div>
-    <div class="lb-right">
-      <div class="lb-ach num" style="color:${over ? 'var(--good-text)' : 'var(--crit-text)'}">${(p.ach*100).toFixed(1)}%</div>
-      <div class="lb-gap num ${over?'up':'down'}">${over?'+':''}${fmtW(p.gap)}</div>
-    </div>
-  </div>`;
-}).join('') + `<div style="font-size:11px;color:var(--muted);padding:10px 6px 2px">｜白線 = 100% 目標線 · 點擊任一列可查看個人分析 · Ruby Liu／Ryan Hsieh 本月未排班不列入</div>`;
-
 function switchTab(id){ document.querySelector(`.tabnav button[data-tab="${id}"]`).click(); }
 
-/* ==================================================
-   PERSON SELECTOR + PROFILE (dynamic)
-================================================== */
-document.getElementById('chips').innerHTML = P.map(p => `
-  <button class="chip" data-id="${p.id}" style="--pc:${p.hex}" onclick="selectPerson('${p.id}')">
-    <span class="c-dot" style="background:${p.hex}">${p.init}</span>${p.name.split(' ')[0]}
-  </button>`).join('');
+/* ---- load month scripts then boot ---- */
+(function boot(){
+  const months = window.MK_MONTHS || [];
+  let pending = months.length;
+  if (!pending) return;
+  months.forEach(m => {
+    const s = document.createElement('script');
+    s.src = 'data/' + m.id + '.js';
+    s.onload = s.onerror = () => { if (--pending === 0) init(); };
+    document.head.appendChild(s);
+  });
+})();
 
-function delta(val, avg, invert=false){
+function init(){
+  const sel = document.getElementById('monthSelect');
+  const months = window.MK_MONTHS.filter(m => window.MK_DATA && window.MK_DATA[m.id]);
+  sel.innerHTML = months.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+  sel.addEventListener('change', () => loadMonth(sel.value));
+  const param = new URLSearchParams(location.search).get('m');
+  const first = (param && window.MK_DATA[param]) ? param : months[0].id;
+  sel.value = first;
+  loadMonth(first);
+}
+
+function loadMonth(id){
+  CUR = window.MK_DATA[id]; CUR_ID = id;
+  document.getElementById('monthFy').textContent = CUR.meta.fy;
+  renderHero(); renderTrend(); renderKpis(); renderStoreCats(); renderBadges();
+  renderPodium(); renderLeaderboard();
+  renderChips(); selectPerson(CUR.people[0].id);
+  renderTeachers(); renderHeatmap();
+  renderAction();
+  history.replaceState(null, '', '?m=' + id);
+}
+
+/* ============ OVERVIEW ============ */
+function renderHero(){
+  document.getElementById('heroKicker').textContent = CUR.meta.label + ' · Team Result';
+  document.getElementById('heroTitle').textContent = CUR.hero.title;
+  document.getElementById('heroSub').innerHTML = CUR.hero.sub;
+  document.getElementById('heroStats').innerHTML = CUR.hero.stats.map(s =>
+    `<div class="hstat"><div class="v ${s.cls||''} num">${s.v}</div><div class="l">${s.l}</div></div>`).join('');
+
+  const ring = document.getElementById('heroRing'), num = document.getElementById('heroNum');
+  const target = CUR.hero.ach, start = performance.now(), dur = 1200;
+  function tick(t){
+    const k = Math.min(1, (t-start)/dur), e = 1 - Math.pow(1-k, 3);
+    const v = target * e, deg = Math.min(v, 100) / 100 * 360;
+    num.textContent = v.toFixed(1) + '%';
+    ring.style.background = `conic-gradient(#B4975A ${deg}deg, #ecebe7 ${deg}deg)`;
+    if (k < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function renderTrend(){
+  const months = window.MK_MONTHS.filter(m => window.MK_DATA[m.id]).slice().reverse();
+  document.getElementById('trendStrip').innerHTML = months.map(m => {
+    const d = window.MK_DATA[m.id];
+    return `<button class="trend-chip ${m.id===CUR_ID?'cur':''}" onclick="document.getElementById('monthSelect').value='${m.id}';loadMonth('${m.id}')">
+      <span class="t-m">${m.short||m.label}</span><span class="t-a num">${(d.totals.ach*100).toFixed(0)}%</span><span class="t-m num">${fmtW(d.totals.sales)}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderKpis(){
+  document.getElementById('kpiTiles').innerHTML = CUR.kpis.map(k =>
+    `<div class="tile"><div class="t-label">${k.label}</div><div class="t-value num">${k.value}</div><div class="t-delta ${k.dir}">${k.delta}</div></div>`).join('');
+  document.getElementById('storeRead').innerHTML = CUR.storeRead;
+}
+
+function renderStoreCats(){
+  const max = Math.max(...Object.values(CUR.storeCat));
+  document.getElementById('storeCatBars').innerHTML = Object.entries(CUR.storeCat).map(([k,v],i) => `
+    <div class="cbar-row">
+      <div class="cbar-name">${k}</div>
+      <div class="cbar-track"><div class="cbar-fill" style="width:${v/max*100}%;animation-delay:${i*55}ms;opacity:${1 - i*0.075}"></div></div>
+      <div class="cbar-val num">${v}%</div>
+    </div>`).join('');
+}
+
+function renderBadges(){
+  document.getElementById('badgeWall').innerHTML = CUR.people.map(p => `
+    <div class="badge-card" style="--pc:${p.hex}">
+      <div class="b-ico">${p.badges[0].split(' ')[0]}</div>
+      <div>
+        <div class="b-title">${p.badges[0].slice(p.badges[0].indexOf(' ')+1)}</div>
+        <div class="b-who">${p.name}</div>
+        <div class="b-why">${p.trait.split('：')[0]}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ============ RANK ============ */
+function renderPodium(){
+  const top3 = CUR.people.slice().sort((a,b)=>a.rank-b.rank).slice(0,3);
+  const order = [ {p:top3[1], cls:'second', ico:'🥈'}, {p:top3[0], cls:'first', ico:'👑'}, {p:top3[2], cls:'third', ico:'🥉'} ];
+  document.getElementById('podium').innerHTML = order.map(o => `
+    <div class="pod ${o.cls}">
+      <div class="p-avatar" style="background:${o.p.hex}">${o.p.init}</div>
+      <div class="p-name">${o.p.name}</div>
+      <div class="p-num num">${fmtW(o.p.sales)} · ${(o.p.ach*100).toFixed(1)}%</div>
+      <div class="p-col">${o.ico}</div>
+    </div>`).join('');
+}
+
+function renderLeaderboard(){
+  document.getElementById('lbList').innerHTML = CUR.people.map(p => {
+    const over = p.ach >= 1;
+    const w = Math.min(p.ach, 2) / 2 * 100;
+    return `
+    <div class="lb-row" onclick="selectPerson('${p.id}');switchTab('me')">
+      <div class="lb-rank num">${p.rank}</div>
+      <div class="lb-avatar" style="background:${p.hex}">${p.init}</div>
+      <div class="lb-main">
+        <div class="lb-name">${p.name}
+          ${p.badges.filter(b=>!b.includes('漏單')).slice(0,1).map(b=>`<span class="mini-badge">${b}</span>`).join('')}
+          ${p.badges.some(b=>b.includes('漏單')) ? '<span class="mini-badge alert">⚠️ 漏單王</span>' : ''}
+        </div>
+        <div class="lb-track">
+          <div class="lb-fill" style="width:${w}%;background:${over ? p.hex : '#b32424'}"></div>
+          <div class="lb-goalmark" style="left:50%"></div>
+        </div>
+        <div class="lb-meta num">業績 ${fmtW(p.sales)} ／ 目標 ${fmtW(p.target)} · UPT ${p.upt} · ADS ${fmtN(p.ads)}</div>
+      </div>
+      <div class="lb-right">
+        <div class="lb-ach num" style="color:${over ? 'var(--good)' : 'var(--crit)'}">${(p.ach*100).toFixed(1)}%</div>
+        <div class="lb-gap num ${over?'up':'down'}">${over?'+':''}${fmtW(p.gap)}</div>
+      </div>
+    </div>`;
+  }).join('') + `<div style="font-size:11px;color:var(--muted);padding:10px 4px 0">${CUR.rankFootnote}</div>`;
+  document.getElementById('calloutAlert').innerHTML = CUR.calloutAlert;
+  document.getElementById('calloutTip').innerHTML = CUR.calloutTip;
+}
+
+/* ============ ME ============ */
+function renderChips(){
+  document.getElementById('chips').innerHTML = CUR.people.map(p => `
+    <button class="chip" data-id="${p.id}" onclick="selectPerson('${p.id}')">
+      <span class="c-dot" style="background:${p.hex}">${p.init}</span>${p.name.split(' ')[0]}
+    </button>`).join('');
+}
+
+function delta(val, avg){
   const d = (val - avg) / avg * 100;
   const cls = Math.abs(d) < 2 ? 'flat' : (d > 0 ? 'up' : 'down');
   const arrow = Math.abs(d) < 2 ? '≈' : (d > 0 ? '▲' : '▼');
@@ -813,11 +666,12 @@ function delta(val, avg, invert=false){
 }
 
 function selectPerson(id){
-  const p = P.find(x => x.id === id);
+  const p = CUR.people.find(x => x.id === id);
+  if (!p) return;
   document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.id === id));
-
-  /* profile card */
   const over = p.ach >= 1;
+  const A = CUR.teamAvg, M = CUR.radarMax;
+
   document.getElementById('profileCard').innerHTML = `
     <div class="profile-head" style="--pc:${p.hex}">
       <div class="profile-avatar" style="background:${p.hex}">${p.init}</div>
@@ -827,59 +681,46 @@ function selectPerson(id){
         <div class="profile-badges">${p.badges.map(b => `<span class="pbadge ${b.includes('漏單')?'alert':''}">${b}</span>`).join('')}</div>
       </div>
       <div class="profile-ach">
-        <div class="mini-ring" style="--pc:${over ? p.hex : 'var(--crit)'};--deg:${Math.min(p.ach,2)/2*360}deg"><span class="num">${(p.ach*100).toFixed(1)}%</span></div>
+        <div class="mini-ring" style="background:conic-gradient(${over ? p.hex : '#b32424'} ${Math.min(p.ach,2)/2*360}deg, #ecebe7 ${Math.min(p.ach,2)/2*360}deg)"><span class="num">${(p.ach*100).toFixed(1)}%</span></div>
         <div class="mini-ring-lab">達成率</div>
       </div>
     </div>`;
 
-  /* KPI grid */
   document.getElementById('kpiGrid').innerHTML = `
-    <div class="kpi"><div class="k-label">業績</div><div class="k-value num">${fmtW(p.sales)}</div>${delta(p.sales, TEAM_AVG.sales)}</div>
-    <div class="kpi"><div class="k-label">差距</div><div class="k-value num" style="color:${over?'var(--good-text)':'var(--crit-text)'}">${over?'+':''}${fmtW(p.gap)}</div><span class="k-delta ${over?'up':'down'}">${over?'超標':'待補'}</span></div>
-    <div class="kpi"><div class="k-label">連帶率 UPT</div><div class="k-value num">${p.upt.toFixed(2)}</div>${delta(p.upt, TEAM_AVG.upt)}</div>
-    <div class="kpi"><div class="k-label">客均消費 ADS</div><div class="k-value num">${fmtN(p.ads)}</div>${delta(p.ads, TEAM_AVG.ads)}</div>
-    <div class="kpi"><div class="k-label">件均價 AUR</div><div class="k-value num">${fmtN(p.aur)}</div>${delta(p.aur, TEAM_AVG.aur)}</div>
-    <div class="kpi"><div class="k-label">成交筆數</div><div class="k-value num">${p.trans}</div>${delta(p.trans, TEAM_AVG.trans)}</div>`;
+    <div class="kpi"><div class="k-label">業績</div><div class="k-value num">${fmtW(p.sales)}</div>${delta(p.sales, A.sales)}</div>
+    <div class="kpi"><div class="k-label">差距</div><div class="k-value num" style="color:${over?'var(--good)':'var(--crit)'}">${over?'+':''}${fmtW(p.gap)}</div><span class="k-delta ${over?'up':'down'}">${over?'超標':'待補'}</span></div>
+    <div class="kpi"><div class="k-label">連帶率 UPT</div><div class="k-value num">${p.upt.toFixed(2)}</div>${delta(p.upt, A.upt)}</div>
+    <div class="kpi"><div class="k-label">客均消費 ADS</div><div class="k-value num">${fmtN(p.ads)}</div>${delta(p.ads, A.ads)}</div>
+    <div class="kpi"><div class="k-label">件均價 AUR</div><div class="k-value num">${fmtN(p.aur)}</div>${delta(p.aur, A.aur)}</div>
+    <div class="kpi"><div class="k-label">成交筆數</div><div class="k-value num">${p.trans}</div>${delta(p.trans, A.trans)}</div>`;
 
-  /* paired category bars */
   document.getElementById('legendMe').style.background = p.hex;
-  const EXTRA_AVG = { '男士服飾': 0.7, '鞋履': 0.4 };
   document.getElementById('pairBars').innerHTML = Object.entries(p.cats).map(([k,v],i) => {
-    const avg = STORE_CAT[k] ?? EXTRA_AVG[k] ?? 0;
+    const avg = CUR.storeCat[k] ?? EXTRA_AVG[k] ?? 0;
     return `
     <div class="pair-row">
-      <div class="pair-top"><span class="pn">${k}</span><span class="pv num" style="color:${p.hex}">${v}% <span style="color:var(--muted);font-weight:400">/ 店均 ${avg || '—'}%</span></span></div>
-      <div class="pair-track"><div class="pair-me" style="width:${Math.min(v,65)/65*100}%;background:${p.hex};animation-delay:${i*50}ms"></div></div>
-      <div class="pair-track avg"><div class="pair-avg" style="width:${Math.min(avg,65)/65*100}%;animation-delay:${i*50}ms"></div></div>
+      <div class="pair-top"><span class="pn">${k}</span><span class="pv num" style="color:${p.hex}">${v}% <span class="avg-note">/ 店均 ${avg || '—'}%</span></span></div>
+      <div class="pair-track"><div class="pair-me" style="width:${Math.min(v,65)/65*100}%;background:${p.hex};animation-delay:${i*45}ms"></div></div>
+      <div class="pair-track avg"><div class="pair-avg" style="width:${Math.min(avg,65)/65*100}%;animation-delay:${i*45}ms"></div></div>
     </div>`;
   }).join('');
 
-  /* insights */
   document.getElementById('insights').innerHTML = `
     <div class="insight"><div class="i-ico">💪</div><div><b>強項：</b><span>${p.strengths}</span></div></div>
     <div class="insight"><div class="i-ico">✨</div><div><b>特質：</b><span>${p.trait}</span></div></div>
     <div class="insight"><div class="i-ico">🧗</div><div><b>成長空間：</b><span>${p.gapNote}</span></div></div>`;
 
-  /* teach / learn */
   document.getElementById('teachLearn').innerHTML = `
     <div class="tl-box teach"><div class="tl-h">🎓 我可以教大家</div><ul>${p.teach.map(t=>`<li>${t}</li>`).join('')}</ul></div>
     <div class="tl-box learn"><div class="tl-h">📖 我想去學</div><ul>${p.learn.map(t=>`<li>${t}</li>`).join('')}</ul></div>`;
 
-  /* one action */
   document.getElementById('actionHero').innerHTML = `
-    <div class="a-kicker">7 月，只做好這一件事</div>
+    <div class="a-kicker">下個月，只做好這一件事</div>
     <div class="a-main">${p.action.goal}</div>
     <div class="a-how">${p.action.how}</div>`;
 
-  /* radar — pure SVG, zero dependencies */
-  const me = [
-    p.ach / RADAR_MAX.ach, p.upt / RADAR_MAX.upt, p.ads / RADAR_MAX.ads,
-    p.aur / RADAR_MAX.aur, p.trans / RADAR_MAX.trans, breadth(p) / RADAR_MAX.breadth
-  ];
-  const avg = [
-    TEAM_AVG.ach / RADAR_MAX.ach, TEAM_AVG.upt / RADAR_MAX.upt, TEAM_AVG.ads / RADAR_MAX.ads,
-    TEAM_AVG.aur / RADAR_MAX.aur, TEAM_AVG.trans / RADAR_MAX.trans, 7.4 / RADAR_MAX.breadth
-  ];
+  const me = [ p.ach/M.ach, p.upt/M.upt, p.ads/M.ads, p.aur/M.aur, p.trans/M.trans, breadth(p)/M.breadth ];
+  const avg = [ A.ach/M.ach, A.upt/M.upt, A.ads/M.ads, A.aur/M.aur, A.trans/M.trans, A.breadth/M.breadth ];
   document.getElementById('radar').innerHTML = drawRadar(me, avg, p.hex);
   document.getElementById('radarLegendMe').style.borderColor = p.hex;
   document.getElementById('radarLegendName').textContent = p.name.split(' ')[0];
@@ -894,70 +735,37 @@ function drawRadar(me, avg, hex){
   };
   const ringPath = f => Array.from({length:N}, (_,i) => pt(i, R*f).map(v=>v.toFixed(1)).join(',')).join(' ');
   const dataPath = arr => Array.from({length:N}, (_,i) => pt(i, R*Math.max(0.02, Math.min(1, arr[i]))).map(v=>v.toFixed(1)).join(',')).join(' ');
-
   let s = `<svg viewBox="0 0 360 330" role="img" aria-label="能力雷達圖">`;
-  // grid rings
-  [0.25, 0.5, 0.75, 1].forEach(f => {
-    s += `<polygon points="${ringPath(f)}" fill="none" stroke="#2c2c2a" stroke-width="1"/>`;
-  });
-  // spokes
+  [0.25, 0.5, 0.75, 1].forEach(f => { s += `<polygon points="${ringPath(f)}" fill="none" stroke="#e1e0d9" stroke-width="1"/>`; });
   for (let i = 0; i < N; i++) {
     const [x,y] = pt(i, R);
-    s += `<line x1="${CX}" y1="${CY}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#2c2c2a" stroke-width="1"/>`;
+    s += `<line x1="${CX}" y1="${CY}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e1e0d9" stroke-width="1"/>`;
   }
-  // team average (dashed, no fill)
-  s += `<polygon points="${dataPath(avg)}" fill="none" stroke="#898781" stroke-width="1.6" stroke-dasharray="5 4"/>`;
-  // person
-  s += `<polygon points="${dataPath(me)}" fill="${hex}2e" stroke="${hex}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  s += `<polygon points="${dataPath(avg)}" fill="none" stroke="#8a887f" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+  s += `<polygon points="${dataPath(me)}" fill="${hex}26" stroke="${hex}" stroke-width="2.2" stroke-linejoin="round"/>`;
   for (let i = 0; i < N; i++) {
     const [x,y] = pt(i, R*Math.max(0.02, Math.min(1, me[i])));
-    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="${hex}" stroke="#191918" stroke-width="2"/>`;
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="${hex}" stroke="#fff" stroke-width="2"/>`;
   }
-  // labels
   for (let i = 0; i < N; i++) {
     const [x,y] = pt(i, R + 26);
     const anchor = Math.abs(x - CX) < 8 ? 'middle' : (x > CX ? 'start' : 'end');
     const dy = y < CY - 8 ? -2 : (y > CY + 8 ? 8 : 4);
-    s += `<text x="${x.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="${anchor}" font-size="12.5" fill="#c3c2b7" font-family="system-ui,sans-serif">${LABELS[i]}</text>`;
+    s += `<text x="${x.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="${anchor}" font-size="12.5" fill="#4a4a48" font-family="system-ui,sans-serif">${LABELS[i]}</text>`;
   }
   return s + `</svg>`;
 }
 
-/* ==================================================
-   CATEGORY TEACHERS
-================================================== */
-const TEACHERS = [
-  { cat:'MMK 女包', who:'Vina Chung', stat:'佔比 59.3%（店均 50%）', hex:'#d95926' },
-  { cat:'小皮件', who:'Demi Chen', stat:'佔比 27.8% 全店最高', hex:'#9085e9' },
-  { cat:'女裝 RTW', who:'Bailey Chou', stat:'佔比 19.9% = 店均 2.2 倍', hex:'#d55181' },
-  { cat:'男士系列', who:'Alvin Pan', stat:'佔比 12.8% 全店最高', hex:'#c98500' },
-  { cat:'腕表', who:'Demi Chen', stat:'佔比 4.5% = 店均 3.75 倍', hex:'#9085e9' },
-  { cat:'香氛', who:'Yvette Wang', stat:'佔比 4.3% 全店唯一規模化', hex:'#3987e5' },
-  { cat:'眼鏡', who:'Vina Chung', stat:'佔比 2.3% 全店最高', hex:'#d95926' },
-  { cat:'連帶 UPT', who:'Yvette Wang', stat:'UPT 2.32 全店最高', hex:'#3987e5' },
-  { cat:'老客經營', who:'Liv Yang', stat:'Trans 100 筆全店最多', hex:'#199e70' },
-];
-document.getElementById('teacherGrid').innerHTML = TEACHERS.map(t => `
-  <div class="teacher-card" style="--pc:${t.hex}">
-    <div class="tc-cat">${t.cat}</div>
-    <div class="tc-who">${t.who}</div>
-    <div class="tc-stat num">${t.stat}</div>
-  </div>`).join('');
+/* ============ CATEGORY ============ */
+function renderTeachers(){
+  document.getElementById('teacherGrid').innerHTML = CUR.teachers.map(t => `
+    <div class="teacher-card" style="--pc:${t.hex}">
+      <div class="tc-cat">${t.cat}</div>
+      <div class="tc-who">${t.who}</div>
+      <div class="tc-stat num">${t.stat}</div>
+    </div>`).join('');
+}
 
-/* ==================================================
-   HEATMAP
-================================================== */
-const HM_CATS = ['MMK 女包','MMK 小皮件','MMK 女裝','腕表','香氛','眼鏡','男士包款','男士小皮件'];
-const HM_AVG  = { 'MMK 女包':50.0,'MMK 小皮件':23.6,'MMK 女裝':9.0,'腕表':1.2,'香氛':1.4,'眼鏡':0.9,'男士包款':8.9,'男士小皮件':2.8 };
-const HM_DATA = {
-  yvette:{ 'MMK 女包':48.4,'MMK 小皮件':23.7,'MMK 女裝':10.2,'腕表':0,'香氛':4.3,'眼鏡':0,'男士包款':9.8,'男士小皮件':2.3 },
-  liv:{ 'MMK 女包':47.6,'MMK 小皮件':26.9,'MMK 女裝':7.6,'腕表':1.6,'香氛':1.8,'眼鏡':1.1,'男士包款':7.5,'男士小皮件':4.1 },
-  alvin:{ 'MMK 女包':52.0,'MMK 小皮件':18.1,'MMK 女裝':10.9,'腕表':0.5,'香氛':0,'眼鏡':1.6,'男士包款':12.8,'男士小皮件':2.5 },
-  kai:{ 'MMK 女包':53.8,'MMK 小皮件':27.5,'MMK 女裝':6.0,'腕表':0.8,'香氛':0,'眼鏡':0.5,'男士包款':6.5,'男士小皮件':3.7 },
-  bailey:{ 'MMK 女包':40.1,'MMK 小皮件':21.7,'MMK 女裝':19.9,'腕表':0.5,'香氛':0.8,'眼鏡':0.7,'男士包款':9.3,'男士小皮件':2.2 },
-  vina:{ 'MMK 女包':59.3,'MMK 小皮件':19.0,'MMK 女裝':3.4,'腕表':1.8,'香氛':1.9,'眼鏡':2.3,'男士包款':8.9,'男士小皮件':1.9 },
-  demi:{ 'MMK 女包':52.1,'MMK 小皮件':27.8,'MMK 女裝':3.8,'腕表':4.5,'香氛':0,'眼鏡':1.0,'男士包款':6.5,'男士小皮件':2.2 },
-};
 function hmClass(v, avg){
   if (v === 0) return 'none';
   const r = v / avg;
@@ -973,29 +781,35 @@ function hmMark(v, avg){
   const arrow = r >= 1.5 ? ' ▲▲' : r >= 1.1 ? ' ▲' : r > 0.85 ? '' : r > 0.55 ? ' ▼' : ' ▼▼';
   return v + '%' + arrow;
 }
-document.getElementById('heatmap').innerHTML = `
-<table class="hm">
-  <thead><tr><th class="sticky-col">夥伴</th>${HM_CATS.map(c => `<th>${c}<br><span style="font-weight:400">店均 ${HM_AVG[c]}%</span></th>`).join('')}</tr></thead>
-  <tbody>${P.map(p => `
-    <tr>
-      <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px;vertical-align:0"></span>${p.name.split(' ')[0]}</td>
-      ${HM_CATS.map(c => { const v = HM_DATA[p.id][c]; return `<td class="${hmClass(v, HM_AVG[c])} num">${hmMark(v, HM_AVG[c])}</td>`; }).join('')}
-    </tr>`).join('')}
-  </tbody>
-</table>`;
+function renderHeatmap(){
+  document.getElementById('heatmap').innerHTML = `
+  <table class="hm">
+    <thead><tr><th class="sticky-col">夥伴</th>${CUR.hmCats.map(c => `<th>${c}<br><span style="font-weight:400">店均 ${CUR.hmAvg[c]}%</span></th>`).join('')}</tr></thead>
+    <tbody>${CUR.people.map(p => `
+      <tr>
+        <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px"></span>${p.name.split(' ')[0]}</td>
+        ${CUR.hmCats.map(c => { const v = CUR.hmData[p.id][c]; return `<td class="${hmClass(v, CUR.hmAvg[c])} num">${hmMark(v, CUR.hmAvg[c])}</td>`; }).join('')}
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
 
-/* ==================================================
-   NEXT ACTIONS GRID
-================================================== */
-document.getElementById('nextGrid').innerHTML = P.map(p => `
-  <div class="next-card" style="--pc:${p.hex}">
-    <div class="n-who"><span class="n-dot"></span>${p.name}</div>
-    <div class="n-goal">${p.action.goal}</div>
-    <div class="n-how">${p.action.how}</div>
-  </div>`).join('');
-
-/* init */
-selectPerson('yvette');
+/* ============ ACTION ============ */
+function renderAction(){
+  document.getElementById('nextTitle').textContent = CUR.nextMonth.title;
+  document.getElementById('nextNote').innerHTML = CUR.nextMonth.note;
+  document.getElementById('playsList').innerHTML = CUR.plays.map(pl => `
+    <div class="card play-card">
+      <div class="pl-t">${pl.t}</div>
+      <ul>${pl.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+    </div>`).join('');
+  document.getElementById('nextGrid').innerHTML = CUR.people.map(p => `
+    <div class="next-card" style="--pc:${p.hex}">
+      <div class="n-who"><span class="n-dot"></span>${p.name}</div>
+      <div class="n-goal">${p.action.goal}</div>
+      <div class="n-how">${p.action.how}</div>
+    </div>`).join('');
+}
 </script>
 </body>
 </html>
