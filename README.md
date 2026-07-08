@@ -21,6 +21,16 @@ data/2026-06.js     ← 六月資料（數字 + 文案）
    - 推上 `main`，1–2 分鐘後自動上線
 3. 首頁的月份選單與趨勢列會自動出現新的一期，舊月份永久保留可回看
 
+## 排班系統（schedule.html）
+
+- 預設畫面 = **同事看班**（唯讀，可選月份、點名字只看自己的班）
+- 店長按「🔑 店長排班」輸入 PIN `0000` 進入排班後台
+- 後台流程：設定 → 指休/BL/AL → ⚙ 自動排班 → 手動微調 → 🔒 鎖定 → 📤 發布給同事
+- 「發布給同事」把班表寫入 `data/schedule/published.js`（需一次性設定 GitHub
+  Fine-grained Token，Contents Read/Write，僅限本 repo）；發布後全員可見
+- Token 設定不便時可「下載檔案」把 `published.js` 交給 Claude 代為發布
+- PIN 修改：schedule.html 內搜尋 `ADMIN_PIN`
+
 ## 設計原則（勿破壞）
 
 - **員工代表色固定跟人走**，每月不可重新分配（色盲安全已驗證）

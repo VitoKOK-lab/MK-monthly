@@ -181,10 +181,40 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 
 <header class="masthead">
   <div class="wordmark">Michael Kors</div>
-  <div class="storeline">Taoyuan Gloria Outlets · Shift Scheduler</div>
+  <div class="storeline">Taoyuan Gloria Outlets · Team Schedule</div>
 </header>
 <div class="backrow no-print"><a href="index.html">← 回月報 Monthly Review</a></div>
 
+<!-- ============ 同事看班（預設畫面） ============ -->
+<div class="wrap" id="viewerWrap">
+  <section class="sec">
+    <div class="sec-kicker">Published Roster</div>
+    <div class="sec-title">班表查詢</div>
+    <div class="ctrl-row" style="align-items:center">
+      <div class="ctrl"><label>月份</label><select id="pubMonthSel"></select></div>
+      <button class="btn ghost" id="adminBtn" style="margin-left:auto">🔑 店長排班</button>
+    </div>
+    <div id="pubBody">
+      <div class="person-chips" id="pubChips" style="margin-top:8px"></div>
+      <div class="grid-scroll"><table class="sched" id="pubTable"></table></div>
+      <div class="legend">
+        <span><i style="background:var(--m-wash)"></i>早班</span>
+        <span><i style="background:var(--mid-wash)"></i>中班</span>
+        <span><i style="background:var(--e-ink)"></i>晚班</span>
+        <span><i style="background:#f1f0ec"></i>休假</span>
+        <span style="color:var(--gold-dark)">BL/AL = 特殊假</span>
+      </div>
+      <div class="hint" id="pubMeta"></div>
+    </div>
+    <div class="hint" id="pubEmpty" style="display:none;padding:30px 0;text-align:center;font-size:14px">尚未發布任何班表，請等店長發布。</div>
+  </section>
+</div>
+
+<!-- ============ 店長排班後台（PIN 進入） ============ -->
+<div id="adminArea" style="display:none">
+<div class="backrow no-print" style="border-top:1px solid var(--hair)">
+  <a href="javascript:void(0)" onclick="exitAdmin()">← 離開後台，回同事看班畫面</a>
+</div>
 <div class="wrap">
 
 <!-- ============ 1. 基本設定 ============ -->
@@ -241,6 +271,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <button class="btn gold" id="genBtn">⚙ 自動排班</button>
     <button class="btn ghost" id="lockBtn" style="display:none">🔒 鎖定班表</button>
     <button class="btn ghost" id="clearBtn" style="display:none">🗑 清除重來</button>
+    <button class="btn" id="pubBtn" style="display:none">📤 發布給同事</button>
     <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
     <button class="btn ghost" id="csvBtn">匯出 CSV</button>
     <span class="status" id="status"></span>
@@ -280,7 +311,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 </section>
 
 </div>
+</div><!-- /adminArea -->
 <div class="footer">Michael Kors · Taoyuan Gloria Outlets · Internal Use Only</div>
+<script src="data/schedule/published.js"></script>
 
 <script>
 /* ============================================================
@@ -355,6 +388,7 @@ function updateButtons(){
   const has = !!RESULT;
   document.getElementById('lockBtn').style.display = has ? '' : 'none';
   document.getElementById('clearBtn').style.display = has ? '' : 'none';
+  document.getElementById('pubBtn').style.display = has ? '' : 'none';
   document.getElementById('lockBtn').textContent = LOCKED ? '🔓 解除鎖定' : '🔒 鎖定班表';
   document.getElementById('genBtn').disabled = LOCKED;
 }
@@ -968,6 +1002,158 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
 });
 renderStaff(); renderHoliCal(); renderFixCal();
 restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
+
+/* ============================================================
+   同事看班（預設畫面）＋ 店長 PIN 後台 ＋ 發布
+============================================================ */
+const ADMIN_PIN = '0000';
+let pubSel = { month: null, person: -1 };
+
+function pubData(){ return window.MK_SCHED_PUB || {}; }
+
+function enterAdmin(){
+  const pin = prompt('請輸入店長密碼：');
+  if (pin === null) return;
+  if (pin !== ADMIN_PIN){ alert('密碼錯誤'); return; }
+  sessionStorage.setItem('mk-admin','1');
+  applyMode();
+}
+function exitAdmin(){ sessionStorage.removeItem('mk-admin'); applyMode(); }
+function applyMode(){
+  const admin = sessionStorage.getItem('mk-admin') === '1';
+  document.getElementById('adminArea').style.display = admin ? '' : 'none';
+  document.getElementById('viewerWrap').style.display = admin ? 'none' : '';
+  document.getElementById('adminBtn').textContent = '🔑 店長排班';
+  if (!admin) renderViewer();
+  else window.scrollTo({top: document.getElementById('adminArea').offsetTop - 20});
+}
+
+/* ---- viewer ---- */
+function renderViewer(){
+  const pub = pubData();
+  const months = Object.keys(pub).sort().reverse();
+  const selEl = document.getElementById('pubMonthSel');
+  if (!months.length){
+    document.getElementById('pubBody').style.display = 'none';
+    document.getElementById('pubEmpty').style.display = '';
+    selEl.innerHTML = '<option>—</option>';
+    return;
+  }
+  document.getElementById('pubBody').style.display = '';
+  document.getElementById('pubEmpty').style.display = 'none';
+  if (!pubSel.month || !pub[pubSel.month]) pubSel.month = months[0];
+  selEl.innerHTML = months.map(m => `<option value="${m}" ${m===pubSel.month?'selected':''}>${m.replace('-',' 年 ')} 月</option>`).join('');
+  const rec = pub[pubSel.month];
+  const [y,mm] = pubSel.month.split('-').map(Number);
+  const dow = d => new Date(y, mm-1, d).getDay();
+  const holi = new Set(rec.holidays || []);
+  const today = new Date();
+  const todayD = (today.getFullYear()===y && today.getMonth()+1===mm) ? today.getDate() : -1;
+
+  /* person filter chips */
+  document.getElementById('pubChips').innerHTML =
+    `<button class="pchip ${pubSel.person<0?'active':''}" onclick="pubSel.person=-1;renderViewer()">全部</button>` +
+    rec.staff.map((p,i) => `<button class="pchip ${pubSel.person===i?'active':''}" onclick="pubSel.person=${i};renderViewer()">${p.name}</button>`).join('');
+
+  let h = '<thead><tr><th class="name-col">員工</th>';
+  for (let d=1; d<=rec.days; d++){
+    const w = dow(d), hl = holi.has(d);
+    h += `<th class="${hl?'holi':(w===0||w===6?'wkend':'')}" ${d===todayD?'style="background:var(--gold-wash);color:var(--gold-dark);font-weight:700"':''}>${d}<span class="dow">${DOW[w]}${hl?' 假':''}</span></th>`;
+  }
+  h += '</tr></thead><tbody>';
+  rec.staff.forEach((p,i) => {
+    if (pubSel.person >= 0 && pubSel.person !== i) return;
+    h += `<tr><td class="name-col">${p.name}<span class="role-tag">${p.role}</span></td>`;
+    const sp = (rec.special||{})[i] || {};
+    for (let d=1; d<=rec.days; d++){
+      const s = rec.grid[i][d];
+      const label = (s===3 && sp[d]) ? sp[d] : SHIFT_NAME[s];
+      const spStyle = (s===3 && sp[d]) ? 'color:#8f7439;font-weight:700' : '';
+      h += `<td><div class="cell s${s}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
+    }
+    h += '</tr>';
+  });
+  h += '</tbody>';
+  document.getElementById('pubTable').innerHTML = h;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準`;
+}
+document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
+document.getElementById('adminBtn').addEventListener('click', () => {
+  if (sessionStorage.getItem('mk-admin') === '1') applyMode();
+  else enterAdmin();
+});
+
+/* ---- publish ---- */
+function buildPubRecord(){
+  return {
+    days: RESULT.days,
+    grid: RESULT.grid,
+    staff: S.staff.map(p => ({ name: p.name, role: p.role })),
+    holidays: S.holidays[S.month] || [],
+    special: (S.special||{})[S.month] || {},
+    savedAt: new Date().toISOString().slice(0,16).replace('T',' '),
+  };
+}
+async function publish(){
+  if (!RESULT){ alert('請先產生班表'); return; }
+  let token = localStorage.getItem('mk-gh-token');
+  if (!token){
+    token = prompt(
+      '第一次發布需要設定 GitHub Token（只需一次，之後自動記住）：\n\n' +
+      '1. 開啟 github.com → Settings → Developer settings → Fine-grained tokens → Generate new token\n' +
+      '2. Repository access 選「Only select repositories」→ MK-monthly\n' +
+      '3. Permissions → Contents → Read and write\n' +
+      '4. 產生後把 token 貼在下面：\n\n' +
+      '（不方便設定的話按取消，可改用「下載檔案」請 Claude 代為發布）');
+    if (!token){ downloadPubFile(); return; }
+    localStorage.setItem('mk-gh-token', token.trim());
+    token = token.trim();
+  }
+  const st = document.getElementById('status');
+  st.textContent = '發布中…';
+  try {
+    const pub = { ...pubData() };
+    pub[S.month] = buildPubRecord();
+    const content = '/* 已發布的班表 — 由排班頁「發布給同事」自動更新，請勿手動編輯 */\nwindow.MK_SCHED_PUB = ' + JSON.stringify(pub) + ';\n';
+    const api = 'https://api.github.com/repos/VitoKOK-lab/MK-monthly/contents/data/schedule/published.js';
+    const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
+    let sha;
+    const g = await fetch(api + '?ref=main', { headers });
+    if (g.ok) sha = (await g.json()).sha;
+    const put = await fetch(api, {
+      method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Publish schedule ${S.month}`,
+        content: btoa(unescape(encodeURIComponent(content))),
+        sha, branch: 'main',
+      }),
+    });
+    if (!put.ok){
+      const err = await put.json().catch(()=>({}));
+      if (put.status === 401 || put.status === 403){ localStorage.removeItem('mk-gh-token'); throw new Error('Token 無效或權限不足（已清除，請重試重新輸入）'); }
+      throw new Error(err.message || ('HTTP ' + put.status));
+    }
+    window.MK_SCHED_PUB = pub;   /* 本機立即生效 */
+    st.textContent = '✓ 已發布！同事約 1–2 分鐘後重新整理頁面即可看到新班表';
+  } catch(e){
+    st.textContent = '⚠ 發布失敗：' + e.message + '（可改用下載檔案）';
+    if (confirm('線上發布失敗。要下載班表檔案改用手動方式嗎？')) downloadPubFile();
+  }
+}
+function downloadPubFile(){
+  const pub = { ...pubData() };
+  pub[S.month] = buildPubRecord();
+  const content = '/* 已發布的班表 — 由排班頁「發布給同事」自動更新，請勿手動編輯 */\nwindow.MK_SCHED_PUB = ' + JSON.stringify(pub) + ';\n';
+  const blob = new Blob([content], { type: 'text/javascript' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'published.js';
+  a.click();
+  alert('已下載 published.js。\n把這個檔案傳給 Claude 說「發布班表」，或自行上傳到 GitHub 的 data/schedule/ 資料夾覆蓋。');
+}
+document.getElementById('pubBtn').addEventListener('click', publish);
+
+applyMode();
 </script>
 </body>
 </html>
