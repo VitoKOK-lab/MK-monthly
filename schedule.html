@@ -18,6 +18,7 @@
   --sans: system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { overflow-x: hidden; max-width: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.6; }
 .num { font-variant-numeric: tabular-nums; }
 
@@ -116,6 +117,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .cell.s2 { background: var(--e-ink); color: #fff; }
 .cell.s3 { background: #f1f0ec; color: #b5b3aa; }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
+.cell.manual { position: relative; }
+.cell.manual::after { content: ''; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--crit); }
 .sched tfoot td { font-size: 10px; padding: 5px 2px; color: var(--muted); background: var(--paper); }
 .sched tfoot td.short { background: var(--crit-wash); color: var(--crit); font-weight: 700; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink2); margin: 12px 2px; }
@@ -136,7 +139,28 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 /* 簽核欄與 PDF 頁首（螢幕上隱藏） */
 .print-head { display: none; }
 .sign-row { display: none; }
-@media (max-width: 720px) { .sec-title { font-size: 18px; } .ctrl-row { gap: 10px; } }
+@media (max-width: 720px) {
+  .wrap { padding: 0 10px; }
+  .sec { padding: 20px 0 6px; }
+  .sec-title { font-size: 18px; }
+  .card { padding: 13px; }
+  .ctrl-row { gap: 10px; }
+  .btn { padding: 10px 16px; font-size: 11px; letter-spacing: .14em; }
+  .mini-cal { max-width: 100%; gap: 3px; }
+  .mc-d { font-size: 12px; }
+  .person-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .person-chips::-webkit-scrollbar { display: none; }
+  .pchip { flex-shrink: 0; }
+  .sched thead th { min-width: 30px; padding: 5px 2px; }
+  .cell { padding: 7px 1px; font-size: 10.5px; }
+  .sched td.name-col, .sched th.name-col { min-width: 84px; padding: 5px 7px; font-size: 11px; }
+  .role-tag { display: block; margin: 2px 0 0; width: fit-content; }
+  .staff input[type="text"] { width: 84px; }
+  .wk { width: 26px; height: 28px; }
+  .legend { gap: 10px; font-size: 10.5px; }
+  .stat-table td, .stat-table th { padding: 6px 5px; font-size: 11.5px; }
+  .status { display: block; margin: 6px 0 0; width: 100%; }
+}
 @media print {
   .no-print, .masthead, .backrow, .footer, .legend .no-print { display: none !important; }
   .grid-scroll { border: none; overflow: visible; }
@@ -236,7 +260,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <span><i style="background:var(--e-ink)"></i>晚班</span>
     <span><i style="background:#f1f0ec"></i>休假</span>
     <span>底線 = 指休/固定休</span>
-    <span class="no-print" style="color:var(--gold-dark)">點任一格可手動微調（早→中→晚→休）</span>
+    <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
+    <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
   </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
 
@@ -356,7 +381,8 @@ function scoreOff(off, cfg){
     let restDays = 0;
     for (const d of off[i]) { offCount[d]++; if (isRest(d) && !special[i].has(d)) restDays++; }
     if (off[i].size !== quotas[i]) sc += 1000 * Math.abs(off[i].size - quotas[i]);
-    if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3 */
+    if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3（硬） */
+    if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
     if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
     let run = 0;
     for (let d=1; d<=days; d++){
@@ -579,6 +605,7 @@ function generate(){
     }
     const grid = assignShifts(best.off, cfg);
     RESULT = { grid, days, month: S.month, offScore: best.score };
+    UNDO.length = 0; manualEdits.clear();
     render();
     btn.disabled = false;
     const nViol = validate().violations.length;
@@ -664,7 +691,8 @@ function render(){
       if (s===3 && sp[d]){
         h += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
       } else {
-        h += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
+        const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
+        h += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
       }
     }
     h += '</tr>';
@@ -695,12 +723,28 @@ function render(){
 
   document.getElementById('violBox').innerHTML = violations.length
     ? violations.map(x => `<div class="viol">⚠ ${x}</div>`).join('')
-    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天、連上不超過四天、早班平衡 ±1、管理職互斥、週律、每日人力與中班規則。</div>';
+    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天（優先 2）、連上不超過四天、早班平衡 ±1、管理職互斥、週律、每日人力與中班規則。</div>';
+  const ub = document.getElementById('undoBtn');
+  if (ub) ub.disabled = UNDO.length === 0;
 }
 
+/* 手動微調：允許違背規定（違規只會顯示警告）；支援復原 */
+const UNDO = [];
+const manualEdits = new Set();
 function cycle(i, d){
   if (!RESULT) return;
+  UNDO.push({ i, d, val: RESULT.grid[i][d] });
+  if (UNDO.length > 50) UNDO.shift();
+  manualEdits.add(i + ':' + d);
   RESULT.grid[i][d] = (RESULT.grid[i][d] + 1) % 4;
+  render();
+}
+function undo(){
+  const u = UNDO.pop();
+  if (!u || !RESULT) return;
+  RESULT.grid[u.i][u.d] = u.val;
+  /* 若該格已回到未改狀態就清除紅點（簡化：只要沒有其他紀錄就移除） */
+  if (!UNDO.some(x => x.i===u.i && x.d===u.d)) manualEdits.delete(u.i + ':' + u.d);
   render();
 }
 
@@ -851,6 +895,7 @@ document.getElementById('monthInput').addEventListener('change', e => { S.month 
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
+document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('pdfBtn').addEventListener('click', () => {
   if (!RESULT) return alert('請先產生排班表');
   const [y,m] = S.month.split('-');
