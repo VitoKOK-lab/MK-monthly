@@ -75,6 +75,12 @@ b { font-weight: 700; }
 }
 .tabnav button.active { color: var(--ink); font-weight: 600; }
 .tabnav button.active::after { transform: scaleX(1); }
+.tabnav a.navlink {
+  display: block; text-align: center; text-decoration: none; font-family: var(--sans);
+  font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold-dark);
+  padding: 15px 4px 13px; transition: color .18s;
+}
+.tabnav a.navlink:hover { color: var(--ink); }
 
 /* ============ LAYOUT ============ */
 .wrap { max-width: 1060px; margin: 0 auto; padding: 0 18px; }
@@ -346,6 +352,7 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
     <li><button data-tab="me">個人</button></li>
     <li><button data-tab="cat">品類</button></li>
     <li><button data-tab="action">行動</button></li>
+    <li><a class="navlink" href="schedule.html">排班</a></li>
   </ul>
 </nav>
 
