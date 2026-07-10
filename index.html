@@ -300,6 +300,27 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 .hm-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 10px 2px; }
 .hm-key i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--hair-soft); }
 
+/* ============ ANALYTICS ============ */
+.metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
+.metric-box { border: 1px solid var(--hair-soft); background: var(--paper); padding: 15px; }
+.metric-box .m-label { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.metric-box .m-value { font-family: var(--serif); font-size: 26px; margin: 3px 0; color: var(--ink); }
+.metric-box .m-sub { font-size: 11px; color: var(--ink2); margin-top: 3px; }
+.metric-box .m-bar { height: 7px; background: var(--track); margin-top: 8px; overflow: hidden; }
+.metric-bar { height: 100%; background: var(--gold); animation: growX .8s ease both; }
+.chart-box { border: 1px solid var(--hair); background: var(--bg); padding: 20px; margin-bottom: 14px; }
+.insight-item { border-left: 3px solid var(--gold); background: var(--gold-wash); padding: 13px 16px; margin-bottom: 10px; }
+.insight-item .i-head { font-size: 12px; font-weight: 700; color: var(--ink); }
+.insight-item .i-body { font-size: 12px; color: var(--ink2); margin-top: 4px; }
+.insight-item.alert { border-left-color: var(--crit); background: var(--crit-wash); }
+.insight-item.alert .i-head { color: var(--crit); }
+.table-analytics { width: 100%; border-collapse: collapse; }
+.table-analytics th { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 8px; text-align: left; border-bottom: 1px solid var(--ink); }
+.table-analytics td { padding: 10px 8px; border-bottom: 1px solid var(--hair-soft); font-size: 12px; }
+.table-analytics tr:hover { background: var(--paper); }
+.stat-up { color: var(--good); font-weight: 600; }
+.stat-down { color: var(--crit); font-weight: 600; }
+
 /* ============ ACTION TAB ============ */
 .play-card { border-left: 3px solid var(--gold); }
 .play-card .pl-t { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
@@ -337,8 +358,10 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 <body>
 
 <header class="masthead">
-  <div class="wordmark">Michael Kors</div>
-  <div class="storeline">Taoyuan Gloria Outlets · Monthly Review</div>
+  <a href="index.html" style="text-decoration: none; color: inherit;">
+    <div class="wordmark">Michael Kors</div>
+    <div class="storeline">Taoyuan Gloria Outlets · Monthly Review</div>
+  </a>
   <div class="month-row">
     <select class="month-select" id="monthSelect" aria-label="選擇月份"></select>
     <span class="month-fy num" id="monthFy"></span>
@@ -351,6 +374,7 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
     <li><button data-tab="rank">排行</button></li>
     <li><button data-tab="me">個人</button></li>
     <li><button data-tab="cat">品類</button></li>
+    <li><button data-tab="analytics">分析</button></li>
     <li><button data-tab="action">行動</button></li>
     <li><a class="navlink" href="schedule.html">排班</a></li>
   </ul>
@@ -473,7 +497,49 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
   </div>
 </div>
 
-<!-- TAB 5 : ACTION -->
+<!-- TAB 5 : ANALYTICS -->
+<div class="tab-panel" id="tab-analytics">
+  <div class="wrap">
+    <section class="sec">
+      <div class="sec-kicker">Sales Trend</div>
+      <div class="sec-title">營業額走勢與業績達成率</div>
+      <div class="card">
+        <div id="trendChart"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-kicker">Staffing Efficiency</div>
+      <div class="sec-title">人員配置與銷售效率</div>
+      <div class="card">
+        <div class="subhead">平均客單價 (ADS) 與團隊人均業績</div>
+        <div id="efficiencyMetrics"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-kicker">Performance Factors</div>
+      <div class="sec-title">業績驅動因素分析</div>
+      <div id="factorsAnalysis"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-kicker">Key Insights</div>
+      <div class="sec-title">可能的外部因素與建議</div>
+      <div id="insightsBox"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-kicker">Staffing Correlation</div>
+      <div class="sec-title">排班分析與銷售關係</div>
+      <div class="card">
+        <div id="scheduleInsights"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- TAB 6 : ACTION -->
 <div class="tab-panel" id="tab-action">
   <div class="wrap">
     <section class="sec">
@@ -553,6 +619,7 @@ function loadMonth(id){
   renderPodium(); renderLeaderboard();
   renderChips(); selectPerson(CUR.people[0].id);
   renderTeachers(); renderHeatmap();
+  renderAnalytics();
   renderAction();
   history.replaceState(null, '', '?m=' + id);
 }
@@ -799,6 +866,237 @@ function renderHeatmap(){
       </tr>`).join('')}
     </tbody>
   </table>`;
+}
+
+/* ============ ANALYTICS ============ */
+function renderAnalytics(){
+  renderTrendChart();
+  renderEfficiencyMetrics();
+  renderFactorsAnalysis();
+  renderInsights();
+  renderScheduleInsights();
+}
+
+function renderTrendChart(){
+  const months = window.MK_MONTHS.filter(m => window.MK_DATA[m.id]);
+  if (months.length === 0) return;
+
+  let html = '<table class="table-analytics"><thead><tr><th>月份</th><th>業績(萬)</th><th>目標(萬)</th><th>達成率</th><th>客單數</th><th>客均消費</th></tr></thead><tbody>';
+
+  months.forEach(m => {
+    const d = window.MK_DATA[m.id];
+    const sales = (d.totals.sales/10000).toFixed(0);
+    const target = (d.totals.target/10000).toFixed(0);
+    const ach = (d.totals.ach * 100).toFixed(1);
+    const trans = d.kpis[0].value;
+    const ads = d.kpis[2].value;
+    const isActive = m.id === CUR_ID;
+
+    html += `<tr style="${isActive ? 'background:var(--gold-wash);font-weight:700;' : ''}">
+      <td>${m.short||m.label}</td>
+      <td class="num">${sales}</td>
+      <td class="num">${target}</td>
+      <td class="num ${parseFloat(ach)>=100 ? 'stat-up' : 'stat-down'}">${ach}%</td>
+      <td class="num">${trans}</td>
+      <td class="num">NT$${ads}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('trendChart').innerHTML = html;
+}
+
+function renderEfficiencyMetrics(){
+  const teamAvg = CUR.teamAvg;
+  const totalSales = CUR.totals.sales;
+  const numStaff = CUR.people.length;
+  const avgPerStaff = Math.round(totalSales / numStaff);
+  const topPerformer = CUR.people[0];
+  const topPerformanceRatio = (topPerformer.sales / (totalSales / numStaff)).toFixed(2);
+
+  let html = '<div class="metric-grid">';
+  html += `<div class="metric-box">
+    <div class="m-label">平均客單消費 (ADS)</div>
+    <div class="m-value num">NT$${teamAvg.ads}</div>
+    <div class="m-sub">團隊平均水平</div>
+    <div class="m-bar"><div class="metric-bar" style="width:${Math.min(100, teamAvg.ads/12000*100)}%"></div></div>
+  </div>`;
+
+  html += `<div class="metric-box">
+    <div class="m-label">人均業績</div>
+    <div class="m-value num">${fmtW(avgPerStaff)}</div>
+    <div class="m-sub">含全職與兼職平均</div>
+    <div class="m-bar"><div class="metric-bar" style="width:${Math.min(100, avgPerStaff/1500000*100)}%"></div></div>
+  </div>`;
+
+  html += `<div class="metric-box">
+    <div class="m-label">連帶率 (UPT)</div>
+    <div class="m-value num">${teamAvg.upt.toFixed(2)}</div>
+    <div class="m-sub">每筆交易商品數</div>
+    <div class="m-bar"><div class="metric-bar" style="width:${Math.min(100, teamAvg.upt/2.5*100)}%"></div></div>
+  </div>`;
+
+  html += `<div class="metric-box">
+    <div class="m-label">性能差異指數</div>
+    <div class="m-value num">${topPerformanceRatio}x</div>
+    <div class="m-sub">頂尖員工 vs 平均</div>
+    <div class="m-bar"><div class="metric-bar" style="width:${Math.min(100, topPerformanceRatio/2*100)}%"></div></div>
+  </div>`;
+
+  html += '</div>';
+  document.getElementById('efficiencyMetrics').innerHTML = html;
+}
+
+function renderFactorsAnalysis(){
+  const totalSales = CUR.totals.sales;
+  const topSalesCount = CUR.people.filter(p => p.sales > CUR.totals.sales / CUR.people.length * 1.2).length;
+  const topSalesPercent = (CUR.people.slice(0, 3).reduce((s,p) => s + p.sales, 0) / totalSales * 100).toFixed(1);
+  const avgUPT = CUR.teamAvg.upt;
+  const bestUPT = Math.max(...CUR.people.map(p => p.upt));
+  const uptGap = (bestUPT - avgUPT).toFixed(2);
+
+  let html = '<div class="card">';
+  html += '<table class="table-analytics"><thead><tr><th>業績驅動因素</th><th>現狀</th><th>分析</th></tr></thead><tbody>';
+
+  html += `<tr>
+    <td><b>人員績效分佈</b></td>
+    <td>${topSalesCount} 位超標 / ${CUR.people.length} 人</td>
+    <td>${topSalesCount >= 5 ? '<span class="stat-up">✓ 優秀</span>' : '<span class="stat-down">↑ 改善空間</span>'} — 頭部 3 人貢獻 ${topSalesPercent}%</td>
+  </tr>`;
+
+  html += `<tr>
+    <td><b>連帶推薦</b></td>
+    <td>平均 ${avgUPT.toFixed(2)}，最高 ${bestUPT.toFixed(2)}</td>
+    <td>每人提升 ${uptGap} — 若全隊達最高，業績可增 ${(uptGap / avgUPT * 100).toFixed(0)}%</td>
+  </tr>`;
+
+  const categoryCount = Object.entries(CUR.storeCat).filter(([k,v]) => v >= 1).length;
+  html += `<tr>
+    <td><b>品類多元性</b></td>
+    <td>${categoryCount} / ${Object.entries(CUR.storeCat).length} 個主力品類</td>
+    <td>${categoryCount >= 6 ? '多元化' : '待強化'} — 集中度高則風險大</td>
+  </tr>`;
+
+  const transAvg = parseInt(CUR.kpis[0].value);
+  const bestTrans = Math.max(...CUR.people.map(p => p.trans));
+  html += `<tr>
+    <td><b>成交轉換</b></td>
+    <td>平均 ${transAvg}，最高 ${bestTrans}</td>
+    <td>高客單價型業務 vs 高轉換型業務 — 都需要</td>
+  </tr>`;
+
+  html += '</tbody></table></div>';
+  document.getElementById('factorsAnalysis').innerHTML = html;
+}
+
+function renderInsights(){
+  let html = '';
+
+  const totalSales = CUR.totals.sales;
+  const target = CUR.totals.target;
+  const ach = CUR.totals.ach;
+  const transYoY = CUR.kpis[0].delta;
+  const adsYoY = CUR.kpis[2].delta;
+
+  // 業績洞察
+  if (ach >= 1.2) {
+    html += `<div class="insight-item">
+      <div class="i-head">✓ 優異達成</div>
+      <div class="i-body">月度業績超達 ${((ach-1)*100).toFixed(0)}%。建議下月提升目標 10-15%，挑戰更高績效。</div>
+    </div>`;
+  } else if (ach >= 1.0) {
+    html += `<div class="insight-item">
+      <div class="i-head">✓ 達成目標</div>
+      <div class="i-body">月度業績達成目標。建議關注客流變化，開發新客以穩定月度業績。</div>
+    </div>`;
+  } else {
+    html += `<div class="insight-item alert">
+      <div class="i-head">⚠ 業績缺口</div>
+      <div class="i-body">未達目標 NT$${fmtW(target - totalSales)}。可能的外部因素：季節性、競爭加劇、客流下降。需檢視客單數與客均消費。</div>
+    </div>`;
+  }
+
+  // 客流分析
+  if (transYoY.includes('−')) {
+    html += `<div class="insight-item alert">
+      <div class="i-head">📊 客流下降 (YoY)</div>
+      <div class="i-body">客單數下降 ${transYoY}。可能原因：商場客流減少、季節變化、或行業景氣下行。對策：提高連帶率 UPT、提升客均消費。</div>
+    </div>`;
+  } else {
+    html += `<div class="insight-item">
+      <div class="i-head">📊 客流穩定</div>
+      <div class="i-body">客單數同比 ${transYoY}。重點是轉化每筆訂單的價值。</div>
+    </div>`;
+  }
+
+  // 消費水平分析
+  if (adsYoY.includes('−')) {
+    html += `<div class="insight-item alert">
+      <div class="i-head">💰 客均消費下降</div>
+      <div class="i-body">客均消費 ${adsYoY}。可能是客群消費力下降、或進店客層變化。建議：提升連帶話術、推廣高毛利商品。</div>
+    </div>`;
+  } else {
+    html += `<div class="insight-item">
+      <div class="i-head">💰 客均消費成長</div>
+      <div class="i-body">客均消費 ${adsYoY}。表現出眾，說明銷售話術優化有效。繼續培養人員高客單價話術。</div>
+    </div>`;
+  }
+
+  // 競爭與機會
+  html += `<div class="insight-item">
+    <div class="i-head">🎯 建議行動</div>
+    <div class="i-body">
+      <b>短期（本月）：</b> 關注排班是否匹配銷售峰值；高績效員工是否充分排班。<br>
+      <b>中期（下月）：</b> 強化連帶率弱項，提升 UPT 至 2.1+；推進客流分析。<br>
+      <b>長期（季度）：</b> 分析外部因素（商場推廣、競爭對手、季節性），優化人員配置。
+    </div>
+  </div>`;
+
+  document.getElementById('insightsBox').innerHTML = html;
+}
+
+function renderScheduleInsights(){
+  let html = '<div class="card">';
+
+  // 計算團隊平均人天
+  const staffCount = CUR.people.length;
+  const transAvg = parseInt(CUR.kpis[0].value);
+  const avgPerStaff = CUR.totals.sales / staffCount;
+
+  html += `<div class="insight-item">
+    <div class="i-head">👥 人員配置現狀</div>
+    <div class="i-body">
+      團隊 ${staffCount} 人，月度業績 ${fmtW(CUR.totals.sales)}。<br>
+      人均產出：${fmtW(Math.round(avgPerStaff))}（含全職與兼職）<br>
+      <b>建議：</b> 確保高績效員工（${CUR.people[0].name} 等）在銷售峰時段充分排班。
+    </div>
+  </div>`;
+
+  const targetAds = 10500;
+  const currentAds = CUR.teamAvg.ads;
+  const adsDiff = ((targetAds - currentAds) / currentAds * 100).toFixed(1);
+
+  html += `<div class="insight-item">
+    <div class="i-head">⏰ 排班與銷售效率的關係</div>
+    <div class="i-body">
+      當前客均消費：NT$${currentAds}<br>
+      目標客均消費：NT$${targetAds}<br>
+      <b>若改善排班，使高手集中在客流高峰：</b> 可提升客均消費 ${adsDiff}%，月業績增加 ${fmtW(Math.round(CUR.totals.sales * (adsDiff / 100)))}
+    </div>
+  </div>`;
+
+  html += `<div class="insight-item">
+    <div class="i-head">📋 排班最佳實踐</div>
+    <div class="i-body">
+      <b>黃金時段（20%-30% 客流的日子）：</b> 排上人均業績 Top 3。<br>
+      <b>標準時段：</b> 均衡配置，確保覆蓋所有客群。<br>
+      <b>低峰時段：</b> 優先安排新人、訓練與補假。<br>
+      <b>檢視指標：</b> 同班員工組合是否最優（搭檔效應）。
+    </div>
+  </div>`;
+
+  html += '</div>';
+  document.getElementById('scheduleInsights').innerHTML = html;
 }
 
 /* ============ ACTION ============ */
