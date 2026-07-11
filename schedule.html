@@ -318,6 +318,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 </div><!-- /adminArea -->
 <div class="footer">Michael Kors · 華泰店 · Internal Use Only</div>
 <script src="data/schedule/published.js"></script>
+<script src="data/schedule/company_template.js"></script>
 
 <script>
 /* ============================================================
@@ -885,6 +886,17 @@ function xlsxCodeFor(i, d, grid){
   if (sp === 'AL') return 'AL';
   return isRest(d) ? 'RL' : 'RL/';
 }
+function b64ToArrayBuffer(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i=0; i<bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+/* 主要路徑：直接以店長上傳的公司範本檔案為底，只替換「班表」本體
+   （員工姓名＋每日班別，含每人中間的空白列），其餘表頭／備註列／
+   特休統計欄／圖例／使用規範完全維持範本原樣，逐一比對填入。
+   範本目前只涵蓋 2026 年 1–12 月；其餘年份自動改用程式產生的相容版本。 */
 async function exportCompanyExcel(){
   if (!RESULT) return alert('請先產生排班表');
   if (!window.ExcelJS){ alert('Excel 匯出元件載入中，請稍後再試一次'); return; }
@@ -896,6 +908,74 @@ async function exportCompanyExcel(){
     const [y, mNum] = S.month.split('-').map(Number);
     const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const monAbbr = MONTH_ABBR[mNum-1];
+    const sheetName = `${y} ${monAbbr}`;
+
+    if (window.MK_TEMPLATE_XLSX_B64){
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(b64ToArrayBuffer(window.MK_TEMPLATE_XLSX_B64));
+      const ws = wb.getWorksheet(sheetName);
+      if (ws){
+        /* ExcelJS 對範本檔載入的儲存格常共用同一個樣式索引：直接改
+           `cell.fill` 會讓後面設定的顏色污染到前面的儲存格。改成整份
+           複製一個新的 style 物件（Object.assign 出全新參照）才能讓
+           每一格的顏色互不干擾。 */
+        const setFill = (cell, fill) => { cell.style = Object.assign({}, cell.style, { fill }); };
+        const NO_FILL = { type:'pattern', pattern:'none' };
+        const STAFF_ROW_START = 7, ROW_STEP = 2, TEMPLATE_SLOTS = 14;
+        if (N > TEMPLATE_SLOTS) alert(`範本最多支援 ${TEMPLATE_SLOTS} 位員工，本月有 ${N} 位，超出部分請手動於 Excel 補列。`);
+        for (let slot = 0; slot < TEMPLATE_SLOTS; slot++){
+          const row = STAFF_ROW_START + slot * ROW_STEP;
+          /* 姓名列下方的空白列在範本中可能殘留舊員工的註記（如 *），一律清空 */
+          for (let d = 1; d <= 31; d++){
+            const subCell = ws.getCell(row + 1, 2 + d);
+            subCell.value = null;
+            setFill(subCell, NO_FILL);
+          }
+          const nameCell = ws.getCell(row, 2);
+          if (slot < N){
+            nameCell.value = S.staff[slot].name;
+            for (let d = 1; d <= days; d++){
+              const code = xlsxCodeFor(slot, d, grid);
+              const cell = ws.getCell(row, 2 + d);
+              cell.value = code;
+              setFill(cell, XLSX_FILL[code] ? { type:'pattern', pattern:'solid', fgColor:{argb:XLSX_FILL[code]} } : NO_FILL);
+            }
+            ws.getCell(row, 41).value = null;  // AO 2025 特休天數（無資料，留空供人資填寫）
+            ws.getCell(row, 42).value = null;  // AP 已請天數
+          } else {
+            nameCell.value = null;
+            for (let d = 1; d <= 31; d++){
+              const cell = ws.getCell(row, 2 + d);
+              cell.value = null;
+              setFill(cell, NO_FILL);
+            }
+            ws.getCell(row, 41).value = null;
+            ws.getCell(row, 42).value = null;
+          }
+        }
+        const buf = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `MK排班_${S.month}_公司格式.xlsx`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        return;
+      }
+    }
+    /* 找不到範本分頁（非 2026 年）→ 改用程式產生的相容版本 */
+    await exportCompanyExcelFromScratch({ grid, days, N, y, monAbbr });
+  } catch(e){
+    console.error(e);
+    alert('匯出失敗：' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📊 匯出公司格式 Excel';
+  }
+}
+
+/* 備援路徑：範本沒有對應年份時，程式產生格式相容（非逐格複製）的版本 */
+async function exportCompanyExcelFromScratch({ grid, days, N, y, monAbbr }){
+  {
     const FONT = 'Microsoft JhengHei UI';
     const hair = { style:'hair' }, thin = { style:'thin' }, medium = { style:'medium' };
     const cellBorder = { top:hair, bottom:hair, left:hair, right:hair };
@@ -1073,11 +1153,6 @@ async function exportCompanyExcel(){
     a.download = `MK排班_${S.month}_公司格式.xlsx`;
     a.click();
     URL.revokeObjectURL(a.href);
-  } catch(e){
-    console.error(e);
-    alert('匯出失敗：' + e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = '📊 匯出公司格式 Excel';
   }
 }
 
