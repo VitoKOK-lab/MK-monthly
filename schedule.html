@@ -176,6 +176,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   @page { size: A4 landscape; margin: 8mm; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -276,6 +277,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <button class="btn" id="pubBtn" style="display:none">📤 發布給同事</button>
     <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
     <button class="btn ghost" id="csvBtn">匯出 CSV</button>
+    <button class="btn ghost" id="xlsxBtn">📊 匯出公司格式 Excel</button>
     <span class="status" id="status"></span>
   </div>
 </section>
@@ -865,6 +867,221 @@ function exportCsv(){
 }
 
 /* ============================================================
+   匯出公司標準格式 Excel（比照「Store 月班表」範本：日期橫排、
+   班別代號＋顏色、早/中/晚人數統計、班別代號說明、使用規範）
+============================================================ */
+const XLSX_FILL = {
+  RL: 'FFFFFF00', 'RL/': 'FFFF2F2F', AL: 'FFA5A5A5', BL: 'FFB2A1C7',
+  SL: 'FFFABF8F', ML: 'FFF2DBDB', FL: 'FFB2B1A8', PL: 'FFD6E3BC',
+  OL: 'FF00FFFF', WL: 'FFFF99FF',
+};
+function xlsxCodeFor(i, d, grid){
+  const s = grid[i][d];
+  if (s === 0) return 'A';
+  if (s === 1) return 'M';
+  if (s === 2) return 'P';
+  const sp = specialOf(i)[d];
+  if (sp === 'BL') return 'BL';
+  if (sp === 'AL') return 'AL';
+  return isRest(d) ? 'RL' : 'RL/';
+}
+async function exportCompanyExcel(){
+  if (!RESULT) return alert('請先產生排班表');
+  if (!window.ExcelJS){ alert('Excel 匯出元件載入中，請稍後再試一次'); return; }
+  const btn = document.getElementById('xlsxBtn');
+  btn.disabled = true; btn.textContent = '匯出中…';
+  try {
+    const { grid, days } = RESULT;
+    const N = S.staff.length;
+    const [y, mNum] = S.month.split('-').map(Number);
+    const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monAbbr = MONTH_ABBR[mNum-1];
+    const FONT = 'Microsoft JhengHei UI';
+    const hair = { style:'hair' }, thin = { style:'thin' }, medium = { style:'medium' };
+    const cellBorder = { top:hair, bottom:hair, left:hair, right:hair };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'MK 華泰店 排班系統';
+    wb.created = new Date();
+    const ws = wb.addWorksheet(`${y} ${monAbbr}`, { views:[{ state:'frozen', xSplit:2, ySplit:3 }] });
+
+    ws.getColumn(1).width = 4;
+    ws.getColumn(2).width = 14;
+    for (let d=1; d<=days; d++) ws.getColumn(2+d).width = 5.3;
+
+    /* Row 1 — 店名／本月應休天數 */
+    ws.mergeCells(1,3,1,6);
+    ws.getCell(1,2).value = 'Store: ';
+    ws.getCell(1,3).value = 'MICHAEL KORS 華泰店';
+    ws.mergeCells(1,7,1,11);
+    const quotaMode = (() => {
+      const counts = {};
+      S.staff.forEach(p => counts[p.quota] = (counts[p.quota]||0)+1);
+      let best = (S.staff[0]||{}).quota || 10, bc = 0;
+      Object.entries(counts).forEach(([k,c]) => { if (c>bc){ bc=c; best=Number(k); } });
+      return best;
+    })();
+    ws.getCell(1,7).value = `本月應休天數 ${quotaMode}天`;
+    ws.getCell(1,2).font = { name:FONT, bold:true, size:18 };
+    ws.getCell(1,3).font = { name:FONT, bold:true, size:18 };
+    ws.getCell(1,3).alignment = { horizontal:'center', vertical:'middle' };
+    ws.getCell(1,7).font = { name:FONT, bold:true, size:16, color:{argb:'FFFF0000'} };
+    ws.getCell(1,7).alignment = { horizontal:'center', vertical:'middle' };
+    ws.getRow(1).height = 30;
+
+    /* Row 2 — 月份縮寫／日期數字 */
+    ws.getCell(2,2).value = monAbbr;
+    ws.getCell(2,2).font = { name:FONT, bold:true, size:14 };
+    ws.getCell(2,2).alignment = { horizontal:'center', vertical:'middle' };
+    for (let d=1; d<=days; d++){
+      const cell = ws.getCell(2, 2+d);
+      cell.value = d;
+      cell.font = { name:FONT, bold:true, size:11 };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+      cell.border = cellBorder;
+    }
+
+    /* Row 3 — 星期 */
+    for (let d=1; d<=days; d++){
+      const w = dowOf(d);
+      const cell = ws.getCell(3, 2+d);
+      cell.value = DOW[w];
+      cell.font = { name:FONT, bold:true, size:11 };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+      cell.border = cellBorder;
+      let bg = null;
+      if (holiSet().has(d)) bg = 'FFF1DFAF';
+      else if (w===0 || w===6) bg = 'FFF4F3EF';
+      if (bg){
+        cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:bg} };
+        ws.getCell(2,2+d).fill = cell.fill;
+      }
+    }
+    ws.getRow(2).height = 20; ws.getRow(3).height = 20;
+
+    /* 員工列 */
+    let r = 4;
+    for (let i=0; i<N; i++){
+      const p = S.staff[i];
+      const nameCell = ws.getCell(r,2);
+      nameCell.value = p.role ? `${p.name}（${p.role}）` : p.name;
+      nameCell.font = { name:FONT, bold:true, size:12 };
+      nameCell.alignment = { horizontal:'center', vertical:'middle' };
+      nameCell.border = { top:thin, bottom:thin, left:medium, right:medium };
+      for (let d=1; d<=days; d++){
+        const code = xlsxCodeFor(i, d, grid);
+        const cell = ws.getCell(r, 2+d);
+        cell.value = code;
+        cell.font = { name:FONT, bold:true, size:11 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+        cell.border = cellBorder;
+        if (XLSX_FILL[code]) cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:XLSX_FILL[code]} };
+      }
+      ws.getRow(r).height = 20;
+      r++;
+    }
+
+    /* 早／中／晚班人數統計 */
+    const sumStart = r + 1;
+    ['早班人數','中班人數','晚班人數'].forEach((label, k) => {
+      const rr = sumStart + k;
+      const labelCell = ws.getCell(rr,2);
+      labelCell.value = label;
+      labelCell.font = { name:FONT, bold:true, size:11 };
+      for (let d=1; d<=days; d++){
+        let cnt = 0;
+        for (let i=0; i<N; i++) if (grid[i][d] === k) cnt++;
+        const cell = ws.getCell(rr, 2+d);
+        cell.value = cnt;
+        cell.font = { name:FONT, size:10 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+        cell.border = cellBorder;
+      }
+    });
+    const totalRow = sumStart + 3;
+    ws.getCell(totalRow,2).value = '合計上班人數';
+    ws.getCell(totalRow,2).font = { name:FONT, bold:true, size:11 };
+    for (let d=1; d<=days; d++){
+      let cnt = 0;
+      for (let i=0; i<N; i++) if (grid[i][d] !== 3) cnt++;
+      const cell = ws.getCell(totalRow, 2+d);
+      cell.value = cnt;
+      cell.font = { name:FONT, bold:true, size:10 };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+      cell.border = { top:thin, bottom:thin, left:hair, right:hair };
+    }
+
+    /* 班別代號說明 */
+    let lr = totalRow + 3;
+    ws.getCell(lr,2).value = '班別代號';
+    ws.getCell(lr,2).font = { name:FONT, bold:true, size:12 };
+    lr++;
+    const LEGEND = [
+      ['A','早班 10:00–19:00', null], ['M','中班 12:00–21:00', null],
+      ['P','晚班 12:30–21:30', null], ['F','全班', null],
+      ['RL','例假', XLSX_FILL.RL], ['RL/','指休', XLSX_FILL['RL/']],
+      ['AL','年假', XLSX_FILL.AL], ['BL','生日假', XLSX_FILL.BL],
+      ['SL','病假', XLSX_FILL.SL], ['ML','產假', XLSX_FILL.ML],
+      ['PL','事假', XLSX_FILL.PL], ['FL','喪假', XLSX_FILL.FL],
+      ['WL','婚假', XLSX_FILL.WL], ['OL','公假／培訓', XLSX_FILL.OL],
+    ];
+    LEGEND.forEach(([code, desc, fill]) => {
+      const c1 = ws.getCell(lr,2), c2 = ws.getCell(lr,3);
+      c1.value = code; c2.value = desc;
+      c1.font = { name:FONT, bold:true, size:10 };
+      c2.font = { name:FONT, size:10 };
+      c1.alignment = { horizontal:'center', vertical:'middle' };
+      c1.border = { top:hair, bottom:hair, left:thin, right:hair };
+      c2.border = { top:hair, bottom:hair, left:hair, right:thin };
+      if (fill) c1.fill = { type:'pattern', pattern:'solid', fgColor:{argb:fill} };
+      lr++;
+    });
+
+    /* 班表使用規範 */
+    lr += 1;
+    ws.getCell(lr,2).value = '班表使用規範';
+    ws.getCell(lr,2).font = { name:FONT, bold:true, size:13 };
+    lr++;
+    const mergeSpan = Math.min(days, 12);
+    [
+      '1. 每月20日由店主管排好班表Email給零售經理核准',
+      '2. 班別請依照「班別代號」及「顏色」填入班表中,不應有任何其他記號',
+      '3. 補休規定：應事先排定於班表內，除班表排定之臨時補休需經由店主管核准。假日及特殊活動檔期不可抵休、補休；當日同一班別不可申請兩人補休。',
+      '4. 店主管有權依照實際營業需求安排及調整同事的休假。',
+      '5. 若遇國定假日上班同仁，請務必於班表中註記挪移休假之日期。',
+    ].forEach(txt => {
+      ws.mergeCells(lr,2,lr,2+mergeSpan);
+      const c = ws.getCell(lr,2);
+      c.value = txt;
+      c.font = { name:FONT, size:10 };
+      c.alignment = { horizontal:'left', vertical:'middle', wrapText:true };
+      ws.getRow(lr).height = 28;
+      lr++;
+    });
+
+    /* 製表資訊（本次匯出日期，每次匯出自動更新） */
+    lr += 1;
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    ws.getCell(lr,2).value = `製表日期：${stamp}　製表人：＿＿＿＿＿＿　主管核准：＿＿＿＿＿＿`;
+    ws.getCell(lr,2).font = { name:FONT, size:10, italic:true, color:{argb:'FF8A887F'} };
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `MK排班_${S.month}_公司格式.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e){
+    console.error(e);
+    alert('匯出失敗：' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '📊 匯出公司格式 Excel';
+  }
+}
+
+/* ============================================================
    SETTINGS UI
 ============================================================ */
 function weekCells(i){
@@ -990,6 +1207,7 @@ document.getElementById('monthInput').addEventListener('change', e => { S.month 
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
+document.getElementById('xlsxBtn').addEventListener('click', exportCompanyExcel);
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('lockBtn').addEventListener('click', toggleLock);
 document.getElementById('clearBtn').addEventListener('click', clearResult);
