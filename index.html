@@ -300,6 +300,15 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 .hm-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 10px 2px; }
 .hm-key i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--hair-soft); }
 
+.wk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.wk-tab {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .1em; padding: 8px 14px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--hair); color: var(--ink2);
+}
+.wk-tab .wk-range { display: block; font-size: 9px; color: var(--muted); margin-top: 1px; }
+.wk-tab.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+.wk-tab.active .wk-range { color: rgba(255,255,255,0.7); }
+
 /* ============ ANALYTICS ============ */
 .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
 .metric-box { border: 1px solid var(--hair-soft); background: var(--paper); padding: 15px; }
@@ -507,6 +516,20 @@ table.wcat-table { min-width: 560px; }
         每個人至少有一格綠色——<b>團隊裡沒有弱者，只有還沒交換的方法。</b>
       </div>
     </section>
+    <section class="sec" id="weeklyHmSec" style="display:none">
+      <div class="sec-kicker">Weekly Heatmap</div>
+      <div class="sec-title">每個同事的每週品類熱力圖</div>
+      <div class="sec-note">依零售財務週（週日–週六）拆分；顏色代表當週該品類在全店同事間的相對強弱。</div>
+      <div class="wk-tabs" id="wkTabs"></div>
+      <div class="hm-key">
+        <span><i style="background:rgba(12,163,12,0.22)"></i>明顯高於當週店均</span>
+        <span><i style="background:rgba(12,163,12,0.10)"></i>高於當週店均</span>
+        <span><i style="background:#fff"></i>接近當週店均</span>
+        <span><i style="background:rgba(208,59,59,0.08)"></i>低於當週店均</span>
+        <span><i style="background:rgba(208,59,59,0.18)"></i>明顯低於當週店均</span>
+      </div>
+      <div class="hm-scroll" id="weeklyHeatmap"></div>
+    </section>
   </div>
 </div>
 
@@ -631,7 +654,7 @@ function loadMonth(id){
   renderHero(); renderTrend(); renderKpis(); renderStoreCats(); renderBadges();
   renderPodium(); renderLeaderboard();
   renderChips(); selectPerson(CUR.people[0].id);
-  renderTeachers(); renderHeatmap();
+  renderTeachers(); renderHeatmap(); renderWeeklyHeatmap();
   renderAnalytics();
   renderAction();
   history.replaceState(null, '', '?m=' + id);
@@ -914,6 +937,60 @@ function renderHeatmap(){
         <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px"></span>${p.name.split(' ')[0]}</td>
         ${CUR.hmCats.map(c => { const v = CUR.hmData[p.id][c]; return `<td class="${hmClass(v, CUR.hmAvg[c])} num">${hmMark(v, CUR.hmAvg[c])}</td>`; }).join('')}
       </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+/* ============ WEEKLY HEATMAP (每個同事的每週品類熱力圖) ============ */
+let selWeek = 0;
+function hmMarkAmt(v, avg){
+  if (!v) return '—';
+  const r = avg ? v / avg : 0;
+  const arrow = r >= 1.5 ? ' ▲▲' : r >= 1.1 ? ' ▲' : r > 0.85 ? '' : r > 0.55 ? ' ▼' : ' ▼▼';
+  return fmtN(v) + arrow;
+}
+function renderWeeklyHeatmap(){
+  const sec = document.getElementById('weeklyHmSec');
+  const wc = CUR.weeklyCat;
+  const peopleWithData = CUR.people.filter(p => wc && wc[p.id] && wc[p.id].length);
+  if (!peopleWithData.length){ sec.style.display = 'none'; return; }
+  sec.style.display = '';
+
+  const weekCount = Math.max(...peopleWithData.map(p => wc[p.id].length));
+  if (selWeek >= weekCount) selWeek = weekCount - 1;
+  const anyWeeks = wc[peopleWithData[0].id];
+
+  document.getElementById('wkTabs').innerHTML = anyWeeks.map((w, i) =>
+    `<button class="wk-tab ${i===selWeek?'active':''}" onclick="selWeek=${i};renderWeeklyHeatmap()">${w.label}<span class="wk-range">${w.range}</span></button>`
+  ).join('');
+
+  const cats = new Set();
+  peopleWithData.forEach(p => {
+    const w = wc[p.id][selWeek];
+    if (w) Object.keys(w.cats).forEach(c => { if (w.cats[c] > 0) cats.add(c); });
+  });
+  const catList = [...cats].sort((a,b) => {
+    const sa = peopleWithData.reduce((s,p) => s + ((wc[p.id][selWeek]||{}).cats?.[a] || 0), 0);
+    const sb = peopleWithData.reduce((s,p) => s + ((wc[p.id][selWeek]||{}).cats?.[b] || 0), 0);
+    return sb - sa;
+  });
+
+  const avgByCat = {};
+  catList.forEach(c => {
+    const sum = peopleWithData.reduce((s,p) => s + ((wc[p.id][selWeek]||{}).cats?.[c] || 0), 0);
+    avgByCat[c] = sum / peopleWithData.length;
+  });
+
+  document.getElementById('weeklyHeatmap').innerHTML = `
+  <table class="hm">
+    <thead><tr><th class="sticky-col">夥伴</th>${catList.map(c => `<th>${c}<br><span style="font-weight:400">週均 ${fmtN(Math.round(avgByCat[c]))}</span></th>`).join('')}</tr></thead>
+    <tbody>${peopleWithData.map(p => {
+      const wk = wc[p.id][selWeek] || { cats:{} };
+      return `<tr>
+        <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px"></span>${p.name.split(' ')[0]}</td>
+        ${catList.map(c => { const v = wk.cats[c] || 0; return `<td class="${hmClass(v, avgByCat[c])} num">${hmMarkAmt(v, avgByCat[c])}</td>`; }).join('')}
+      </tr>`;
+    }).join('')}
     </tbody>
   </table>`;
 }
