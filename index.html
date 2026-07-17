@@ -290,7 +290,8 @@ b { font-weight: 700; }
 table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg); }
 .hm th { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 11px 8px; text-align: center; border-bottom: 1px solid var(--ink); white-space: nowrap; }
 .hm th.sticky-col, .hm td.sticky-col { position: sticky; left: 0; background: var(--bg); text-align: left; z-index: 2; border-right: 1px solid var(--hair); font-weight: 700; }
-.hm td { padding: 10px 8px; text-align: center; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--hair-soft); white-space: nowrap; }
+.hm td { padding: 10px 8px; text-align: center; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--hair-soft); white-space: nowrap; line-height: 1.5; }
+.hm-qty { font-size: 9px; font-weight: 400; opacity: .7; }
 .hm .above { background: rgba(12,163,12,0.10); color: #1d5a1d; }
 .hm .strong { background: rgba(12,163,12,0.22); color: #124312; }
 .hm .near { color: var(--ink2); }
@@ -331,14 +332,6 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 .table-analytics tr:hover { background: var(--paper); }
 .stat-up { color: var(--good); font-weight: 600; }
 .stat-down { color: var(--crit); font-weight: 600; }
-
-.wcat-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table.wcat-table { min-width: 560px; }
-.wcat-table th, .wcat-table td { text-align: right; white-space: nowrap; }
-.wcat-table th:first-child, .wcat-table td:first-child { text-align: left; white-space: normal; }
-.wcat-table td.wcat-max { color: var(--gold-dark); font-weight: 700; }
-.wcat-table td.wcat-zero { color: rgba(17,17,17,0.22); }
-.wcat-table tr.wcat-total td { border-top: 1px solid var(--ink); font-weight: 700; background: var(--paper); }
 
 /* ============ ACTION TAB ============ */
 .play-card { border-left: 3px solid var(--gold); }
@@ -390,10 +383,8 @@ table.wcat-table { min-width: 560px; }
 <nav class="tabnav" aria-label="主導航">
   <ul>
     <li><button data-tab="overview" class="active">總覽</button></li>
-    <li><button data-tab="rank">排行</button></li>
     <li><button data-tab="me">個人</button></li>
     <li><button data-tab="cat">品類</button></li>
-    <li><button data-tab="analytics">分析</button></li>
     <li><button data-tab="action">行動</button></li>
     <li><a class="navlink" href="schedule.html">排班</a></li>
   </ul>
@@ -426,6 +417,15 @@ table.wcat-table { min-width: 560px; }
     </section>
 
     <section class="sec">
+      <div class="sec-kicker">Leaderboard</div>
+      <div class="sec-title">本月業績排行</div>
+      <div class="podium" id="podium"></div>
+      <div class="card" id="lbList"></div>
+      <div class="callout" id="calloutAlert"></div>
+      <div class="callout gold" id="calloutTip"></div>
+    </section>
+
+    <section class="sec">
       <div class="sec-kicker">Category Mix</div>
       <div class="sec-title">門市品類佔比</div>
       <div class="card" id="storeCatBars"></div>
@@ -440,21 +440,7 @@ table.wcat-table { min-width: 560px; }
   </div>
 </div>
 
-<!-- TAB 2 : RANK -->
-<div class="tab-panel" id="tab-rank">
-  <div class="wrap">
-    <section class="sec">
-      <div class="sec-kicker">Leaderboard</div>
-      <div class="sec-title">本月業績排行</div>
-      <div class="podium" id="podium"></div>
-      <div class="card" id="lbList"></div>
-      <div class="callout" id="calloutAlert"></div>
-      <div class="callout gold" id="calloutTip"></div>
-    </section>
-  </div>
-</div>
-
-<!-- TAB 3 : ME -->
+<!-- TAB 2 : ME -->
 <div class="tab-panel" id="tab-me">
   <div class="wrap">
     <section class="sec">
@@ -478,11 +464,6 @@ table.wcat-table { min-width: 560px; }
           <div class="radar-legend"><span><i class="rl-line" id="radarLegendMe"></i><span id="radarLegendName">我</span></span><span><i class="rl-line dash"></i>團隊平均</span></div>
         </div>
       </div>
-      <div class="card" id="weeklyCatCard" style="display:none">
-        <div class="subhead">每週各品類銷售明細</div>
-        <div class="sec-note" style="margin:-6px 0 12px">依零售財務週（週日–週六）拆分，看得出每週的品類重心變化。</div>
-        <div class="wcat-scroll"><table class="table-analytics wcat-table" id="weeklyCatTable"></table></div>
-      </div>
       <div class="card">
         <div class="subhead">教練筆記</div>
         <div id="insights"></div>
@@ -493,7 +474,7 @@ table.wcat-table { min-width: 560px; }
   </div>
 </div>
 
-<!-- TAB 4 : CATEGORY -->
+<!-- TAB 3 : CATEGORY -->
 <div class="tab-panel" id="tab-cat">
   <div class="wrap">
     <section class="sec">
@@ -501,22 +482,6 @@ table.wcat-table { min-width: 560px; }
       <div class="sec-title">品類老師制 — 有問題找對人</div>
       <div class="sec-note">每個品類由當月表現最強的夥伴擔任「老師」。想提升哪個品類，直接請教該品類的老師。</div>
       <div class="teacher-grid" id="teacherGrid"></div>
-    </section>
-    <section class="sec">
-      <div class="sec-kicker">Heatmap</div>
-      <div class="sec-title">品類強弱熱力圖</div>
-      <div class="hm-key">
-        <span><i style="background:rgba(12,163,12,0.22)"></i>明顯高於店均</span>
-        <span><i style="background:rgba(12,163,12,0.10)"></i>高於店均</span>
-        <span><i style="background:#fff"></i>接近店均</span>
-        <span><i style="background:rgba(208,59,59,0.08)"></i>低於店均</span>
-        <span><i style="background:rgba(208,59,59,0.18)"></i>明顯低於店均</span>
-      </div>
-      <div class="hm-scroll" id="heatmap"></div>
-      <div class="callout gold" style="margin-top:14px">
-        <b>怎麼用這張表：</b>綠色格 = 你的教學區（別人來請教你）；紅色格 = 你的學習區（去找那格是綠色的人）。
-        每個人至少有一格綠色——<b>團隊裡沒有弱者，只有還沒交換的方法。</b>
-      </div>
     </section>
     <section class="sec" id="weeklyHmSec" style="display:none">
       <div class="sec-kicker">Weekly Heatmap</div>
@@ -535,13 +500,12 @@ table.wcat-table { min-width: 560px; }
         <span><i style="background:rgba(208,59,59,0.18)"></i>明顯低於當週店均</span>
       </div>
       <div class="hm-scroll" id="weeklyHeatmap"></div>
+      <div class="callout gold" style="margin-top:14px">
+        <b>怎麼用這張表：</b>綠色格 = 那週的教學區（別人來請教你）；紅色格 = 那週的學習區（去找那格是綠色的人）。
+        用左右箭頭切換週別，看每週品類重心怎麼變化。
+      </div>
     </section>
-  </div>
-</div>
 
-<!-- TAB 5 : ANALYTICS -->
-<div class="tab-panel" id="tab-analytics">
-  <div class="wrap">
     <section class="sec">
       <div class="sec-kicker">Sales Trend</div>
       <div class="sec-title">營業額走勢與業績達成率</div>
@@ -581,7 +545,7 @@ table.wcat-table { min-width: 560px; }
   </div>
 </div>
 
-<!-- TAB 6 : ACTION -->
+<!-- TAB 4 : ACTION -->
 <div class="tab-panel" id="tab-action">
   <div class="wrap">
     <section class="sec">
@@ -660,7 +624,7 @@ function loadMonth(id){
   renderHero(); renderTrend(); renderKpis(); renderStoreCats(); renderBadges();
   renderPodium(); renderLeaderboard();
   renderChips(); selectPerson(CUR.people[0].id);
-  renderTeachers(); renderHeatmap(); renderWeeklyHeatmap();
+  renderTeachers(); renderWeeklyHeatmap();
   renderAnalytics();
   renderAction();
   history.replaceState(null, '', '?m=' + id);
@@ -840,43 +804,6 @@ function selectPerson(id){
   document.getElementById('radar').innerHTML = drawRadar(me, avg, p.hex);
   document.getElementById('radarLegendMe').style.borderColor = p.hex;
   document.getElementById('radarLegendName').textContent = p.name.split(' ')[0];
-
-  renderWeeklyCat(id);
-}
-
-/* ============ 每週品類銷售 ============ */
-function renderWeeklyCat(id){
-  const card = document.getElementById('weeklyCatCard');
-  const weeks = (CUR.weeklyCat || {})[id];
-  if (!weeks || !weeks.length){ card.style.display = 'none'; return; }
-  card.style.display = '';
-
-  const catSet = new Set();
-  weeks.forEach(w => Object.keys(w.cats).forEach(k => catSet.add(k)));
-  const cats = [...catSet].filter(k => weeks.some(w => w.cats[k] > 0))
-    .sort((a,b) => {
-      const sa = weeks.reduce((s,w) => s + (w.cats[a]||0), 0);
-      const sb = weeks.reduce((s,w) => s + (w.cats[b]||0), 0);
-      return sb - sa;
-    });
-
-  let h = '<thead><tr><th>品類</th>' +
-    weeks.map(w => `<th>${w.label}<br><span style="font-weight:400;color:var(--muted);font-size:10px">${w.range}</span></th>`).join('') +
-    '</tr></thead><tbody>';
-
-  cats.forEach(cat => {
-    const vals = weeks.map(w => w.cats[cat] || 0);
-    const max = Math.max(...vals);
-    h += `<tr><td>${cat}</td>` + vals.map(v =>
-      `<td class="num ${v===0?'wcat-zero':(v===max && max>0?'wcat-max':'')}">${v ? fmtN(v) : '—'}</td>`
-    ).join('') + '</tr>';
-  });
-
-  h += `<tr class="wcat-total"><td>週合計</td>` +
-    weeks.map(w => `<td class="num">${fmtN(w.total)}</td>`).join('') +
-    '</tr></tbody>';
-
-  document.getElementById('weeklyCatTable').innerHTML = h;
 }
 
 function drawRadar(me, avg, hex){
@@ -928,32 +855,14 @@ function hmClass(v, avg){
   if (r > 0.55) return 'below';
   return 'weak';
 }
-function hmMark(v, avg){
-  if (v === 0) return '—';
-  const r = v / avg;
-  const arrow = r >= 1.5 ? ' ▲▲' : r >= 1.1 ? ' ▲' : r > 0.85 ? '' : r > 0.55 ? ' ▼' : ' ▼▼';
-  return v + '%' + arrow;
-}
-function renderHeatmap(){
-  document.getElementById('heatmap').innerHTML = `
-  <table class="hm">
-    <thead><tr><th class="sticky-col">夥伴</th>${CUR.hmCats.map(c => `<th>${c}<br><span style="font-weight:400">店均 ${CUR.hmAvg[c]}%</span></th>`).join('')}</tr></thead>
-    <tbody>${CUR.people.map(p => `
-      <tr>
-        <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px"></span>${p.name.split(' ')[0]}</td>
-        ${CUR.hmCats.map(c => { const v = CUR.hmData[p.id][c]; return `<td class="${hmClass(v, CUR.hmAvg[c])} num">${hmMark(v, CUR.hmAvg[c])}</td>`; }).join('')}
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
 /* ============ WEEKLY HEATMAP (每個同事的每週品類熱力圖) ============ */
 let selWeek = 0;
-function hmMarkAmt(v, avg){
+function hmMarkAmt(v, avg, qty){
   if (!v) return '—';
   const r = avg ? v / avg : 0;
   const arrow = r >= 1.5 ? ' ▲▲' : r >= 1.1 ? ' ▲' : r > 0.85 ? '' : r > 0.55 ? ' ▼' : ' ▼▼';
-  return fmtN(v) + arrow;
+  const qtyLine = qty ? `<br><span class="hm-qty">${qty} 件</span>` : '';
+  return fmtN(v) + arrow + qtyLine;
 }
 function renderWeeklyHeatmap(){
   const sec = document.getElementById('weeklyHmSec');
@@ -998,7 +907,7 @@ function renderWeeklyHeatmap(){
       const wk = wc[p.id][selWeek] || { cats:{} };
       return `<tr>
         <td class="sticky-col"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.hex};margin-right:7px"></span>${p.name.split(' ')[0]}</td>
-        ${catList.map(c => { const v = wk.cats[c] || 0; return `<td class="${hmClass(v, avgByCat[c])} num">${hmMarkAmt(v, avgByCat[c])}</td>`; }).join('')}
+        ${catList.map(c => { const v = wk.cats[c] || 0; const q = (wk.qty||{})[c] || 0; return `<td class="${hmClass(v, avgByCat[c])} num">${hmMarkAmt(v, avgByCat[c], q)}</td>`; }).join('')}
       </tr>`;
     }).join('')}
     </tbody>
