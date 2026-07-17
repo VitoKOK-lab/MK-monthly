@@ -321,6 +321,14 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 .stat-up { color: var(--good); font-weight: 600; }
 .stat-down { color: var(--crit); font-weight: 600; }
 
+.wcat-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.wcat-table { min-width: 560px; }
+.wcat-table th, .wcat-table td { text-align: right; white-space: nowrap; }
+.wcat-table th:first-child, .wcat-table td:first-child { text-align: left; white-space: normal; }
+.wcat-table td.wcat-max { color: var(--gold-dark); font-weight: 700; }
+.wcat-table td.wcat-zero { color: rgba(17,17,17,0.22); }
+.wcat-table tr.wcat-total td { border-top: 1px solid var(--ink); font-weight: 700; background: var(--paper); }
+
 /* ============ ACTION TAB ============ */
 .play-card { border-left: 3px solid var(--gold); }
 .play-card .pl-t { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
@@ -458,6 +466,11 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
           <div id="radar"></div>
           <div class="radar-legend"><span><i class="rl-line" id="radarLegendMe"></i><span id="radarLegendName">我</span></span><span><i class="rl-line dash"></i>團隊平均</span></div>
         </div>
+      </div>
+      <div class="card" id="weeklyCatCard" style="display:none">
+        <div class="subhead">每週各品類銷售明細</div>
+        <div class="sec-note" style="margin:-6px 0 12px">依零售財務週（週日–週六）拆分，看得出每週的品類重心變化。</div>
+        <div class="wcat-scroll"><table class="table-analytics wcat-table" id="weeklyCatTable"></table></div>
       </div>
       <div class="card">
         <div class="subhead">教練筆記</div>
@@ -798,6 +811,43 @@ function selectPerson(id){
   document.getElementById('radar').innerHTML = drawRadar(me, avg, p.hex);
   document.getElementById('radarLegendMe').style.borderColor = p.hex;
   document.getElementById('radarLegendName').textContent = p.name.split(' ')[0];
+
+  renderWeeklyCat(id);
+}
+
+/* ============ 每週品類銷售 ============ */
+function renderWeeklyCat(id){
+  const card = document.getElementById('weeklyCatCard');
+  const weeks = (CUR.weeklyCat || {})[id];
+  if (!weeks || !weeks.length){ card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const catSet = new Set();
+  weeks.forEach(w => Object.keys(w.cats).forEach(k => catSet.add(k)));
+  const cats = [...catSet].filter(k => weeks.some(w => w.cats[k] > 0))
+    .sort((a,b) => {
+      const sa = weeks.reduce((s,w) => s + (w.cats[a]||0), 0);
+      const sb = weeks.reduce((s,w) => s + (w.cats[b]||0), 0);
+      return sb - sa;
+    });
+
+  let h = '<thead><tr><th>品類</th>' +
+    weeks.map(w => `<th>${w.label}<br><span style="font-weight:400;color:var(--muted);font-size:10px">${w.range}</span></th>`).join('') +
+    '</tr></thead><tbody>';
+
+  cats.forEach(cat => {
+    const vals = weeks.map(w => w.cats[cat] || 0);
+    const max = Math.max(...vals);
+    h += `<tr><td>${cat}</td>` + vals.map(v =>
+      `<td class="num ${v===0?'wcat-zero':(v===max && max>0?'wcat-max':'')}">${v ? fmtN(v) : '—'}</td>`
+    ).join('') + '</tr>';
+  });
+
+  h += `<tr class="wcat-total"><td>週合計</td>` +
+    weeks.map(w => `<td class="num">${fmtN(w.total)}</td>`).join('') +
+    '</tr></tbody>';
+
+  document.getElementById('weeklyCatTable').innerHTML = h;
 }
 
 function drawRadar(me, avg, hex){
