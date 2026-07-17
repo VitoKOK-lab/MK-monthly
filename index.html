@@ -300,14 +300,16 @@ table.hm { border-collapse: collapse; width: 100%; min-width: 640px; background:
 .hm-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 10px 2px; }
 .hm-key i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--hair-soft); }
 
-.wk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.wk-tab {
-  font-family: var(--sans); font-size: 11px; letter-spacing: .1em; padding: 8px 14px; cursor: pointer;
-  background: var(--bg); border: 1px solid var(--hair); color: var(--ink2);
+.wk-pager { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 14px; }
+.wk-arrow {
+  width: 36px; height: 36px; flex-shrink: 0; font-family: var(--sans); font-size: 14px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--ink); color: var(--ink); transition: opacity .15s;
 }
-.wk-tab .wk-range { display: block; font-size: 9px; color: var(--muted); margin-top: 1px; }
-.wk-tab.active { border-color: var(--ink); background: var(--ink); color: #fff; }
-.wk-tab.active .wk-range { color: rgba(255,255,255,0.7); }
+.wk-arrow:hover { opacity: .7; }
+.wk-arrow:disabled { opacity: .25; cursor: not-allowed; }
+.wk-cur { text-align: center; min-width: 140px; }
+.wk-cur span#wkCurLabel { display: block; font-size: 15px; font-weight: 700; letter-spacing: .08em; color: var(--ink); }
+.wk-cur .wk-range { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 
 /* ============ ANALYTICS ============ */
 .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
@@ -520,7 +522,11 @@ table.wcat-table { min-width: 560px; }
       <div class="sec-kicker">Weekly Heatmap</div>
       <div class="sec-title">每個同事的每週品類熱力圖</div>
       <div class="sec-note">依零售財務週（週日–週六）拆分；顏色代表當週該品類在全店同事間的相對強弱。</div>
-      <div class="wk-tabs" id="wkTabs"></div>
+      <div class="wk-pager">
+        <button class="wk-arrow" id="wkPrev" aria-label="上一週">◀</button>
+        <div class="wk-cur"><span id="wkCurLabel"></span><span class="wk-range" id="wkCurRange"></span></div>
+        <button class="wk-arrow" id="wkNext" aria-label="下一週">▶</button>
+      </div>
       <div class="hm-key">
         <span><i style="background:rgba(12,163,12,0.22)"></i>明顯高於當週店均</span>
         <span><i style="background:rgba(12,163,12,0.10)"></i>高於當週店均</span>
@@ -960,9 +966,13 @@ function renderWeeklyHeatmap(){
   if (selWeek >= weekCount) selWeek = weekCount - 1;
   const anyWeeks = wc[peopleWithData[0].id];
 
-  document.getElementById('wkTabs').innerHTML = anyWeeks.map((w, i) =>
-    `<button class="wk-tab ${i===selWeek?'active':''}" onclick="selWeek=${i};renderWeeklyHeatmap()">${w.label}<span class="wk-range">${w.range}</span></button>`
-  ).join('');
+  document.getElementById('wkCurLabel').textContent = anyWeeks[selWeek].label;
+  document.getElementById('wkCurRange').textContent = anyWeeks[selWeek].range;
+  const prevBtn = document.getElementById('wkPrev'), nextBtn = document.getElementById('wkNext');
+  prevBtn.disabled = selWeek <= 0;
+  nextBtn.disabled = selWeek >= weekCount - 1;
+  prevBtn.onclick = () => { if (selWeek > 0){ selWeek--; renderWeeklyHeatmap(); } };
+  nextBtn.onclick = () => { if (selWeek < weekCount - 1){ selWeek++; renderWeeklyHeatmap(); } };
 
   const cats = new Set();
   peopleWithData.forEach(p => {
