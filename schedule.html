@@ -55,6 +55,7 @@ input[type="month"], select, input[type="text"], input[type="number"] {
 .btn.gold { background: var(--gold-dark); border-color: var(--gold-dark); }
 .btn:disabled { opacity: .4; cursor: wait; }
 .check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink2); padding: 8px 0; }
+.fixmode-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 10px; }
 
 /* staff table */
 .staff-scroll { overflow-x: auto; }
@@ -123,6 +124,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .cell.s1 { background: var(--mid-wash); color: #1c5cab; }
 .cell.s2 { background: var(--e-wash); color: #2f6030; }
 .cell.s3 { background: #ffffff; color: var(--crit); }
+.cell.s4 { background: #eceff4; color: #44546a; font-weight: 700; }
+.cell.asg { text-decoration: underline; text-underline-offset: 2px; font-weight: 700; }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .cell.manual { position: relative; }
 .cell.manual::after { content: ''; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--crit); }
@@ -212,6 +215,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
         <span><i style="background:var(--mid-wash)"></i>中班</span>
         <span><i style="background:var(--e-wash)"></i>晚班</span>
         <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
+        <span><i style="background:#eceff4"></i>出差（不在店）</span>
+        <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
         <span style="color:var(--gold-dark)">BL/AL = 特殊假</span>
       </div>
       <div class="hint" id="pubMeta"></div>
@@ -266,10 +271,17 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="card">
     <div class="subhead">國定假日（點日期切換；週六日自動視為假日）</div>
     <div class="mini-cal" id="holiCal"></div>
-    <div class="subhead" style="margin-top:20px">指休與 BL/AL 特殊假 — 先選人，再點日期循環：<span style="letter-spacing:0;text-transform:none">空 → 指休 → BL → AL → 清除</span></div>
+    <div class="subhead" style="margin-top:20px">指休 / 特殊假 / 出差 / 指班 — 先選人、選模式，再點日期</div>
     <div class="person-chips" id="fixChips"></div>
+    <div class="fixmode-row" id="fixModeRow">
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="cycle" checked> 休假循環（空 → 指休 → BL → AL → 清除）</label>
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="biz"> 出差（不在店、不排班）</label>
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a0"> 指班・早</label>
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a1"> 指班・中</label>
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a2"> 指班・晚</label>
+    </div>
     <div class="mini-cal" id="fixCal"></div>
-    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。指休可少於額度，其餘由系統補滿。</div>
+    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
   </div>
 </section>
 
@@ -303,6 +315,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <span><i style="background:var(--mid-wash)"></i>中班</span>
     <span><i style="background:var(--e-wash)"></i>晚班</span>
     <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
+        <span><i style="background:#eceff4"></i>出差（不在店）</span>
+        <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
     <span>底線 = 指休/固定休</span>
     <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
     <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
@@ -346,14 +360,20 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       時由 Liv、Demi 輪流補位（三人可同時晚班）
    6. 週一早班盡量從前一天（週日）晚班的人挑；其中「週二剛好休假」
       者最優先（晚→早→休 補償輪轉，軟性偏好）
-   7. 連上偏好：Liv/Demi 喜歡做一休一（休假盡量打散）；其他人不喜
-      歡做一休一（傾向連上 2–3 天）；連四重罰、連五禁止
-   8. 早班天數各人差距 ≤ ±1（店長不計）
-   9. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）
+   7. 連上偏好（軟性，喜好不強迫）：Liv/Demi 喜歡做一休一（休假盡量
+      打散）；其他人不喜歡做一休一（傾向連上 2–3 天）；連四重罰、
+      連五禁止（硬）
+   8. 早班天數各人差距 ≤ ±1（店長/Demi 不計；Demi 減少排早班）
+   9. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）；
+      Liv、Demi 不可同一個週一都休（避免店長被迫週一鎮晚班）
    10. 指休、BL/AL、週律（固定休／固定班）為硬條件
+   11. 出差＝當日不在店：不排班、不佔休假額度、不計每日人力，
+       格子顯示「出差」（Excel 匯出對應 OL 公假代碼）
+   12. 指班＝指定某日必須上某時段（早/中/晚）：硬條件，格子顯示
+       「指班」字樣（指早/指中/指晚）
 ============================================================ */
 const DOW = ['日','一','二','三','四','五','六'];
-const SHIFT_NAME = ['早','中','晚','休'];
+const SHIFT_NAME = ['早','中','晚','休','出差'];
 const ROLES = ['店長','Sup','SSA','SA'];
 const LS_KEY = 'mk-scheduler-v2';
 
@@ -473,7 +493,17 @@ function fixedOf(i){
   for (const d of specialSet(i)) s.add(d);
   return s;
 }
-const blockedOf = i => weeklyDays(i,'work');
+/* 出差：當日不在店 — 不排班、不佔休假額度、不計入當日人力 */
+const bizOf = i => new Set((((S.biz||{})[S.month])||{})[i] || []);
+/* 指班：指定某日必須上某時段 {day: 0早|1中|2晚}（硬條件） */
+const assignOf = i => (((S.assign||{})[S.month])||{})[i] || {};
+/* 不可休 = 週律固定班 + 出差 + 指班 */
+function blockedOf(i){
+  const s = weeklyDays(i,'work');
+  for (const d of bizOf(i)) s.add(d);
+  for (const d of Object.keys(assignOf(i)).map(Number)) s.add(d);
+  return s;
+}
 /* 總休假目標 = 正常額度 + 特殊假天數 */
 const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 
@@ -500,10 +530,16 @@ function scoreOff(off, cfg){
   const { days, N, quotas, trioIdx, exempt } = cfg;
   const altIdx = cfg.altIdx || new Set();   /* 喜歡做一休一的人（Liv/Demi） */
   let sc = 0;
-  /* offCount 只計「規則內」員工 — 店長為規則外額外人力，不佔人力數 */
+  /* offCount 只計「規則內」員工 — 店長為規則外額外人力，不佔人力數；
+     出差日視同不在店，一併從當日人力扣除 */
   const offCount = new Array(days+1).fill(0);
+  const bizCnt = new Array(days+1).fill(0);
   let nReg = 0;
-  for (let i=0;i<N;i++) if (!exempt.has(i)) nReg++;
+  for (let i=0;i<N;i++){
+    if (exempt.has(i)) continue;
+    nReg++;
+    for (const d of (cfg.biz && cfg.biz[i] ? cfg.biz[i] : [])) bizCnt[d]++;
+  }
   for (let i=0;i<N;i++){
     const isEx = exempt.has(i);
     let restDays = 0;
@@ -530,7 +566,7 @@ function scoreOff(off, cfg){
     else if (likesAlt && run >= 2) sc += (run - 1) * 8;
   }
   for (let d=1; d<=days; d++){
-    const workers = nReg - offCount[d];
+    const workers = nReg - offCount[d] - bizCnt[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
     if (workers > dem.cap) sc += 8 * (workers - dem.cap);
@@ -541,6 +577,13 @@ function scoreOff(off, cfg){
       let c = 0;
       for (const i of trioIdx) if (off[i].has(d)) c++;
       if (c >= th) sc += 800 * (c - th + 1);
+    }
+  }
+  /* 禁止 Liv、Demi 同一個週一都休（避免店長被迫在週一鎮晚班） */
+  if (altIdx.size >= 2){
+    const alt = [...altIdx];
+    for (let d=1; d<=days; d++){
+      if (dowOf(d) === 1 && alt.every(i => off[i].has(d))) sc += 900;
     }
   }
   return sc;
@@ -661,38 +704,58 @@ function assignShifts(off, cfg){
   const exempt = cfg.exempt || exemptSet();
 
   for (let d=1; d<=days; d++){
+    /* 0a. 出差：不在店，畫記 4，之後所有分配都跳過 */
     const workers = [];
-    for (let i=0;i<N;i++) if (!off[i].has(d)) workers.push(i);
+    for (let i=0;i<N;i++){
+      if (off[i].has(d)) continue;
+      if (bizOf(i).has(d)){ grid[i][d] = 4; continue; }
+      workers.push(i);
+    }
     if (!workers.length) continue;
     const dem = demand(d);
     const w = dowOf(d);
+    /* 0b. 指班：先套用強制班別（硬條件） */
+    workers.forEach(i => {
+      const a = assignOf(i)[d];
+      if (a !== undefined){ grid[i][d] = a; if (a === 0 && !exempt.has(i)) mCount[i]++; }
+    });
     /* 人力規則只對「規則內」員工計數；店長是額外加上去的 */
     const regular = workers.filter(i => !exempt.has(i));
 
-    /* 1. 先鎖定一位管理職上晚班（Liv/Demi 輪流優先，都休才輪到 Wiggie） */
+    /* 1. 晚班鎮店：若已有管理職被指班晚班則直接算數；
+       否則鎖定一位（Liv/Demi 輪流優先，都不可用才輪到 Wiggie） */
     let anchor = -1;
-    const livIn = livIdx >= 0 && workers.includes(livIdx);
-    const demiIn = demiIdx >= 0 && workers.includes(demiIdx);
-    if (livIn && demiIn){ anchor = (lastCover === livIdx) ? demiIdx : livIdx; lastCover = anchor; }
-    else if (livIn){ anchor = livIdx; lastCover = livIdx; }
-    else if (demiIn){ anchor = demiIdx; lastCover = demiIdx; }
-    else if (wiggieIdx >= 0 && workers.includes(wiggieIdx)) anchor = wiggieIdx;
-    if (anchor >= 0) grid[anchor][d] = 2;
+    const preEve = trioAll.filter(t => workers.includes(t) && grid[t][d] === 2);
+    if (preEve.length){
+      anchor = preEve[0];
+      if (anchor === livIdx || anchor === demiIdx) lastCover = anchor;
+    } else {
+      const avail = i => i >= 0 && workers.includes(i) && grid[i][d] === 3;
+      const livIn = avail(livIdx), demiIn = avail(demiIdx);
+      if (livIn && demiIn){ anchor = (lastCover === livIdx) ? demiIdx : livIdx; lastCover = anchor; }
+      else if (livIn){ anchor = livIdx; lastCover = livIdx; }
+      else if (demiIn){ anchor = demiIdx; lastCover = demiIdx; }
+      else if (avail(wiggieIdx)) anchor = wiggieIdx;
+      if (anchor >= 0) grid[anchor][d] = 2;
+    }
 
     /* 2. 早班（週一早班盡量從前一天週日晚班的人挑；
-       其中「週二剛好休假」的人最優先 — 晚→早→休 補償輪轉） */
-    const pool = regular.filter(i => i !== anchor);
+       其中「週二剛好休假」的人最優先 — 晚→早→休 補償輪轉；
+       Demi 減少早班：挑選時排最後順位） */
+    const pool = regular.filter(i => grid[i][d] === 3);
+    let mHave = regular.filter(i => grid[i][d] === 0).length;
     const morning = [];
+    const demiBias = i => i === demiIdx ? 100 : 0;
     if (w === 1 && d > 1){
       const tueOff = i => (d + 1 <= days) && off[i].has(d + 1);
       const sunEve = pool.filter(i => grid[i][d-1] === 2)
-        .sort((a,b) => (tueOff(b) - tueOff(a)) || (mCount[a] - mCount[b]));
-      for (const i of sunEve){ if (morning.length >= dem.m) break; morning.push(i); }
+        .sort((a,b) => (demiBias(a) - demiBias(b)) || (tueOff(b) - tueOff(a)) || (mCount[a] - mCount[b]));
+      for (const i of sunEve){ if (mHave + morning.length >= dem.m) break; morning.push(i); }
     }
-    const fairKey = i => mCount[i] + (d>1 && grid[i][d-1]===2 ? 0.6 : 0);
+    const fairKey = i => mCount[i] + (d>1 && grid[i][d-1]===2 ? 0.6 : 0) + demiBias(i);
     const sorted = pool.slice().sort((a,b) => fairKey(a) - fairKey(b));
     for (const i of sorted){
-      if (morning.length >= dem.m) break;
+      if (mHave + morning.length >= dem.m) break;
       if (!morning.includes(i)) morning.push(i);
     }
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
@@ -700,27 +763,30 @@ function assignShifts(off, cfg){
     /* 3. 中班／晚班（只以規則內員工湊數）
        假日固定 1 中班；週二/五「早1」必開 1 中班；週一/三/四「早2」不開中班 */
     let rest = regular.filter(i => grid[i][d] === 3);
-    const mids = Math.min(dem.mid, rest.length);
+    const midHave = regular.filter(i => grid[i][d] === 1).length;
+    const mids = Math.max(0, Math.min(dem.mid - midHave, rest.length));
     for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
 
     /* 4. 店長（不做業績、只算人頭）上班日班別：
-       前一天休假 → 晚班；前一天有上班 → 中班（週日接週六休＝晚班、
+       前一天休假 → 晚班；前一天有上班（含出差）→ 中班（週日接週六休＝晚班、
        週一接週日班＝中班，自動滿足「週一固定中班」）；
-       Liv/Demi 同天都休時已被步驟 1 鎮為晚班，這裡不會再改 */
+       Liv/Demi 同天都休時已被步驟 1 鎮為晚班；指班日已於步驟 0b 套用 */
     workers.filter(i => exempt.has(i) && grid[i][d] === 3)
            .forEach(i => { grid[i][d] = (d > 1 && grid[i][d-1] === 3) ? 2 : 1; });
   }
 
-  /* 早班平衡修復（只平衡規則內員工；不可換走當天唯一的管理職晚班）
+  /* 早班平衡修復（只平衡規則內員工；Demi 減少早班不計入平衡；
+     不可換走當天唯一的管理職晚班；不可動指班格）
      掃描所有落差 ≥2 的配對，避免單一配對無日可換就卡住 */
   const canTake = (i, d) =>
     (grid[i][d]===1 || grid[i][d]===2) &&
+    assignOf(i)[d] === undefined &&
     !(grid[i][d]===2 && trioAll.includes(i) && !trioAll.some(t => t !== i && grid[t][d] === 2));
   for (let pass=0; pass<80; pass++){
     let done = false;
     const order = [];
-    for (let i=0;i<N;i++) if (!exempt.has(i)) order.push(i);
+    for (let i=0;i<N;i++) if (!exempt.has(i) && i !== demiIdx) order.push(i);
     order.sort((a,b) => mCount[b] - mCount[a]);
     outer:
     for (const hi of order){
@@ -728,7 +794,7 @@ function assignShifts(off, cfg){
         const lo = order[k];
         if (mCount[hi] - mCount[lo] <= 1) continue;
         for (let d=1; d<=days; d++){
-          if (grid[hi][d]===0 && canTake(lo, d)){
+          if (grid[hi][d]===0 && assignOf(hi)[d] === undefined && canTake(lo, d)){
             const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
             mCount[hi]--; mCount[lo]++; done = true;
             break outer;
@@ -753,15 +819,20 @@ function generate(){
     const { days } = monthInfo();
     const N = S.staff.length;
     const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
-    /* 預檢 1：固定休超過額度 / 指休撞固定班 */
+    /* 預檢 1：固定休超過額度 / 休假與必須上班（週律班、出差、指班）衝突 / 可休天數不足 */
     for (let i=0;i<N;i++){
       const fx = fixedOf(i), bl = blockedOf(i);
       if (fx.size > totalQuota(i)){
         document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：固定休＋指休＋特殊假共 ${fx.size} 天 > 總額度 ${totalQuota(i)} 天（正常 ${S.staff[i].quota}＋特假 ${specialSet(i).size}）`;
         btn.disabled = false; return;
       }
-      for (const d of manualFixed(i)) if (bl.has(d)){
-        document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：${d} 日指休與週律固定上班衝突`;
+      const clash = [...fx].filter(d => bl.has(d));
+      if (clash.length){
+        document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：${clash[0]} 日同時被設為休假（指休/特假/週律休）與必須上班（週律班/出差/指班），請先解衝突`;
+        btn.disabled = false; return;
+      }
+      if (days - bl.size < totalQuota(i)){
+        document.getElementById('status').textContent = `⚠ ${S.staff[i].name}：扣除固定班/出差/指班後僅剩 ${days - bl.size} 天可排休，不足額度 ${totalQuota(i)} 天`;
         btn.disabled = false; return;
       }
     }
@@ -788,6 +859,7 @@ function generate(){
       trioMode: S.trioMode,
       exempt: exemptSet(),   /* 店長 = 不做業績、只算人頭 */
       altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
+      biz: S.staff.map((_,i) => bizOf(i)),
     };
     let best = null;
     let seed = Date.now() % 100000;
@@ -819,11 +891,13 @@ function validate(){
   const stats = [];
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
   const exempt = exemptSet();
+  const demiIdxV = S.staff.findIndex(p => p.name === S.trio[2]);
   const mCounts = [];
   for (let i=0;i<N;i++){
     const sp = specialSet(i);
     const isEx = exempt.has(i);
-    let offN=0, restOff=0, spN=0, m=0, mid=0, e=0, maxRun=0, run=0;
+    const asg = assignOf(i);
+    let offN=0, restOff=0, spN=0, bizN=0, m=0, mid=0, e=0, maxRun=0, run=0;
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
       if (s===3){
@@ -831,10 +905,10 @@ function validate(){
         if (isRest(d)) restOff++;
         run=0;
       }
-      else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else e++; }
+      else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else if (s===2) e++; else if (s===4) bizN++; }
     }
-    if (!isEx) mCounts.push(m);
-    stats.push({ offN, restOff, spN, m, mid, e, maxRun });
+    if (!isEx && i !== demiIdxV) mCounts.push(m);
+    stats.push({ offN, restOff, spN, bizN, m, mid, e, maxRun });
     if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
     if (!isEx){
       if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
@@ -842,18 +916,26 @@ function validate(){
     }
     if (maxRun > 4) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（連五爆炸，禁止）`);
     for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日為指休/固定休/特殊假，卻被排班`);
-    for (const d of blockedOf(i)) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
+    for (const d of weeklyDays(i,'work')) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
+    for (const d of bizOf(i)) if (grid[i][d] !== 4) v.push(`${S.staff[i].name}：${d} 日為出差，卻被排班或休假`);
+    for (const dStr of Object.keys(asg)){
+      const dd = Number(dStr);
+      if (grid[i][dd] !== asg[dStr]) v.push(`${S.staff[i].name}：${dd} 日為指班（${SHIFT_NAME[asg[dStr]]}），實際排成「${SHIFT_NAME[grid[i][dd]] || '?'}」`);
+    }
   }
   const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
-  if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長不計）`);
+  if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長/Demi 不計）`);
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
+  const livIdxV = S.staff.findIndex(p => p.name === S.trio[1]);
   for (let d=1; d<=days; d++){
     let c=0;
     for (const i of trioIdx) if (grid[i][d]===3) c++;
     if (c>=th && th>=2) v.push(`${d} 日：互斥名單 ${c} 人同日休（${trioIdx.filter(i=>grid[i][d]===3).map(i=>S.staff[i].name).join('、')}）`);
-    /* 每日人力結構只計「規則內」員工（店長為額外人力不計數） */
+    if (dowOf(d) === 1 && livIdxV >= 0 && demiIdxV >= 0 && grid[livIdxV][d] === 3 && grid[demiIdxV][d] === 3)
+      v.push(`${d} 日（週一）：${S.trio[1]} 與 ${S.trio[2]} 同時休假（週一禁止兩人同休）`);
+    /* 每日人力結構只計「規則內」員工（店長為額外人力不計數；出差不在店不計） */
     let m=0, mid=0, e=0, workers=0;
-    for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
+    for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
@@ -900,9 +982,14 @@ function render(){
       hh += `<tr><td class="name-col">${S.staff[i].name}<span class="role-tag">${S.staff[i].role}</span></td>`;
       const fx = fixedOf(i);
       const sp = specialOf(i);
+      const asg = assignOf(i);
       for (let d=1; d<=days; d++){
         const s = grid[i][d];
-        if (s===3 && sp[d]){
+        if (s===4){
+          hh += `<td><button class="cell s4" title="出差（於 Step 2 修改）" style="cursor:not-allowed">出差</button></td>`;
+        } else if (asg[d] !== undefined){
+          hh += `<td><button class="cell s${s} asg" title="指班（於 Step 2 修改）" style="cursor:not-allowed">指${SHIFT_NAME[asg[d]]}</button></td>`;
+        } else if (s===3 && sp[d]){
           hh += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
         } else {
           const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
@@ -914,39 +1001,31 @@ function render(){
     return hh + '</tbody>';
   };
 
-  /* 單一班表：店長排第一列；早/中/晚為全員人頭，
-     「業務人數」列＝不含店長的每日上班人數（人力規則以此計） */
+  /* 單一班表：店長排第一列；表尾「早/中/晚」只計業務
+     （店長有上班但不計數；出差不在店也不計） */
   let h = headRow() + bodyRows([...exIdx, ...regIdx]);
-  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
-  const dailyReg = [];
+  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    let am=0, amid=0, ae=0, m=0, mid=0, e=0, workers=0;
+    let m=0, mid=0, e=0, workers=0;
     for (let i=0;i<N;i++){
-      const s=grid[i][d];
-      if(s===0)am++; else if(s===1)amid++; else if(s===2)ae++;
       if (exemptF.has(i)) continue;
-      if(s!==3)workers++;
+      const s=grid[i][d];
+      if(s!==3 && s!==4)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
     }
-    dailyReg.push(workers);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
-    h += `<td class="${short?'short':''} num">${am}/${amid}/${ae}</td>`;
-  }
-  h += '</tr><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
-  for (let d=1; d<=days; d++){
-    const dem = demand(d);
-    const shortN = dailyReg[d-1] < dem.min;
-    h += `<td class="${shortN?'short':''} num">${dailyReg[d-1]}</td>`;
+    h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
 
-  let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
+  let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>出差</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
   for (const i of [...exIdx, ...regIdx]){
     const s = stats[i];
-    st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN}</td>
+    st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN - s.bizN}</td>
+      <td class="num">${s.bizN}</td>
       <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
       <td class="num">${s.spN}</td>
       <td class="num ${!exemptF.has(i)&&(s.restOff>3||s.restOff<2)?'bad':''}">${s.restOff}</td>
@@ -1021,6 +1100,7 @@ function xlsxCodeFor(i, d, grid){
   if (s === 0) return 'A';
   if (s === 1) return 'M';
   if (s === 2) return 'P';
+  if (s === 4) return 'OL';   /* 出差 → 公假/培訓代碼 */
   const sp = specialOf(i)[d];
   if (sp === 'BL') return 'BL';
   if (sp === 'AL') return 'AL';
@@ -1339,6 +1419,8 @@ function moveStaff(i, dir){
   };
   Object.keys(S.fixed || {}).forEach(m => swapKeys(S.fixed[m]));
   Object.keys(S.special || {}).forEach(m => swapKeys(S.special[m]));
+  Object.keys(S.biz || {}).forEach(m => swapKeys(S.biz[m]));
+  Object.keys(S.assign || {}).forEach(m => swapKeys(S.assign[m]));
   const remapManual = arr => arr.map(k => {
     const [pi, pd] = k.split(':').map(Number);
     return (pi===i ? j : pi===j ? i : pi) + ':' + pd;
@@ -1418,6 +1500,10 @@ function renderFixCal(){
     const w = dowOf(d);
     if (wkWork.has(d)){ h += `<div class="mc-d blk">${d}<span class="sub">班</span></div>`; continue; }
     if (wkOff.has(d)){ h += `<div class="mc-d lock">${d}<span class="sub">固休</span></div>`; continue; }
+    const bz = bizOf(selPerson).has(d);
+    const asg = assignOf(selPerson)[d];
+    if (bz){ h += `<div class="mc-d" style="background:#44546a;color:#fff;border-color:#44546a" onclick="toggleFix(${d})">${d}<span class="sub">出差</span></div>`; continue; }
+    if (asg !== undefined){ h += `<div class="mc-d" style="background:var(--gold-wash);border:2px solid var(--gold-dark);font-weight:700" onclick="toggleFix(${d})">${d}<span class="sub">指${SHIFT_NAME[asg]}</span></div>`; continue; }
     const sp = specialOf(selPerson)[d];
     let conflict = false;
     if (iAmTrio && (manual.has(d) || sp)){
@@ -1429,25 +1515,62 @@ function renderFixCal(){
   }
   document.getElementById('fixCal').innerHTML = h;
 }
-/* 點擊循環：空 → 指休 → BL → AL → 空 */
+function fixMode(){
+  const r = document.querySelector('input[name="fixMode"]:checked');
+  return r ? r.value : 'cycle';
+}
+/* 依模式設定：休假循環（空→指休→BL→AL→清除）／出差／指班；
+   同一天設新狀態會先清掉舊狀態，再點一次即清除 */
 function toggleFix(d){
   if (!S.fixed[S.month]) S.fixed[S.month] = {};
   if (!S.special) S.special = {};
   if (!S.special[S.month]) S.special[S.month] = {};
+  if (!S.biz) S.biz = {};
+  if (!S.biz[S.month]) S.biz[S.month] = {};
+  if (!S.assign) S.assign = {};
+  if (!S.assign[S.month]) S.assign[S.month] = {};
   const fx = S.fixed[S.month];
   const sp = S.special[S.month];
+  const bz = S.biz[S.month];
+  const ag = S.assign[S.month];
   if (!fx[selPerson]) fx[selPerson] = [];
   if (!sp[selPerson]) sp[selPerson] = {};
-  const k = fx[selPerson].indexOf(d);
-  if (k >= 0){                       /* 指休 → BL */
-    fx[selPerson].splice(k,1);
-    sp[selPerson][d] = 'BL';
-  } else if (sp[selPerson][d] === 'BL'){   /* BL → AL */
-    sp[selPerson][d] = 'AL';
-  } else if (sp[selPerson][d] === 'AL'){   /* AL → 空 */
+  if (!bz[selPerson]) bz[selPerson] = [];
+  if (!ag[selPerson]) ag[selPerson] = {};
+  const clearDay = () => {
+    const k = fx[selPerson].indexOf(d); if (k >= 0) fx[selPerson].splice(k,1);
     delete sp[selPerson][d];
-  } else {                           /* 空 → 指休 */
-    fx[selPerson].push(d);
+    const b = bz[selPerson].indexOf(d); if (b >= 0) bz[selPerson].splice(b,1);
+    delete ag[selPerson][d];
+  };
+  const mode = fixMode();
+  if (mode === 'biz'){
+    const had = bz[selPerson].includes(d);
+    clearDay();
+    if (!had) bz[selPerson].push(d);
+  } else if (mode === 'a0' || mode === 'a1' || mode === 'a2'){
+    const sh = Number(mode[1]);
+    const had = ag[selPerson][d] === sh;
+    clearDay();
+    if (!had) ag[selPerson][d] = sh;
+  } else {
+    /* 休假循環：若該日是出差/指班，先清掉再從「指休」開始 */
+    if (bz[selPerson].includes(d) || ag[selPerson][d] !== undefined){
+      clearDay();
+      fx[selPerson].push(d);
+    } else {
+      const k = fx[selPerson].indexOf(d);
+      if (k >= 0){                       /* 指休 → BL */
+        fx[selPerson].splice(k,1);
+        sp[selPerson][d] = 'BL';
+      } else if (sp[selPerson][d] === 'BL'){   /* BL → AL */
+        sp[selPerson][d] = 'AL';
+      } else if (sp[selPerson][d] === 'AL'){   /* AL → 空 */
+        delete sp[selPerson][d];
+      } else {                           /* 空 → 指休 */
+        fx[selPerson].push(d);
+      }
+    }
   }
   saveState(); renderFixChips(); renderFixCal();
 }
@@ -1541,11 +1664,13 @@ function renderViewer(){
   const pubRow = (p, i) => {
     let hh = `<tr><td class="name-col">${p.name}<span class="role-tag">${p.role}</span></td>`;
     const sp = (rec.special||{})[i] || {};
+    const asg = (rec.assign||{})[i] || {};
     for (let d=1; d<=rec.days; d++){
       const s = rec.grid[i][d];
-      const label = (s===3 && sp[d]) ? sp[d] : SHIFT_NAME[s];
+      const isAsg = asg[d] !== undefined && s === asg[d];
+      const label = (s===3 && sp[d]) ? sp[d] : (isAsg ? '指' + SHIFT_NAME[s] : SHIFT_NAME[s]);
       const spStyle = (s===3 && sp[d]) ? 'color:#8f7439;font-weight:700' : '';
-      hh += `<td><div class="cell s${s}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
+      hh += `<td><div class="cell s${s} ${isAsg?'asg':''}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
     }
     return hh + '</tr>';
   };
@@ -1559,16 +1684,20 @@ function renderViewer(){
   });
   let foot = '';
   if (pubSel.person < 0){
-    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
+    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
     for (let d=1; d<=rec.days; d++){
-      let n = 0;
-      rec.staff.forEach((p,i) => { if (p.role !== '店長' && rec.grid[i][d] !== 3) n++; });
-      foot += `<td class="num" style="font-size:10px;padding:5px 2px;color:var(--muted);background:var(--paper)">${n}</td>`;
+      let m=0, mid=0, e=0;
+      rec.staff.forEach((p,i) => {
+        if (p.role === '店長') return;
+        const s = rec.grid[i][d];
+        if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
+      });
+      foot += `<td class="num" style="font-size:10px;padding:5px 2px;color:var(--muted);background:var(--paper)">${m}/${mid}/${e}</td>`;
     }
     foot += '</tr></tfoot>';
   }
   document.getElementById('pubTable').innerHTML = pubHead() + '<tbody>' + exRows + regRows + '</tbody>' + foot;
-  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 業務人數不含店長`;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 早/中/晚人數不含店長`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
 document.getElementById('adminBtn').addEventListener('click', () => {
@@ -1584,6 +1713,7 @@ function buildPubRecord(){
     staff: S.staff.map(p => ({ name: p.name, role: p.role })),
     holidays: S.holidays[S.month] || [],
     special: (S.special||{})[S.month] || {},
+    assign: (S.assign||{})[S.month] || {},
     savedAt: new Date().toISOString().slice(0,16).replace('T',' '),
   };
 }
