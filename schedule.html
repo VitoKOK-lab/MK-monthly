@@ -65,6 +65,13 @@ table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
 .staff input[type="number"] { width: 58px; border-color: var(--hair); }
 .staff select { border-color: var(--hair); padding: 6px 8px; }
 .staff .del { cursor: pointer; color: var(--crit); background: none; border: none; font-size: 15px; }
+.staff .ordcell { white-space: nowrap; }
+.staff .ord {
+  cursor: pointer; background: var(--bg); border: 1px solid var(--hair); color: var(--ink2);
+  width: 26px; height: 26px; font-size: 10px; padding: 0; margin-right: 3px;
+}
+.staff .ord:hover { border-color: var(--ink); color: var(--ink); }
+.staff .ord:disabled { opacity: .25; cursor: default; }
 /* 週律 cycler: 空→休→班 */
 .wkrow { display: inline-flex; gap: 3px; }
 .wk {
@@ -231,7 +238,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:14px">員工名單與週律</div>
     <div class="staff-scroll">
     <table class="staff">
-      <thead><tr><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班）</th><th></th></tr></thead>
+      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班）</th><th></th></tr></thead>
       <tbody id="staffBody"></tbody>
     </table>
     </div>
@@ -293,7 +300,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="sec-title" id="resultTitle">排班表</div>
   <div class="legend">
     <span><i style="background:var(--m-wash)"></i>早班</span>
-    <span><i style="background:var(--mid-wash)"></i>中班（第 5 人）</span>
+    <span><i style="background:var(--mid-wash)"></i>中班</span>
     <span><i style="background:var(--e-ink)"></i>晚班</span>
     <span><i style="background:#f1f0ec"></i>休假</span>
     <span>底線 = 指休/固定休</span>
@@ -327,12 +334,17 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制）
-   3. 每日基本人力 4 人：早 1、晚 3；湊得到第 5 人 → 開 1 個中班
-      （週五與假日優先開中班）
-   4. 連上 2–3 天最理想；連四會哇哇叫（重罰）；連五爆炸（禁止）
-   5. 早班天數各人差距 ≤ ±1
-   6. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）
-   7. 指休、BL/AL、週律（固定休／固定班）為硬條件
+   3. 人力下限：平日至少 4 人、假日至少 5 人
+   4. 假日固定「早1、中1、晚3」；週一/三/四早班 2 人（早班 2 人
+      時不開中班）；週二/五早1晚3，第 5 人開中班
+   5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
+      時由 Liv、Demi 輪流補位（三人可同時晚班）
+   6. 週一早班其中一人，優先排「前一天（緊接的週日）晚上有上班」
+      的人（交接連貫，軟性偏好）
+   7. 連上 2–3 天最理想；連四會哇哇叫（重罰）；連五爆炸（禁止）
+   8. 早班天數各人差距 ≤ ±1
+   9. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）
+   10. 指休、BL/AL、週律（固定休／固定班）為硬條件
 ============================================================ */
 const DOW = ['日','一','二','三','四','五','六'];
 const SHIFT_NAME = ['早','中','晚','休'];
@@ -459,9 +471,15 @@ const blockedOf = i => weeklyDays(i,'work');
 /* 總休假目標 = 正常額度 + 特殊假天數 */
 const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 
-/* 每日需求：基本 4 人（早1晚3），第 5 人開中班；週五/假日偏好 5 人 */
+/* 每日需求：
+   假日（週六日＋國定假日）固定「早1、中1、晚3」，至少 5 人
+   週一/三/四：早班 2 人（早班 2 人時不開中班），至少 4 人
+   週二/五：早1晚3，第 5 人開中班，至少 4 人 */
 function demand(d){
-  return { m:1, e:3, min:4, cap:5, wantMid: isRest(d) || isFri(d) };
+  if (isRest(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
+  const w = dowOf(d);
+  if (w===1 || w===3 || w===4) return { m:2, mid:0, e:3, min:4, cap:5 };
+  return { m:1, mid:0, e:3, min:4, cap:5 };
 }
 
 /* ============================================================
@@ -490,7 +508,6 @@ function scoreOff(off, cfg){
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
     if (workers > dem.cap) sc += 8 * (workers - dem.cap);
-    if (dem.wantMid && workers < dem.cap) sc += 15;   /* 假日/週五偏好 5 人開中班 */
   }
   if (trioIdx.length >= 2){
     const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
@@ -607,24 +624,58 @@ function assignShifts(off, cfg){
   const { days, N } = cfg;
   const grid = Array.from({length:N}, () => new Array(days+1).fill(3));
   const mCount = new Array(N).fill(0);
+  /* 晚班鎮店：互斥名單三人（Wiggie/Liv/Demi）每天至少一人晚班；
+     Wiggie 沒上晚班時由 Liv、Demi 輪流補位 */
+  const wiggieIdx = S.staff.findIndex(s => s.name === S.trio[0]);
+  const livIdx    = S.staff.findIndex(s => s.name === S.trio[1]);
+  const demiIdx   = S.staff.findIndex(s => s.name === S.trio[2]);
+  const trioAll   = [wiggieIdx, livIdx, demiIdx].filter(i => i >= 0);
+  let lastCover = demiIdx;   /* 上一位補晚班的人（Liv/Demi 輪流用） */
+
   for (let d=1; d<=days; d++){
     const workers = [];
     for (let i=0;i<N;i++) if (!off[i].has(d)) workers.push(i);
+    if (!workers.length) continue;
     const dem = demand(d);
-    workers.sort((a,b) => {
-      const ca = mCount[a] + (d>1 && grid[a][d-1]===2 ? 0.6 : 0);
-      const cb = mCount[b] + (d>1 && grid[b][d-1]===2 ? 0.6 : 0);
-      return ca - cb;
-    });
-    const morning = workers.slice(0, dem.m);
+    const w = dowOf(d);
+
+    /* 1. 先鎖定一位管理職上晚班（Liv/Demi 輪流優先，都休才輪到 Wiggie） */
+    let anchor = -1;
+    const livIn = livIdx >= 0 && workers.includes(livIdx);
+    const demiIn = demiIdx >= 0 && workers.includes(demiIdx);
+    if (livIn && demiIn){ anchor = (lastCover === livIdx) ? demiIdx : livIdx; lastCover = anchor; }
+    else if (livIn){ anchor = livIdx; lastCover = livIdx; }
+    else if (demiIn){ anchor = demiIdx; lastCover = demiIdx; }
+    else if (wiggieIdx >= 0 && workers.includes(wiggieIdx)) anchor = wiggieIdx;
+    if (anchor >= 0) grid[anchor][d] = 2;
+
+    /* 2. 早班（週一其中一人優先給前一天週日晚班的人，交接連貫） */
+    const pool = workers.filter(i => i !== anchor);
+    const morning = [];
+    if (w === 1 && d > 1){
+      const sunEve = pool.filter(i => grid[i][d-1] === 2).sort((a,b) => mCount[a]-mCount[b]);
+      if (sunEve.length) morning.push(sunEve[0]);
+    }
+    const fairKey = i => mCount[i] + (d>1 && grid[i][d-1]===2 ? 0.6 : 0);
+    const sorted = pool.slice().sort((a,b) => fairKey(a) - fairKey(b));
+    for (const i of sorted){
+      if (morning.length >= dem.m) break;
+      if (!morning.includes(i)) morning.push(i);
+    }
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
-    let rest = workers.slice(dem.m);
-    /* 晚班固定 3 人，其餘全部中班（第 5 人起） */
-    const mids = Math.max(0, rest.length - dem.e);
+
+    /* 3. 中班／晚班 */
+    let rest = workers.filter(i => grid[i][d] === 3);
+    const eveSoFar = anchor >= 0 ? 1 : 0;
+    let mids = 0;
+    if (isRest(d)) mids = Math.min(dem.mid, rest.length);                    /* 假日固定 1 中班 */
+    else if (dem.m === 1) mids = Math.max(0, rest.length + eveSoFar - dem.e); /* 週二/五：第 5 人開中班 */
+    /* 週一/三/四：早班 2 人 → 不開中班 */
     for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
   }
-  /* 早班平衡修復 */
+
+  /* 早班平衡修復（不可換走當天唯一的管理職晚班） */
   for (let pass=0; pass<40; pass++){
     let hi=-1, lo=-1;
     for (let i=0;i<N;i++){
@@ -635,6 +686,8 @@ function assignShifts(off, cfg){
     let done = false;
     for (let d=1; d<=days && !done; d++){
       if (grid[hi][d]===0 && (grid[lo][d]===1 || grid[lo][d]===2)){
+        if (grid[lo][d]===2 && trioAll.includes(lo) &&
+            !trioAll.some(t => t !== lo && grid[t][d] === 2)) continue;
         const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
         mCount[hi]--; mCount[lo]++; done = true;
       }
@@ -751,10 +804,16 @@ function validate(){
     let m=0, mid=0, e=0, workers=0;
     for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
+    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
-    if (m < dem.m) v.push(`${d} 日：早班缺 ${dem.m-m} 人`);
-    if (e < dem.e) v.push(`${d} 日：晚班缺 ${dem.e-e} 人`);
-    if (workers >= dem.cap && mid === 0) v.push(`${d} 日：有 ${workers} 人上班但未開中班`);
+    if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
+    if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
+    if (dem.mid > 0 && mid < dem.mid && workers > dem.m + eMin) v.push(`${d} 日：假日應開「早1、中1、晚3」，中班缺 ${dem.mid-mid} 人`);
+    if (m >= 2 && mid > 0) v.push(`${d} 日：早班已有 ${m} 人，不應再排中班`);
+    if (!isRest(d) && dem.m === 1 && workers >= 5 && mid === 0) v.push(`${d} 日：有 ${workers} 人上班但未開中班（第 5 人應排中班）`);
+    const trioWorking = trioIdx.some(i => grid[i][d] !== 3);
+    if (trioWorking && !trioIdx.some(i => grid[i][d] === 2))
+      v.push(`${d} 日：${trioIdx.map(i=>S.staff[i].name).join('/')} 無人上晚班（每天至少一位管理職晚班）`);
   }
   return { violations: v, stats };
 }
@@ -797,7 +856,8 @@ function render(){
     const dem = demand(d);
     let m=0, mid=0, e=0, workers=0;
     for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
-    const short = m<dem.m || e<dem.e || workers<dem.min;
+    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
+    const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
     h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
@@ -818,7 +878,7 @@ function render(){
 
   document.getElementById('violBox').innerHTML = violations.length
     ? violations.map(x => `<div class="viol">⚠ ${x}</div>`).join('')
-    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天（優先 2）、連上不超過四天、早班平衡 ±1、管理職互斥、週律、每日人力與中班規則。</div>';
+    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天（優先 2）、平日 4 人／假日 5 人（早1中1晚3）、週一三四雙早班、每日至少一位管理職晚班、連上不超過四天、早班平衡 ±1、管理職互斥、週律。</div>';
   const ub = document.getElementById('undoBtn');
   if (ub) ub.disabled = UNDO.length === 0 || LOCKED;
   updateButtons();
@@ -1176,6 +1236,7 @@ function cycleWeek(i, k){
 function renderStaff(){
   document.getElementById('staffBody').innerHTML = S.staff.map((p,i) => `
     <tr>
+      <td class="ordcell"><button class="ord" onclick="moveStaff(${i},-1)" ${i===0?'disabled':''} title="上移">▲</button><button class="ord" onclick="moveStaff(${i},1)" ${i===S.staff.length-1?'disabled':''} title="下移">▼</button></td>
       <td><input type="text" value="${p.name}" onchange="S.staff[${i}].name=this.value;syncAll()"></td>
       <td><select onchange="S.staff[${i}].role=this.value;saveState();if(RESULT)render()">${ROLES.map(r=>`<option ${p.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
       <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState();renderFixChips()"> 天</td>
@@ -1183,6 +1244,45 @@ function renderStaff(){
       <td><button class="del" onclick="delStaff(${i})">✕</button></td>
     </tr>`).join('');
   renderTrio(); renderFixChips(); saveState();
+}
+
+/* 員工排序上下移動 — 指休/特殊假/已存班表都以序號記錄，必須一併對調 */
+function moveStaff(i, dir){
+  const j = i + dir;
+  if (j < 0 || j >= S.staff.length) return;
+  [S.staff[i], S.staff[j]] = [S.staff[j], S.staff[i]];
+  const swapKeys = obj => {
+    if (!obj) return;
+    const a = obj[i], b = obj[j];
+    if (b === undefined) delete obj[i]; else obj[i] = b;
+    if (a === undefined) delete obj[j]; else obj[j] = a;
+  };
+  Object.keys(S.fixed || {}).forEach(m => swapKeys(S.fixed[m]));
+  Object.keys(S.special || {}).forEach(m => swapKeys(S.special[m]));
+  const remapManual = arr => arr.map(k => {
+    const [pi, pd] = k.split(':').map(Number);
+    return (pi===i ? j : pi===j ? i : pi) + ':' + pd;
+  });
+  if (RESULT && RESULT.grid && RESULT.grid[i] && RESULT.grid[j]){
+    [RESULT.grid[i], RESULT.grid[j]] = [RESULT.grid[j], RESULT.grid[i]];
+    const remapped = remapManual([...manualEdits]);
+    manualEdits.clear(); remapped.forEach(k => manualEdits.add(k));
+    UNDO.length = 0;
+  }
+  const all = loadSavedAll();
+  let changed = false;
+  Object.entries(all).forEach(([mo, rec]) => {
+    if (mo === S.month) return;   /* 本月由 persistResult 依 RESULT 覆寫 */
+    if (rec.grid && rec.grid[i] && rec.grid[j]){
+      [rec.grid[i], rec.grid[j]] = [rec.grid[j], rec.grid[i]];
+      if (rec.manual) rec.manual = remapManual(rec.manual);
+      changed = true;
+    }
+  });
+  if (changed) try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
+  if (selPerson === i) selPerson = j; else if (selPerson === j) selPerson = i;
+  syncAll();
+  if (RESULT) render();
 }
 function delStaff(i){
   if (!confirm(`移除 ${S.staff[i].name}？`)) return;
