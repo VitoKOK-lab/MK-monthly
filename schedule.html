@@ -1001,31 +1001,22 @@ function render(){
     return hh + '</tbody>';
   };
 
-  /* 單一班表：店長排第一列；早/中/晚為全員人頭，
-     「業務人數」列＝不含店長的每日上班人數（人力規則以此計） */
+  /* 單一班表：店長排第一列；表尾「早/中/晚」只計業務
+     （店長有上班但不計數；出差不在店也不計） */
   let h = headRow() + bodyRows([...exIdx, ...regIdx]);
-  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
-  const dailyReg = [];
+  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    let am=0, amid=0, ae=0, m=0, mid=0, e=0, workers=0;
+    let m=0, mid=0, e=0, workers=0;
     for (let i=0;i<N;i++){
-      const s=grid[i][d];
-      if(s===0)am++; else if(s===1)amid++; else if(s===2)ae++;
       if (exemptF.has(i)) continue;
-      if(s!==3 && s!==4)workers++;   /* 出差不在店，不計人力 */
+      const s=grid[i][d];
+      if(s!==3 && s!==4)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
     }
-    dailyReg.push(workers);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
-    h += `<td class="${short?'short':''} num">${am}/${amid}/${ae}</td>`;
-  }
-  h += '</tr><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
-  for (let d=1; d<=days; d++){
-    const dem = demand(d);
-    const shortN = dailyReg[d-1] < dem.min;
-    h += `<td class="${shortN?'short':''} num">${dailyReg[d-1]}</td>`;
+    h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
@@ -1693,16 +1684,20 @@ function renderViewer(){
   });
   let foot = '';
   if (pubSel.person < 0){
-    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
+    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
     for (let d=1; d<=rec.days; d++){
-      let n = 0;
-      rec.staff.forEach((p,i) => { if (p.role !== '店長' && rec.grid[i][d] !== 3) n++; });
-      foot += `<td class="num" style="font-size:10px;padding:5px 2px;color:var(--muted);background:var(--paper)">${n}</td>`;
+      let m=0, mid=0, e=0;
+      rec.staff.forEach((p,i) => {
+        if (p.role === '店長') return;
+        const s = rec.grid[i][d];
+        if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
+      });
+      foot += `<td class="num" style="font-size:10px;padding:5px 2px;color:var(--muted);background:var(--paper)">${m}/${mid}/${e}</td>`;
     }
     foot += '</tr></tfoot>';
   }
   document.getElementById('pubTable').innerHTML = pubHead() + '<tbody>' + exRows + regRows + '</tbody>' + foot;
-  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 業務人數不含店長`;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 早/中/晚人數不含店長`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
 document.getElementById('adminBtn').addEventListener('click', () => {
