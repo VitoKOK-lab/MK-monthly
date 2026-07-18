@@ -331,10 +331,12 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 /* ============================================================
    自動排班 — 限制條件求解器（模擬退火＋交換移動＋最陡下降修復）
    規則：
+   0. 店長（職級＝店長）＝規則外額外人力：照樣排班（預設早班、
+      需要時鎮晚班），但不計入人力數量、早班平衡與假日休限制
    1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
-      BL/AL 特殊假若落在假日，也計入此限制）
-   3. 人力下限：平日至少 4 人、假日至少 5 人
+      BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
+   3. 人力下限（不含店長）：平日至少 4 人、假日至少 5 人
    4. 假日固定「早1、中1、晚3」；週一/三/四早班 2 人（早班 2 人
       時不開中班）；週二/五早1晚3，第 5 人開中班
    5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
@@ -471,7 +473,11 @@ const blockedOf = i => weeklyDays(i,'work');
 /* 總休假目標 = 正常額度 + 特殊假天數 */
 const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 
-/* 每日需求：
+/* 店長 = 規則外額外人力：照樣排班，但不計入任何每日人力數量規則、
+   早班平衡與假日休 2–3 天限制（額度、週律、連五禁止仍適用） */
+const exemptSet = () => new Set(S.staff.map((p,i) => p.role === '店長' ? i : -1).filter(i => i >= 0));
+
+/* 每日需求（以「規則內」員工計，店長另外加不計數）：
    假日（週六日＋國定假日）固定「早1、中1、晚3」，至少 5 人
    週一/三/四：早班 2 人（早班 2 人時不開中班），至少 4 人
    週二/五：早1晚3，第 5 人開中班，至少 4 人 */
@@ -486,16 +492,22 @@ function demand(d){
    PHASE 1 — 休假日分配
 ============================================================ */
 function scoreOff(off, cfg){
-  const { days, N, quotas, trioIdx } = cfg;
+  const { days, N, quotas, trioIdx, exempt } = cfg;
   let sc = 0;
+  /* offCount 只計「規則內」員工 — 店長為規則外額外人力，不佔人力數 */
   const offCount = new Array(days+1).fill(0);
+  let nReg = 0;
+  for (let i=0;i<N;i++) if (!exempt.has(i)) nReg++;
   for (let i=0;i<N;i++){
+    const isEx = exempt.has(i);
     let restDays = 0;
-    for (const d of off[i]) { offCount[d]++; if (isRest(d)) restDays++; }
+    for (const d of off[i]) { if (!isEx) offCount[d]++; if (isRest(d)) restDays++; }
     if (off[i].size !== quotas[i]) sc += 1000 * Math.abs(off[i].size - quotas[i]);
-    if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3（硬） */
-    if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
-    if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
+    if (!isEx){
+      if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3（硬） */
+      if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
+      if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
+    }
     let run = 0;
     for (let d=1; d<=days; d++){
       if (off[i].has(d)) { if (run === 1) sc += 5; run = 0; }
@@ -504,7 +516,7 @@ function scoreOff(off, cfg){
     if (run > 4) sc += 500 * (run - 4);
   }
   for (let d=1; d<=days; d++){
-    const workers = N - offCount[d];
+    const workers = nReg - offCount[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
     if (workers > dem.cap) sc += 8 * (workers - dem.cap);
@@ -632,12 +644,16 @@ function assignShifts(off, cfg){
   const trioAll   = [wiggieIdx, livIdx, demiIdx].filter(i => i >= 0);
   let lastCover = demiIdx;   /* 上一位補晚班的人（Liv/Demi 輪流用） */
 
+  const exempt = cfg.exempt || exemptSet();
+
   for (let d=1; d<=days; d++){
     const workers = [];
     for (let i=0;i<N;i++) if (!off[i].has(d)) workers.push(i);
     if (!workers.length) continue;
     const dem = demand(d);
     const w = dowOf(d);
+    /* 人力規則只對「規則內」員工計數；店長是額外加上去的 */
+    const regular = workers.filter(i => !exempt.has(i));
 
     /* 1. 先鎖定一位管理職上晚班（Liv/Demi 輪流優先，都休才輪到 Wiggie） */
     let anchor = -1;
@@ -650,7 +666,7 @@ function assignShifts(off, cfg){
     if (anchor >= 0) grid[anchor][d] = 2;
 
     /* 2. 早班（週一其中一人優先給前一天週日晚班的人，交接連貫） */
-    const pool = workers.filter(i => i !== anchor);
+    const pool = regular.filter(i => i !== anchor);
     const morning = [];
     if (w === 1 && d > 1){
       const sunEve = pool.filter(i => grid[i][d-1] === 2).sort((a,b) => mCount[a]-mCount[b]);
@@ -664,32 +680,43 @@ function assignShifts(off, cfg){
     }
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
 
-    /* 3. 中班／晚班 */
-    let rest = workers.filter(i => grid[i][d] === 3);
-    const eveSoFar = anchor >= 0 ? 1 : 0;
+    /* 3. 中班／晚班（只以規則內員工湊數） */
+    let rest = regular.filter(i => grid[i][d] === 3);
+    const eveSoFar = (anchor >= 0 && !exempt.has(anchor)) ? 1 : 0;
     let mids = 0;
     if (isRest(d)) mids = Math.min(dem.mid, rest.length);                    /* 假日固定 1 中班 */
     else if (dem.m === 1) mids = Math.max(0, rest.length + eveSoFar - dem.e); /* 週二/五：第 5 人開中班 */
     /* 週一/三/四：早班 2 人 → 不開中班 */
     for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
+
+    /* 4. 店長（規則外）上班日：未被鎮晚班時預設排早班，多出來無所謂 */
+    workers.filter(i => exempt.has(i) && grid[i][d] === 3)
+           .forEach(i => { grid[i][d] = 0; });
   }
 
-  /* 早班平衡修復（不可換走當天唯一的管理職晚班） */
-  for (let pass=0; pass<40; pass++){
-    let hi=-1, lo=-1;
-    for (let i=0;i<N;i++){
-      if (hi<0 || mCount[i] > mCount[hi]) hi = i;
-      if (lo<0 || mCount[i] < mCount[lo]) lo = i;
-    }
-    if (mCount[hi] - mCount[lo] <= 1) break;
+  /* 早班平衡修復（只平衡規則內員工；不可換走當天唯一的管理職晚班）
+     掃描所有落差 ≥2 的配對，避免單一配對無日可換就卡住 */
+  const canTake = (i, d) =>
+    (grid[i][d]===1 || grid[i][d]===2) &&
+    !(grid[i][d]===2 && trioAll.includes(i) && !trioAll.some(t => t !== i && grid[t][d] === 2));
+  for (let pass=0; pass<80; pass++){
     let done = false;
-    for (let d=1; d<=days && !done; d++){
-      if (grid[hi][d]===0 && (grid[lo][d]===1 || grid[lo][d]===2)){
-        if (grid[lo][d]===2 && trioAll.includes(lo) &&
-            !trioAll.some(t => t !== lo && grid[t][d] === 2)) continue;
-        const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
-        mCount[hi]--; mCount[lo]++; done = true;
+    const order = [];
+    for (let i=0;i<N;i++) if (!exempt.has(i)) order.push(i);
+    order.sort((a,b) => mCount[b] - mCount[a]);
+    outer:
+    for (const hi of order){
+      for (let k=order.length-1; k>=0; k--){
+        const lo = order[k];
+        if (mCount[hi] - mCount[lo] <= 1) continue;
+        for (let d=1; d<=days; d++){
+          if (grid[hi][d]===0 && canTake(lo, d)){
+            const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
+            mCount[hi]--; mCount[lo]++; done = true;
+            break outer;
+          }
+        }
       }
     }
     if (!done) break;
@@ -742,6 +769,7 @@ function generate(){
       special: S.staff.map((_,i) => specialSet(i)),
       trioIdx,
       trioMode: S.trioMode,
+      exempt: exemptSet(),   /* 店長 = 規則外額外人力 */
     };
     let best = null;
     let seed = Date.now() % 100000;
@@ -772,9 +800,11 @@ function validate(){
   const v = [];
   const stats = [];
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
+  const exempt = exemptSet();
   const mCounts = [];
   for (let i=0;i<N;i++){
     const sp = specialSet(i);
+    const isEx = exempt.has(i);
     let offN=0, restOff=0, spN=0, m=0, mid=0, e=0, maxRun=0, run=0;
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
@@ -785,24 +815,27 @@ function validate(){
       }
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else e++; }
     }
-    mCounts.push(m);
+    if (!isEx) mCounts.push(m);
     stats.push({ offN, restOff, spN, m, mid, e, maxRun });
     if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
-    if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
-    if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
+    if (!isEx){
+      if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
+      if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
+    }
     if (maxRun > 4) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（連五爆炸，禁止）`);
     for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日為指休/固定休/特殊假，卻被排班`);
     for (const d of blockedOf(i)) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
   }
   const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
-  if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1）`);
+  if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長不計）`);
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
   for (let d=1; d<=days; d++){
     let c=0;
     for (const i of trioIdx) if (grid[i][d]===3) c++;
     if (c>=th && th>=2) v.push(`${d} 日：互斥名單 ${c} 人同日休（${trioIdx.filter(i=>grid[i][d]===3).map(i=>S.staff[i].name).join('、')}）`);
+    /* 每日人力結構只計「規則內」員工（店長為額外人力不計數） */
     let m=0, mid=0, e=0, workers=0;
-    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
+    for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
@@ -852,12 +885,20 @@ function render(){
     h += '</tr>';
   }
   h += '</tbody><tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
+  const exemptF = exemptSet();
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    let m=0, mid=0, e=0, workers=0;
-    for (let i=0;i<N;i++){ const s=grid[i][d]; if(s!==3)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
-    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
-    const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
+    /* 顯示全員數字；判斷是否短缺只計規則內員工（店長為額外人力） */
+    let m=0, mid=0, e=0, rm=0, rmid=0, re=0, rWorkers=0;
+    for (let i=0;i<N;i++){
+      const s=grid[i][d];
+      if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
+      if (exemptF.has(i)) continue;
+      if(s!==3)rWorkers++;
+      if(s===0)rm++; else if(s===1)rmid++; else if(s===2)re++;
+    }
+    const eMin = Math.min(dem.e, Math.max(0, rWorkers - dem.m - dem.mid));
+    const short = rWorkers<dem.min || rm<Math.min(dem.m, rWorkers) || re<eMin || (dem.mid>0 && rmid<dem.mid && rWorkers>dem.m+eMin);
     h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
@@ -869,7 +910,7 @@ function render(){
     st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN}</td>
       <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
       <td class="num">${s.spN}</td>
-      <td class="num ${s.restOff>3||s.restOff<2?'bad':''}">${s.restOff}</td>
+      <td class="num ${!exemptF.has(i)&&(s.restOff>3||s.restOff<2)?'bad':''}">${s.restOff}</td>
       <td class="num">${s.m}</td><td class="num">${s.mid}</td><td class="num">${s.e}</td>
       <td class="num ${s.maxRun>4?'bad':''}">${s.maxRun}</td></tr>`;
   }
