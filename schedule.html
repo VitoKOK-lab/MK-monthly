@@ -262,7 +262,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:20px">指休與 BL/AL 特殊假 — 先選人，再點日期循環：<span style="letter-spacing:0;text-transform:none">空 → 指休 → BL → AL → 清除</span></div>
     <div class="person-chips" id="fixChips"></div>
     <div class="mini-cal" id="fixCal"></div>
-    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，不計入假日 2–3 天限制）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。指休可少於額度，其餘由系統補滿。</div>
+    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。指休可少於額度，其餘由系統補滿。</div>
   </div>
 </section>
 
@@ -326,7 +326,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    規則：
    1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
-      BL/AL 特殊假不計入此限制）
+      BL/AL 特殊假若落在假日，也計入此限制）
    3. 每日基本人力 4 人：早 1、晚 3；湊得到第 5 人 → 開 1 個中班
       （週五與假日優先開中班）
    4. 連上 2–3 天最理想；連四會哇哇叫（重罰）；連五爆炸（禁止）
@@ -468,12 +468,12 @@ function demand(d){
    PHASE 1 — 休假日分配
 ============================================================ */
 function scoreOff(off, cfg){
-  const { days, N, quotas, trioIdx, special } = cfg;
+  const { days, N, quotas, trioIdx } = cfg;
   let sc = 0;
   const offCount = new Array(days+1).fill(0);
   for (let i=0;i<N;i++){
     let restDays = 0;
-    for (const d of off[i]) { offCount[d]++; if (isRest(d) && !special[i].has(d)) restDays++; }
+    for (const d of off[i]) { offCount[d]++; if (isRest(d)) restDays++; }
     if (off[i].size !== quotas[i]) sc += 1000 * Math.abs(off[i].size - quotas[i]);
     if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3（硬） */
     if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
@@ -727,7 +727,7 @@ function validate(){
       const s = grid[i][d];
       if (s===3){
         if (sp.has(d)) spN++; else offN++;
-        if (isRest(d) && !sp.has(d)) restOff++;
+        if (isRest(d)) restOff++;
         run=0;
       }
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else e++; }
