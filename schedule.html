@@ -207,10 +207,6 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div id="pubBody">
       <div class="person-chips" id="pubChips" style="margin-top:8px"></div>
       <div class="grid-scroll"><table class="sched" id="pubTable"></table></div>
-      <div id="pubExWrap" style="display:none">
-        <div class="subhead" style="margin-top:16px">店長班表</div>
-        <div class="grid-scroll"><table class="sched" id="pubTableEx"></table></div>
-      </div>
       <div class="legend">
         <span><i style="background:var(--m-wash)"></i>早班</span>
         <span><i style="background:var(--mid-wash)"></i>中班</span>
@@ -312,10 +308,6 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
   </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
-  <div id="exWrap" style="display:none">
-    <div class="subhead" style="margin-top:18px">店長班表（規則外額外人力，不計入上表人力加總）</div>
-    <div class="grid-scroll"><table class="sched" id="schedTableEx"></table></div>
-  </div>
 
   <div class="card" style="margin-top:16px">
     <div class="subhead">個人統計</div>
@@ -339,21 +331,24 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 /* ============================================================
    自動排班 — 限制條件求解器（模擬退火＋交換移動＋最陡下降修復）
    規則：
-   0. 店長（職級＝店長）＝規則外額外人力：照樣排班（預設早班、
-      需要時鎮晚班），但不計入人力數量、早班平衡與假日休限制
+   0. 店長（職級＝店長）不做業績、只算上班人頭：與大家同一張班表
+      （排第一列），但不計入「業務人數」與任何人力規則；班別＝
+      前一天休假→晚班、前一天有上班→中班（週日固定上班、週一
+      自然為中班）；Liv/Demi 同天都休時店長補晚班鎮店
    1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
-   3. 人力下限（不含店長）：平日至少 4 人、假日至少 5 人
+   3. 人力下限（業務人數，不含店長）：平日至少 4 人、假日至少 5 人
    4. 假日固定「早1、中1、晚3」；平日兩種組合（多的人加開晚班）：
       週一/三/四「早2、晚2」（不開中班）；
       週二/五「早1、中1、晚2」（早班 1 人時必開中班）
    5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
       時由 Liv、Demi 輪流補位（三人可同時晚班）
-   6. 週一早班其中一人，優先排「前一天（緊接的週日）晚上有上班」
-      的人（交接連貫，軟性偏好）
-   7. 連上 2–3 天最理想；連四會哇哇叫（重罰）；連五爆炸（禁止）
-   8. 早班天數各人差距 ≤ ±1
+   6. 週一早班盡量從前一天（週日）晚班的人挑；其中「週二剛好休假」
+      者最優先（晚→早→休 補償輪轉，軟性偏好）
+   7. 連上偏好：Liv/Demi 喜歡做一休一（休假盡量打散）；其他人不喜
+      歡做一休一（傾向連上 2–3 天）；連四重罰、連五禁止
+   8. 早班天數各人差距 ≤ ±1（店長不計）
    9. 管理職互斥：三人不可同天全休（或最嚴格：任兩人不可同休）
    10. 指休、BL/AL、週律（固定休／固定班）為硬條件
 ============================================================ */
@@ -503,6 +498,7 @@ function demand(d){
 ============================================================ */
 function scoreOff(off, cfg){
   const { days, N, quotas, trioIdx, exempt } = cfg;
+  const altIdx = cfg.altIdx || new Set();   /* 喜歡做一休一的人（Liv/Demi） */
   let sc = 0;
   /* offCount 只計「規則內」員工 — 店長為規則外額外人力，不佔人力數 */
   const offCount = new Array(days+1).fill(0);
@@ -518,12 +514,20 @@ function scoreOff(off, cfg){
       if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
       if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
     }
+    /* 連上偏好：Liv/Demi 喜歡做一休一（工作段越短越好）；
+       其他人不喜歡單日工作段（傾向連上 2–3 天）；連四重罰、連五禁止 */
+    const likesAlt = altIdx.has(i);
     let run = 0;
     for (let d=1; d<=days; d++){
-      if (off[i].has(d)) { if (run === 1) sc += 5; run = 0; }
+      if (off[i].has(d)){
+        if (likesAlt){ if (run >= 2) sc += (run - 1) * 8; }
+        else if (run === 1) sc += 25;
+        run = 0;
+      }
       else { run++; if (run === 4) sc += 60; else if (run > 4) sc += 500; }  /* 連四哇哇叫、連五爆炸 */
     }
     if (run > 4) sc += 500 * (run - 4);
+    else if (likesAlt && run >= 2) sc += (run - 1) * 8;
   }
   for (let d=1; d<=days; d++){
     const workers = nReg - offCount[d];
@@ -675,12 +679,15 @@ function assignShifts(off, cfg){
     else if (wiggieIdx >= 0 && workers.includes(wiggieIdx)) anchor = wiggieIdx;
     if (anchor >= 0) grid[anchor][d] = 2;
 
-    /* 2. 早班（週一其中一人優先給前一天週日晚班的人，交接連貫） */
+    /* 2. 早班（週一早班盡量從前一天週日晚班的人挑；
+       其中「週二剛好休假」的人最優先 — 晚→早→休 補償輪轉） */
     const pool = regular.filter(i => i !== anchor);
     const morning = [];
     if (w === 1 && d > 1){
-      const sunEve = pool.filter(i => grid[i][d-1] === 2).sort((a,b) => mCount[a]-mCount[b]);
-      if (sunEve.length) morning.push(sunEve[0]);
+      const tueOff = i => (d + 1 <= days) && off[i].has(d + 1);
+      const sunEve = pool.filter(i => grid[i][d-1] === 2)
+        .sort((a,b) => (tueOff(b) - tueOff(a)) || (mCount[a] - mCount[b]));
+      for (const i of sunEve){ if (morning.length >= dem.m) break; morning.push(i); }
     }
     const fairKey = i => mCount[i] + (d>1 && grid[i][d-1]===2 ? 0.6 : 0);
     const sorted = pool.slice().sort((a,b) => fairKey(a) - fairKey(b));
@@ -697,9 +704,12 @@ function assignShifts(off, cfg){
     for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
 
-    /* 4. 店長（規則外）上班日：未被鎮晚班時預設排早班，多出來無所謂 */
+    /* 4. 店長（不做業績、只算人頭）上班日班別：
+       前一天休假 → 晚班；前一天有上班 → 中班（週日接週六休＝晚班、
+       週一接週日班＝中班，自動滿足「週一固定中班」）；
+       Liv/Demi 同天都休時已被步驟 1 鎮為晚班，這裡不會再改 */
     workers.filter(i => exempt.has(i) && grid[i][d] === 3)
-           .forEach(i => { grid[i][d] = 0; });
+           .forEach(i => { grid[i][d] = (d > 1 && grid[i][d-1] === 3) ? 2 : 1; });
   }
 
   /* 早班平衡修復（只平衡規則內員工；不可換走當天唯一的管理職晚班）
@@ -776,7 +786,8 @@ function generate(){
       special: S.staff.map((_,i) => specialSet(i)),
       trioIdx,
       trioMode: S.trioMode,
-      exempt: exemptSet(),   /* 店長 = 規則外額外人力 */
+      exempt: exemptSet(),   /* 店長 = 不做業績、只算人頭 */
+      altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
     };
     let best = null;
     let seed = Date.now() % 100000;
@@ -903,35 +914,37 @@ function render(){
     return hh + '</tbody>';
   };
 
-  /* 主班表 = 規則內員工，加總不含店長 */
-  let h = headRow() + bodyRows(regIdx);
+  /* 單一班表：店長排第一列；早/中/晚為全員人頭，
+     「業務人數」列＝不含店長的每日上班人數（人力規則以此計） */
+  let h = headRow() + bodyRows([...exIdx, ...regIdx]);
   h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
+  const dailyReg = [];
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    let m=0, mid=0, e=0, workers=0;
-    for (const i of regIdx){
+    let am=0, amid=0, ae=0, m=0, mid=0, e=0, workers=0;
+    for (let i=0;i<N;i++){
       const s=grid[i][d];
+      if(s===0)am++; else if(s===1)amid++; else if(s===2)ae++;
+      if (exemptF.has(i)) continue;
       if(s!==3)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
     }
+    dailyReg.push(workers);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
-    h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
+    h += `<td class="${short?'short':''} num">${am}/${amid}/${ae}</td>`;
+  }
+  h += '</tr><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
+  for (let d=1; d<=days; d++){
+    const dem = demand(d);
+    const shortN = dailyReg[d-1] < dem.min;
+    h += `<td class="${shortN?'short':''} num">${dailyReg[d-1]}</td>`;
   }
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
 
-  /* 店長獨立班表 */
-  const exWrap = document.getElementById('exWrap');
-  if (exIdx.length){
-    exWrap.style.display = '';
-    document.getElementById('schedTableEx').innerHTML = headRow() + bodyRows(exIdx);
-  } else {
-    exWrap.style.display = 'none';
-  }
-
   let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
-  for (const i of [...regIdx, ...exIdx]){
+  for (const i of [...exIdx, ...regIdx]){
     const s = stats[i];
     st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN}</td>
       <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
@@ -1537,23 +1550,25 @@ function renderViewer(){
     return hh + '</tr>';
   };
 
-  /* 主班表 = 規則內員工；店長獨立一張表 */
-  let regRows = '', exRows = '';
+  /* 單一班表：店長排第一列；最下方加「業務人數」列（不含店長） */
+  let exRows = '', regRows = '';
   rec.staff.forEach((p,i) => {
     if (pubSel.person >= 0 && pubSel.person !== i) return;
     if (p.role === '店長') exRows += pubRow(p, i);
     else regRows += pubRow(p, i);
   });
-  document.getElementById('pubTable').innerHTML = regRows ? pubHead() + '<tbody>' + regRows + '</tbody>' : '';
-  document.getElementById('pubTable').parentElement.style.display = regRows ? '' : 'none';
-  const pubExWrap = document.getElementById('pubExWrap');
-  if (exRows){
-    pubExWrap.style.display = '';
-    document.getElementById('pubTableEx').innerHTML = pubHead() + '<tbody>' + exRows + '</tbody>';
-  } else {
-    pubExWrap.style.display = 'none';
+  let foot = '';
+  if (pubSel.person < 0){
+    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">業務人數</td>';
+    for (let d=1; d<=rec.days; d++){
+      let n = 0;
+      rec.staff.forEach((p,i) => { if (p.role !== '店長' && rec.grid[i][d] !== 3) n++; });
+      foot += `<td class="num" style="font-size:10px;padding:5px 2px;color:var(--muted);background:var(--paper)">${n}</td>`;
+    }
+    foot += '</tr></tfoot>';
   }
-  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準`;
+  document.getElementById('pubTable').innerHTML = pubHead() + '<tbody>' + exRows + regRows + '</tbody>' + foot;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 業務人數不含店長`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
 document.getElementById('adminBtn').addEventListener('click', () => {
