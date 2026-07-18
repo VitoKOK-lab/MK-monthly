@@ -122,7 +122,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .cell.s0 { background: var(--m-wash); color: #6e5518; }
 .cell.s1 { background: var(--mid-wash); color: #1c5cab; }
 .cell.s2 { background: var(--e-ink); color: #fff; }
-.cell.s3 { background: #f1f0ec; color: #b5b3aa; }
+.cell.s3 { background: #ffffff; color: var(--crit); }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .cell.manual { position: relative; }
 .cell.manual::after { content: ''; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--crit); }
@@ -207,11 +207,15 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div id="pubBody">
       <div class="person-chips" id="pubChips" style="margin-top:8px"></div>
       <div class="grid-scroll"><table class="sched" id="pubTable"></table></div>
+      <div id="pubExWrap" style="display:none">
+        <div class="subhead" style="margin-top:16px">店長班表</div>
+        <div class="grid-scroll"><table class="sched" id="pubTableEx"></table></div>
+      </div>
       <div class="legend">
         <span><i style="background:var(--m-wash)"></i>早班</span>
         <span><i style="background:var(--mid-wash)"></i>中班</span>
         <span><i style="background:var(--e-ink)"></i>晚班</span>
-        <span><i style="background:#f1f0ec"></i>休假</span>
+        <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
         <span style="color:var(--gold-dark)">BL/AL = 特殊假</span>
       </div>
       <div class="hint" id="pubMeta"></div>
@@ -302,12 +306,16 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <span><i style="background:var(--m-wash)"></i>早班</span>
     <span><i style="background:var(--mid-wash)"></i>中班</span>
     <span><i style="background:var(--e-ink)"></i>晚班</span>
-    <span><i style="background:#f1f0ec"></i>休假</span>
+    <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
     <span>底線 = 指休/固定休</span>
     <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
     <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
   </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
+  <div id="exWrap" style="display:none">
+    <div class="subhead" style="margin-top:18px">店長班表（規則外額外人力，不計入上表人力加總）</div>
+    <div class="grid-scroll"><table class="sched" id="schedTableEx"></table></div>
+  </div>
 
   <div class="card" style="margin-top:16px">
     <div class="subhead">個人統計</div>
@@ -337,8 +345,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
    3. 人力下限（不含店長）：平日至少 4 人、假日至少 5 人
-   4. 假日固定「早1、中1、晚3」；週一/三/四早班 2 人（早班 2 人
-      時不開中班）；週二/五早1晚3，第 5 人開中班
+   4. 假日固定「早1、中1、晚3」；平日兩種組合（多的人加開晚班）：
+      週一/三/四「早2、晚2」（不開中班）；
+      週二/五「早1、中1、晚2」（早班 1 人時必開中班）
    5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
       時由 Liv、Demi 輪流補位（三人可同時晚班）
    6. 週一早班其中一人，優先排「前一天（緊接的週日）晚上有上班」
@@ -479,13 +488,14 @@ const exemptSet = () => new Set(S.staff.map((p,i) => p.role === '店長' ? i : -
 
 /* 每日需求（以「規則內」員工計，店長另外加不計數）：
    假日（週六日＋國定假日）固定「早1、中1、晚3」，至少 5 人
-   週一/三/四：早班 2 人（早班 2 人時不開中班），至少 4 人
-   週二/五：早1晚3，第 5 人開中班，至少 4 人 */
+   平日兩種組合（多的人加開晚班）：
+   週一/三/四：「早2、晚2」（早班 2 人時不開中班）
+   週二/五：「早1、中1、晚2」（早班只有 1 人時必開 1 個中班） */
 function demand(d){
   if (isRest(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
   const w = dowOf(d);
-  if (w===1 || w===3 || w===4) return { m:2, mid:0, e:3, min:4, cap:5 };
-  return { m:1, mid:0, e:3, min:4, cap:5 };
+  if (w===1 || w===3 || w===4) return { m:2, mid:0, e:2, min:4, cap:5 };
+  return { m:1, mid:1, e:2, min:4, cap:5 };
 }
 
 /* ============================================================
@@ -680,13 +690,10 @@ function assignShifts(off, cfg){
     }
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
 
-    /* 3. 中班／晚班（只以規則內員工湊數） */
+    /* 3. 中班／晚班（只以規則內員工湊數）
+       假日固定 1 中班；週二/五「早1」必開 1 中班；週一/三/四「早2」不開中班 */
     let rest = regular.filter(i => grid[i][d] === 3);
-    const eveSoFar = (anchor >= 0 && !exempt.has(anchor)) ? 1 : 0;
-    let mids = 0;
-    if (isRest(d)) mids = Math.min(dem.mid, rest.length);                    /* 假日固定 1 中班 */
-    else if (dem.m === 1) mids = Math.max(0, rest.length + eveSoFar - dem.e); /* 週二/五：第 5 人開中班 */
-    /* 週一/三/四：早班 2 人 → 不開中班 */
+    const mids = Math.min(dem.mid, rest.length);
     for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
     rest.forEach(i => grid[i][d] = 2);
 
@@ -841,9 +848,10 @@ function validate(){
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
     if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
     if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
-    if (dem.mid > 0 && mid < dem.mid && workers > dem.m + eMin) v.push(`${d} 日：假日應開「早1、中1、晚3」，中班缺 ${dem.mid-mid} 人`);
+    if (dem.mid > 0 && mid < dem.mid && workers >= dem.min)
+      v.push(isRest(d) ? `${d} 日：假日應開「早1、中1、晚3」，中班缺 ${dem.mid-mid} 人`
+                       : `${d} 日：平日早班 1 人時應開 1 個中班（早1中1晚2）`);
     if (m >= 2 && mid > 0) v.push(`${d} 日：早班已有 ${m} 人，不應再排中班`);
-    if (!isRest(d) && dem.m === 1 && workers >= 5 && mid === 0) v.push(`${d} 日：有 ${workers} 人上班但未開中班（第 5 人應排中班）`);
     const trioWorking = trioIdx.some(i => grid[i][d] !== 3);
     if (trioWorking && !trioIdx.some(i => grid[i][d] === 2))
       v.push(`${d} 日：${trioIdx.map(i=>S.staff[i].name).join('/')} 無人上晚班（每天至少一位管理職晚班）`);
@@ -863,49 +871,67 @@ function render(){
   const [y,m] = S.month.split('-');
   document.getElementById('resultTitle').textContent = `${y} 年 ${Number(m)} 月排班表`;
 
-  let h = '<thead><tr><th class="name-col">員工</th>';
-  for (let d=1; d<=days; d++){
-    const w = dowOf(d), holi = holiSet().has(d);
-    h += `<th class="${holi?'holi':(w===0||w===6?'wkend':'')}">${d}<span class="dow">${DOW[w]}${holi?' 假':''}</span></th>`;
-  }
-  h += '</tr></thead><tbody>';
-  for (let i=0;i<N;i++){
-    h += `<tr><td class="name-col">${S.staff[i].name}<span class="role-tag">${S.staff[i].role}</span></td>`;
-    const fx = fixedOf(i);
-    const sp = specialOf(i);
-    for (let d=1; d<=days; d++){
-      const s = grid[i][d];
-      if (s===3 && sp[d]){
-        h += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
-      } else {
-        const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
-        h += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
-      }
-    }
-    h += '</tr>';
-  }
-  h += '</tbody><tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
   const exemptF = exemptSet();
+  const regIdx = [], exIdx = [];
+  for (let i=0;i<N;i++) (exemptF.has(i) ? exIdx : regIdx).push(i);
+
+  const headRow = () => {
+    let hh = '<thead><tr><th class="name-col">員工</th>';
+    for (let d=1; d<=days; d++){
+      const w = dowOf(d), holi = holiSet().has(d);
+      hh += `<th class="${holi?'holi':(w===0||w===6?'wkend':'')}">${d}<span class="dow">${DOW[w]}${holi?' 假':''}</span></th>`;
+    }
+    return hh + '</tr></thead>';
+  };
+  const bodyRows = idxList => {
+    let hh = '<tbody>';
+    for (const i of idxList){
+      hh += `<tr><td class="name-col">${S.staff[i].name}<span class="role-tag">${S.staff[i].role}</span></td>`;
+      const fx = fixedOf(i);
+      const sp = specialOf(i);
+      for (let d=1; d<=days; d++){
+        const s = grid[i][d];
+        if (s===3 && sp[d]){
+          hh += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
+        } else {
+          const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
+          hh += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
+        }
+      }
+      hh += '</tr>';
+    }
+    return hh + '</tbody>';
+  };
+
+  /* 主班表 = 規則內員工，加總不含店長 */
+  let h = headRow() + bodyRows(regIdx);
+  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚</td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
-    /* 顯示全員數字；判斷是否短缺只計規則內員工（店長為額外人力） */
-    let m=0, mid=0, e=0, rm=0, rmid=0, re=0, rWorkers=0;
-    for (let i=0;i<N;i++){
+    let m=0, mid=0, e=0, workers=0;
+    for (const i of regIdx){
       const s=grid[i][d];
+      if(s!==3)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
-      if (exemptF.has(i)) continue;
-      if(s!==3)rWorkers++;
-      if(s===0)rm++; else if(s===1)rmid++; else if(s===2)re++;
     }
-    const eMin = Math.min(dem.e, Math.max(0, rWorkers - dem.m - dem.mid));
-    const short = rWorkers<dem.min || rm<Math.min(dem.m, rWorkers) || re<eMin || (dem.mid>0 && rmid<dem.mid && rWorkers>dem.m+eMin);
+    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
+    const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
     h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
 
+  /* 店長獨立班表 */
+  const exWrap = document.getElementById('exWrap');
+  if (exIdx.length){
+    exWrap.style.display = '';
+    document.getElementById('schedTableEx').innerHTML = headRow() + bodyRows(exIdx);
+  } else {
+    exWrap.style.display = 'none';
+  }
+
   let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
-  for (let i=0;i<N;i++){
+  for (const i of [...regIdx, ...exIdx]){
     const s = stats[i];
     st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN}</td>
       <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
@@ -1491,26 +1517,42 @@ function renderViewer(){
     `<button class="pchip ${pubSel.person<0?'active':''}" onclick="pubSel.person=-1;renderViewer()">全部</button>` +
     rec.staff.map((p,i) => `<button class="pchip ${pubSel.person===i?'active':''}" onclick="pubSel.person=${i};renderViewer()">${p.name}</button>`).join('');
 
-  let h = '<thead><tr><th class="name-col">員工</th>';
-  for (let d=1; d<=rec.days; d++){
-    const w = dow(d), hl = holi.has(d);
-    h += `<th class="${hl?'holi':(w===0||w===6?'wkend':'')}" ${d===todayD?'style="background:var(--gold-wash);color:var(--gold-dark);font-weight:700"':''}>${d}<span class="dow">${DOW[w]}${hl?' 假':''}</span></th>`;
-  }
-  h += '</tr></thead><tbody>';
-  rec.staff.forEach((p,i) => {
-    if (pubSel.person >= 0 && pubSel.person !== i) return;
-    h += `<tr><td class="name-col">${p.name}<span class="role-tag">${p.role}</span></td>`;
+  const pubHead = () => {
+    let hh = '<thead><tr><th class="name-col">員工</th>';
+    for (let d=1; d<=rec.days; d++){
+      const w = dow(d), hl = holi.has(d);
+      hh += `<th class="${hl?'holi':(w===0||w===6?'wkend':'')}" ${d===todayD?'style="background:var(--gold-wash);color:var(--gold-dark);font-weight:700"':''}>${d}<span class="dow">${DOW[w]}${hl?' 假':''}</span></th>`;
+    }
+    return hh + '</tr></thead>';
+  };
+  const pubRow = (p, i) => {
+    let hh = `<tr><td class="name-col">${p.name}<span class="role-tag">${p.role}</span></td>`;
     const sp = (rec.special||{})[i] || {};
     for (let d=1; d<=rec.days; d++){
       const s = rec.grid[i][d];
       const label = (s===3 && sp[d]) ? sp[d] : SHIFT_NAME[s];
       const spStyle = (s===3 && sp[d]) ? 'color:#8f7439;font-weight:700' : '';
-      h += `<td><div class="cell s${s}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
+      hh += `<td><div class="cell s${s}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
     }
-    h += '</tr>';
+    return hh + '</tr>';
+  };
+
+  /* 主班表 = 規則內員工；店長獨立一張表 */
+  let regRows = '', exRows = '';
+  rec.staff.forEach((p,i) => {
+    if (pubSel.person >= 0 && pubSel.person !== i) return;
+    if (p.role === '店長') exRows += pubRow(p, i);
+    else regRows += pubRow(p, i);
   });
-  h += '</tbody>';
-  document.getElementById('pubTable').innerHTML = h;
+  document.getElementById('pubTable').innerHTML = regRows ? pubHead() + '<tbody>' + regRows + '</tbody>' : '';
+  document.getElementById('pubTable').parentElement.style.display = regRows ? '' : 'none';
+  const pubExWrap = document.getElementById('pubExWrap');
+  if (exRows){
+    pubExWrap.style.display = '';
+    document.getElementById('pubTableEx').innerHTML = pubHead() + '<tbody>' + exRows + '</tbody>';
+  } else {
+    pubExWrap.style.display = 'none';
+  }
   document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
