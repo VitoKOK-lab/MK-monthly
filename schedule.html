@@ -13,7 +13,7 @@
   --track: #ecebe7;
   --m-wash: #f5ecd8;   /* 早 */
   --mid-wash: #dceaf8; /* 中 */
-  --e-ink: #26261f;    /* 晚 */
+  --e-wash: #e3efdf;   /* 晚 */
   --serif: 'Didot','Bodoni MT','Playfair Display',Georgia,'Times New Roman',serif;
   --sans: system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
 }
@@ -121,7 +121,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .cell { width: 100%; height: 100%; border: none; cursor: pointer; font-family: var(--sans); font-size: 11px; font-weight: 700; padding: 8px 2px; background: var(--bg); color: var(--ink); }
 .cell.s0 { background: var(--m-wash); color: #6e5518; }
 .cell.s1 { background: var(--mid-wash); color: #1c5cab; }
-.cell.s2 { background: var(--e-ink); color: #fff; }
+.cell.s2 { background: var(--e-wash); color: #2f6030; }
 .cell.s3 { background: #ffffff; color: var(--crit); }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .cell.manual { position: relative; }
@@ -214,7 +214,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       <div class="legend">
         <span><i style="background:var(--m-wash)"></i>早班</span>
         <span><i style="background:var(--mid-wash)"></i>中班</span>
-        <span><i style="background:var(--e-ink)"></i>晚班</span>
+        <span><i style="background:var(--e-wash)"></i>晚班</span>
         <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
         <span style="color:var(--gold-dark)">BL/AL = 特殊假</span>
       </div>
@@ -305,7 +305,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="legend">
     <span><i style="background:var(--m-wash)"></i>早班</span>
     <span><i style="background:var(--mid-wash)"></i>中班</span>
-    <span><i style="background:var(--e-ink)"></i>晚班</span>
+    <span><i style="background:var(--e-wash)"></i>晚班</span>
     <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
     <span>底線 = 指休/固定休</span>
     <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
