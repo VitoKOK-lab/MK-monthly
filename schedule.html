@@ -329,10 +329,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
 
     <div class="subhead" style="margin-top:22px">自動安插 AL 年假</div>
-    <div class="hint" style="margin-bottom:8px">為「本月沒有任何指休、也沒有 BL/AL」的同事自動安插年假（挑平日、跨週分散、優先人力最鬆的日子）。已排指休連假者自動跳過、維持現狀。點名字可切換「排除」（被排除者本次不安插）。</div>
+    <div class="hint" style="margin-bottom:8px">為「本月沒有任何指休、也沒有 BL/AL」的同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。已排指休連假者自動跳過、維持現狀。點名字可切換天數與排除：2天 → 3天 → 排除 → 2天（不是每個人都要一樣的天數）。</div>
     <div class="person-chips" id="alExChips"></div>
     <div class="ctrl-row" style="align-items:flex-end;margin-top:4px">
-      <div class="ctrl"><label>每人天數</label><select id="alDays"><option value="2" selected>2 天</option><option value="3">3 天</option></select></div>
       <button class="btn ghost" id="alAutoBtn">⚡ 自動安插 AL</button>
       <span class="status" id="alStatus"></span>
     </div>
@@ -1793,29 +1792,37 @@ function toggleFix(d){
    （平日、跨週分散、優先人力最鬆的日子）；可點名排除
 ============================================================ */
 const alExcluded = new Set();   /* 以姓名記錄，換月/排序都不受影響 */
+const alDaysMap = new Map();    /* 姓名 → 2|3；未設定者預設 2 天（每人天數可以不一樣） */
 function alEligible(i){
   return manualFixed(i).size === 0 && specialSet(i).size === 0;
 }
-function toggleAlEx(name){
-  if (alExcluded.has(name)) alExcluded.delete(name); else alExcluded.add(name);
+function alDaysFor(name){ return alDaysMap.get(name) === 3 ? 3 : 2; }
+function alState(name){ return alExcluded.has(name) ? 'ex' : alDaysFor(name); }
+function cycleAl(name){
+  const st = alState(name);
+  if (st === 2) alDaysMap.set(name, 3);                      /* 2天 → 3天 */
+  else if (st === 3) { alExcluded.add(name); alDaysMap.delete(name); }  /* 3天 → 排除 */
+  else { alExcluded.delete(name); alDaysMap.set(name, 2); }  /* 排除 → 2天 */
   renderAlChips();
 }
 function renderAlChips(){
   const el = document.getElementById('alExChips');
   if (!el) return;
   el.innerHTML = S.staff.map((p,i) => {
-    const eligible = alEligible(i);
-    const ex = alExcluded.has(p.name);
-    if (!eligible)
+    if (!alEligible(i))
       return `<button class="pchip" style="opacity:.4;cursor:default" title="已有指休或 BL/AL，維持現狀">${p.name}・已有指休</button>`;
-    if (ex)
-      return `<button class="pchip" style="text-decoration:line-through;color:var(--crit);border-color:var(--crit)" onclick="toggleAlEx('${p.name.replace(/'/g,"\\'")}')">${p.name}・排除</button>`;
-    return `<button class="pchip active" onclick="toggleAlEx('${p.name.replace(/'/g,"\\'")}')">${p.name}</button>`;
+    const st = alState(p.name);
+    if (st === 'ex')
+      return `<button class="pchip" style="text-decoration:line-through;color:var(--crit);border-color:var(--crit)" onclick="cycleAl('${p.name.replace(/'/g,"\\'")}')">${p.name}・排除</button>`;
+    return `<button class="pchip active" onclick="cycleAl('${p.name.replace(/'/g,"\\'")}')">${p.name}・${st}天</button>`;
   }).join('');
 }
+const weekOf = (d, firstDow) => Math.floor((d + firstDow - 1) / 7);
+/* 聯合＋人力感知分配：所有待安插的同事一起看，每輪先處理「可選日子最少」的人（最容易卡住的優先），
+   替他挑「當天人力餘裕最高、且還沒用過的那一週」的日子；選完立刻扣減當天餘裕，
+   下一位馬上看得到最新狀況，避免大家的 AL 擠在同一天造成人力缺口 */
 function autoInsertAL(){
   const { days, firstDow } = monthInfo();
-  const n = Number(document.getElementById('alDays').value) || 2;
   if (!S.special) S.special = {};
   if (!S.special[S.month]) S.special[S.month] = {};
   const sp = S.special[S.month];
@@ -1825,11 +1832,19 @@ function autoInsertAL(){
     document.getElementById('alStatus').textContent = '沒有符合條件的同事（都已有指休/特假或被排除）';
     return;
   }
-  /* 每日固定休佔用度：AL 挑「大家最不搶」的日子，降低人力衝突 */
-  const load = new Array(days+1).fill(0);
-  for (let i=0;i<S.staff.length;i++) for (const d of fixedOf(i)) load[d]++;
-  const summary = [];
-  for (const i of targets){
+  const exempt = exemptSet();
+  const totalReg = S.staff.length - exempt.size;
+  const lockedOff = new Array(days+1).fill(0);
+  for (let i=0;i<S.staff.length;i++){
+    if (exempt.has(i)) continue;
+    for (const d of fixedOf(i)) lockedOff[d]++;
+    for (const d of bizOf(i)) lockedOff[d]++;
+  }
+  /* 餘裕 = 目前上班人數 − 當天最低需求；每分配一天 AL 就會扣 1 */
+  const slack = new Array(days+1).fill(0);
+  for (let d=1; d<=days; d++) slack[d] = (totalReg - lockedOff[d]) - demand(d).min;
+
+  const people = targets.map(i => {
     const bl = blockedOf(i), fx = fixedOf(i);
     const cands = [];
     for (let d=1; d<=days; d++){
@@ -1837,21 +1852,40 @@ function autoInsertAL(){
       if (bl.has(d) || fx.has(d)) continue;
       cands.push(d);
     }
-    cands.sort((a,b) => (load[a]-load[b]) || (a-b));
-    const chosen = [], usedWeeks = new Set();
-    for (const d of cands){
-      if (chosen.length >= n) break;
-      const wk = Math.floor((d + firstDow - 1) / 7);
-      if (usedWeeks.has(wk)) continue;         /* 第一輪：跨週分散 */
-      chosen.push(d); usedWeeks.add(wk); load[d]++;
+    return { i, need: alDaysFor(S.staff[i].name), usedWeeks: new Set(), cands, chosen: [] };
+  });
+
+  const pickDay = (p, allowSameWeek) => {
+    let best = null, bestSlack = -Infinity;
+    for (const d of p.cands){
+      if (!allowSameWeek && p.usedWeeks.has(weekOf(d, firstDow))) continue;
+      if (slack[d] > bestSlack || (slack[d] === bestSlack && (best === null || d < best))){ bestSlack = slack[d]; best = d; }
     }
-    for (const d of cands){                    /* 第二輪：不足再補 */
-      if (chosen.length >= n) break;
-      if (!chosen.includes(d)){ chosen.push(d); load[d]++; }
+    return best;
+  };
+  for (const allowSameWeek of [false, true]){   /* 第一輪：跨週分散；第二輪：不足再補（可同週） */
+    let pending = people.filter(p => p.chosen.length < p.need);
+    let guard = 0;
+    while (pending.length && guard++ < 500){
+      pending.sort((a,b) => a.cands.length - b.cands.length);   /* 可選日子最少的人優先挑 */
+      const p = pending[0];
+      const d = pickDay(p, allowSameWeek);
+      if (d == null){ pending.shift(); continue; }
+      p.chosen.push(d); p.usedWeeks.add(weekOf(d, firstDow));
+      p.cands = p.cands.filter(x => x !== d);
+      slack[d]--;
+      if (p.chosen.length >= p.need) pending = pending.filter(x => x !== p);
     }
-    if (!sp[i]) sp[i] = {};
-    chosen.forEach(d => { sp[i][d] = 'AL'; });
-    summary.push(`${S.staff[i].name} ${chosen.sort((a,b)=>a-b).join('、')} 日`);
+  }
+
+  const summary = [];
+  for (const p of people){
+    if (!sp[p.i]) sp[p.i] = {};
+    p.chosen.forEach(d => { sp[p.i][d] = 'AL'; });
+    const days_ = p.chosen.sort((a,b) => a-b).join('、');
+    summary.push(p.chosen.length < p.need
+      ? `${S.staff[p.i].name} ${days_ || '（找不到適合日子）'}（僅排到 ${p.chosen.length}/${p.need} 天）`
+      : `${S.staff[p.i].name} ${days_} 日`);
   }
   saveState(); renderFixChips(); renderFixCal(); renderAlChips();
   document.getElementById('alStatus').textContent =
