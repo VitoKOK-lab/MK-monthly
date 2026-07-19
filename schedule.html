@@ -57,6 +57,25 @@ input[type="month"], select, input[type="text"], input[type="number"] {
 .check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink2); padding: 8px 0; }
 .fixmode-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 10px; }
 
+/* 排班流程步驟條 */
+.stepper { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 24px 0 10px; flex-wrap: wrap; }
+.stp { display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 6px 8px; color: var(--muted); }
+.stp .stp-n { width: 27px; height: 27px; border-radius: 50%; border: 1px solid var(--hair); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.stp .stp-t { font-size: 12px; letter-spacing: .06em; white-space: nowrap; }
+.stp.active { color: var(--ink); font-weight: 700; }
+.stp.active .stp-n { background: var(--ink); color: #fff; border-color: var(--ink); }
+.stp.done { color: var(--gold-dark); }
+.stp.done .stp-n { background: var(--gold-wash); border-color: var(--gold); color: var(--gold-dark); }
+.stp-line { width: 24px; height: 1px; background: var(--hair); flex-shrink: 0; }
+.confirm-bar { border: 1px solid rgba(180,151,90,.5); border-left: 3px solid var(--gold); background: var(--gold-wash); padding: 16px 18px; margin-top: 14px; }
+.confirm-bar .cb-q { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+.confirm-bar .cb-sum { font-size: 12.5px; color: var(--ink2); margin-bottom: 12px; }
+@media (max-width: 720px) {
+  .stp { padding: 5px 4px; }
+  .stp .stp-t { font-size: 10px; }
+  .stp-line { width: 10px; }
+}
+
 /* staff table */
 .staff-scroll { overflow-x: auto; }
 table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
@@ -182,7 +201,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   .ph-meta { font-size: 9px; color: #888; }
   .sign-row { display: flex; justify-content: space-between; margin-top: 22px; padding: 0 10px; }
   .sign-box { font-size: 12px; }
-  #violBox .viol { page-break-inside: avoid; }
+  /* 精靈流程：列印時強制顯示排班步驟的班表，隱藏其他步驟 */
+  #wstep1, #wstep2, #wstep4, .stepper, #anomalySec { display: none !important; }
+  #wstep3 { display: block !important; }
   @page { size: A4 landscape; margin: 8mm; }
 }
 </style>
@@ -232,10 +253,22 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 </div>
 <div class="wrap">
 
-<!-- ============ 1. 基本設定 ============ -->
+<!-- ============ 步驟條 ============ -->
+<div class="stepper no-print" id="stepper">
+  <button class="stp" data-step="1"><span class="stp-n">1</span><span class="stp-t">員工設定</span></button>
+  <span class="stp-line"></span>
+  <button class="stp" data-step="2"><span class="stp-n">2</span><span class="stp-t">假別與例外</span></button>
+  <span class="stp-line"></span>
+  <button class="stp" data-step="3"><span class="stp-n">3</span><span class="stp-t">排班＋體檢</span></button>
+  <span class="stp-line"></span>
+  <button class="stp" data-step="4"><span class="stp-n">4</span><span class="stp-t">定案發布</span></button>
+</div>
+<div class="hint no-print" style="text-align:center;margin:-4px 0 8px">所有輸入即時自動儲存 · 可隨時點上方步驟回頭修改</div>
+
+<!-- ============ ① 員工設定 ============ -->
+<div id="wstep1">
 <section class="sec no-print">
-  <div class="sec-kicker">Step 1</div>
-  <div class="sec-title">基本設定</div>
+  <div class="sec-title">① 員工設定</div>
   <div class="card">
     <div class="ctrl-row">
       <div class="ctrl"><label>排班月份</label><input type="month" id="monthInput"></div>
@@ -262,12 +295,18 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     </div>
     <div class="hint">「任兩人不可同休」在多數月份數學上無解（三人 30 天休假需完全不重疊，平日僅約 21 天，超出部分受假日 2 天上限卡死），建議用「至少一位在班」。</div>
   </div>
+  <div class="confirm-bar">
+    <div class="cb-q">店長，這是你要的員工設定嗎？</div>
+    <div class="cb-sum" id="step1Sum"></div>
+    <button class="btn gold" onclick="gotoStep(2)">✓ 正確，下一步：假別與例外 →</button>
+  </div>
 </section>
+</div>
 
-<!-- ============ 2. 假日與指休 ============ -->
+<!-- ============ ② 假別與例外 ============ -->
+<div id="wstep2" style="display:none">
 <section class="sec no-print">
-  <div class="sec-kicker">Step 2</div>
-  <div class="sec-title">國定假日與指休</div>
+  <div class="sec-title">② 假別與例外</div>
   <div class="card">
     <div class="subhead">國定假日（點日期切換；週六日自動視為假日）</div>
     <div class="mini-cal" id="holiCal"></div>
@@ -292,25 +331,29 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       <span class="status" id="alStatus"></span>
     </div>
   </div>
+  <div class="confirm-bar">
+    <div class="cb-q">員工這樣安排對嗎？請逐一核對：</div>
+    <div class="cb-sum" id="step2Sum"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" onclick="gotoStep(1)">← 回員工設定</button>
+      <button class="btn gold" onclick="gotoStep(3)">✓ 都對，前往自動排班 →</button>
+    </div>
+  </div>
 </section>
+</div>
 
-<!-- ============ 3. 產生 ============ -->
+<!-- ============ ③ 排班＋體檢 ============ -->
+<div id="wstep3" style="display:none">
 <section class="sec no-print">
-  <div class="sec-kicker">Step 3</div>
-  <div class="sec-title">自動排班</div>
+  <div class="sec-title">③ 自動排班與每日人力體檢</div>
   <div class="card" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
     <button class="btn gold" id="genBtn">⚙ 自動排班</button>
-    <button class="btn ghost" id="lockBtn" style="display:none">🔒 鎖定班表</button>
     <button class="btn ghost" id="clearBtn" style="display:none">🗑 清除重來</button>
-    <button class="btn" id="pubBtn" style="display:none">📤 發布給同事</button>
-    <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
-    <button class="btn ghost" id="csvBtn">匯出 CSV</button>
-    <button class="btn ghost" id="xlsxBtn">📊 匯出公司格式 Excel</button>
     <span class="status" id="status"></span>
   </div>
 </section>
 
-<!-- ============ 4. 結果 ============ -->
+<!-- 結果 -->
 <section class="sec" id="resultSec" style="display:none">
   <div class="print-head" id="printHead">
     <div class="ph-brand">MICHAEL KORS · 華泰店</div>
@@ -336,13 +379,46 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead">個人統計</div>
     <div style="overflow-x:auto"><table class="stat-table" id="statTable"></table></div>
   </div>
-  <div id="violBox"></div>
   <div class="sign-row" id="signRow">
     <div class="sign-box">製表人：＿＿＿＿＿＿＿＿</div>
     <div class="sign-box">主管核准：＿＿＿＿＿＿＿＿</div>
     <div class="sign-box">日期：＿＿＿＿＿＿＿＿</div>
   </div>
 </section>
+
+<!-- 每日人力體檢 -->
+<section class="sec no-print" id="anomalySec" style="display:none">
+  <div class="sec-title">每日人力體檢</div>
+  <div id="anomalyBox"></div>
+  <div class="confirm-bar">
+    <div class="cb-q" id="anomalyQ"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="regenBtn">🔁 換一個方案重排</button>
+      <button class="btn ghost" onclick="gotoStep(2)">← 回假別調整</button>
+      <button class="btn gold" onclick="gotoStep(4)">✓ 前往定案 →</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ============ ④ 定案與發布 ============ -->
+<div id="wstep4" style="display:none">
+<section class="sec no-print">
+  <div class="sec-title">④ 定案與發布</div>
+  <div class="card">
+    <div id="step4Sum" style="margin-bottom:14px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <button class="btn ghost" id="lockBtn" style="display:none">🔒 鎖定班表</button>
+      <button class="btn" id="pubBtn" style="display:none">📤 發布給同事</button>
+      <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
+      <button class="btn ghost" id="csvBtn">匯出 CSV</button>
+      <button class="btn ghost" id="xlsxBtn">📊 匯出公司格式 Excel</button>
+    </div>
+    <div class="hint" style="margin-top:10px">建議順序：鎖定 → 發布給同事 → 匯出公司格式 Excel 給零售經理。發布後如需修改，先解除鎖定、改完再重新發布即可。</div>
+    <div style="margin-top:14px"><button class="btn ghost" onclick="gotoStep(3)" style="padding:8px 18px">← 回排班檢視</button></div>
+  </div>
+</section>
+</div>
 
 </div>
 </div><!-- /adminArea -->
@@ -885,8 +961,10 @@ function generate(){
     btn.disabled = false;
     const nViol = validate().violations.length;
     document.getElementById('status').textContent = nViol === 0
-      ? '✓ 完成 — 所有排班條件皆滿足'
-      : `完成 — 尚有 ${nViol} 項條件衝突，請看下方警告（可手動微調或重按一次換方案）`;
+      ? '✓ 完成 — 體檢全數通過，請往下確認'
+      : `完成 — 體檢發現 ${nViol} 項須留意，請看下方「每日人力體檢」`;
+    const an = document.getElementById('anomalySec');
+    if (an && an.style.display !== 'none') an.scrollIntoView({ behavior: 'smooth' });
   }, 30);
 }
 
@@ -1044,13 +1122,74 @@ function render(){
   st += '</tbody>';
   document.getElementById('statTable').innerHTML = st;
 
-  document.getElementById('violBox').innerHTML = violations.length
-    ? violations.map(x => `<div class="viol">⚠ ${x}</div>`).join('')
-    : '<div class="ok-note">✓ 所有排班條件皆滿足：正常休假額度、BL/AL 特殊假、假日休 2–3 天（優先 2）、平日 4 人／假日 5 人（早1中1晚3）、週一三四雙早班、每日至少一位管理職晚班、連上不超過四天、早班平衡 ±1、管理職互斥、週律。</div>';
+  renderAnomalies(violations);
+  renderStep4Sum(violations);
   const ub = document.getElementById('undoBtn');
   if (ub) ub.disabled = UNDO.length === 0 || LOCKED;
   updateButtons();
   persistResult();   /* 每次變動即自動存檔 — 重新整理或換月都不會遺失 */
+}
+
+/* ============================================================
+   每日人力體檢：把違規翻譯成「哪幾天異常＋建議怎麼做」
+============================================================ */
+const ANOMALY_ADVICE = [
+  [/人上班|人力/, '回步驟②減少該日的指休／出差，或按「重排」換一個方案'],
+  [/早班已有|未開中班|中班缺|早班 \d|晚班缺/, '按「重排」換方案；還是一樣的話，點該日格子手動微調'],
+  [/假日/, '回步驟②調整該員工的休假分佈'],
+  [/連續上班/, '按「重排」換方案，或回步驟②幫他加一天指休'],
+  [/落差/, '按「重排」通常可解；此為提醒性質，不影響定案'],
+  [/互斥|同時休假/, '回步驟②錯開兩人的休假'],
+  [/指休|指班|出差|週律/, '回步驟②檢查該日的設定是否衝突'],
+];
+function anomalyAdvice(msg){
+  for (const [re, adv] of ANOMALY_ADVICE) if (re.test(msg)) return adv;
+  return '按「重排」換方案，或手動微調後再定案';
+}
+function renderAnomalies(violations){
+  const sec = document.getElementById('anomalySec');
+  if (!sec) return;
+  if (!RESULT){ sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const box = document.getElementById('anomalyBox');
+  const q = document.getElementById('anomalyQ');
+  if (!violations.length){
+    box.innerHTML = `<div class="ok-note" style="font-size:14px">✓ 體檢通過：${RESULT.days} 天的班型、人力下限、晚班鎮店與休假規則全部正常，沒有需要調整的異常日。</div>`;
+    q.textContent = '沒有異常 — 直接前往定案？';
+    return;
+  }
+  const dayIssues = new Map();
+  const otherIssues = [];
+  violations.forEach(msg => {
+    const m = msg.match(/^(\d+) 日/);
+    if (m){
+      const d = Number(m[1]);
+      if (!dayIssues.has(d)) dayIssues.set(d, []);
+      dayIssues.get(d).push(msg);
+    } else otherIssues.push(msg);
+  });
+  let h = '';
+  if (dayIssues.size){
+    const dayList = [...dayIssues.keys()].sort((a,b) => a-b);
+    h += `<div class="card"><div class="subhead">異常日（${dayList.length} 天）</div>
+      <div style="overflow-x:auto"><table class="stat-table">
+      <thead><tr><th style="text-align:left">日期</th><th style="text-align:left">問題</th><th style="text-align:left">建議</th></tr></thead><tbody>` +
+      dayList.map(d => {
+        const msgs = dayIssues.get(d);
+        return `<tr>
+          <td style="text-align:left;white-space:nowrap;font-weight:700">${d} 日（${DOW[dowOf(d)]}）</td>
+          <td style="text-align:left">${msgs.map(m => m.replace(/^\d+ 日[：:（(]?\s*/, '')).join('<br>')}</td>
+          <td style="text-align:left;color:var(--ink2)">${anomalyAdvice(msgs[0])}</td>
+        </tr>`;
+      }).join('') + '</tbody></table></div></div>';
+  }
+  if (otherIssues.length){
+    h += `<div class="card"><div class="subhead">個人／整體提醒（${otherIssues.length} 項）</div>` +
+      otherIssues.map(m => `<div class="viol">⚠ ${m}<div style="font-size:11.5px;color:var(--muted);margin-top:3px">建議：${anomalyAdvice(m)}</div></div>`).join('') +
+      '</div>';
+  }
+  box.innerHTML = h;
+  q.textContent = `發現 ${dayIssues.size} 個異常日、${otherIssues.length} 項提醒 — 要重排、回步驟②調整，還是接受後前往定案？`;
 }
 
 /* 手動微調：允許違背規定（違規只會顯示警告）；支援復原 */
@@ -1523,6 +1662,7 @@ function renderFixCal(){
     h += `<div class="mc-d ${w===0||w===6?'wkend':''} ${holiSet().has(d)?'holi':''} ${selCls} ${conflict?'conflict':''}" ${sp?'style="background:var(--gold-dark);border-color:var(--gold-dark)"':''} onclick="toggleFix(${d})">${d}${sub}</div>`;
   }
   document.getElementById('fixCal').innerHTML = h;
+  renderStep2Sum();   /* 假別調整時同步更新②的確認摘要 */
 }
 function fixMode(){
   const r = document.querySelector('input[name="fixMode"]:checked');
@@ -1653,7 +1793,83 @@ function autoInsertAL(){
   document.getElementById('alStatus').textContent =
     `✓ 已安插 AL（${summary.join('；')}）— 請按「⚙ 自動排班」重新產生班表`;
 }
-function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); }
+function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum(); renderStep2Sum(); }
+
+/* ============================================================
+   排班流程精靈：①員工 → ②假別 → ③排班體檢 → ④定案
+============================================================ */
+let WSTEP = 1;
+function gotoStep(n){
+  WSTEP = Math.min(4, Math.max(1, n));
+  try { sessionStorage.setItem('mk-wstep', String(WSTEP)); } catch(e){}
+  document.querySelectorAll('#stepper .stp').forEach(b => {
+    const k = Number(b.dataset.step);
+    b.classList.toggle('active', k === WSTEP);
+    b.classList.toggle('done', k < WSTEP);
+  });
+  ['wstep1','wstep2','wstep3','wstep4'].forEach((id, k) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (k + 1 === WSTEP) ? '' : 'none';
+  });
+  if (WSTEP === 1) renderStep1Sum();
+  if (WSTEP === 2) renderStep2Sum();
+  if (WSTEP === 4) renderStep4Sum();
+  window.scrollTo({ top: 0 });
+}
+function renderStep1Sum(){
+  const el = document.getElementById('step1Sum');
+  if (!el) return;
+  const ex = exemptSet();
+  const nReg = S.staff.length - ex.size;
+  const quotas = [...new Set(S.staff.map(p => p.quota))].join('／');
+  const [y, m] = S.month.split('-');
+  el.innerHTML = `排班月份 <b>${y} 年 ${Number(m)} 月</b> ・ 共 <b>${S.staff.length}</b> 位員工（業務 ${nReg} 位＋店長 ${ex.size} 位）・ 休假額度 ${quotas} 天 ・ 晚班鎮店三人組：${S.trio.filter(Boolean).join('、')}`;
+}
+function renderStep2Sum(){
+  const el = document.getElementById('step2Sum');
+  if (!el) return;
+  const hol = (S.holidays[S.month] || []).slice().sort((a,b) => a-b);
+  const rows = S.staff.map((p,i) => {
+    const parts = [];
+    const mf = [...manualFixed(i)].sort((a,b) => a-b);
+    if (mf.length) parts.push(`指休 ${mf.join('、')} 日`);
+    const sp = specialOf(i);
+    const bl = Object.keys(sp).filter(d => sp[d] === 'BL').map(Number).sort((a,b) => a-b);
+    const al = Object.keys(sp).filter(d => sp[d] === 'AL').map(Number).sort((a,b) => a-b);
+    if (bl.length) parts.push(`BL ${bl.join('、')} 日`);
+    if (al.length) parts.push(`AL ${al.join('、')} 日`);
+    const bz = [...bizOf(i)].sort((a,b) => a-b);
+    if (bz.length) parts.push(`出差 ${bz.join('、')} 日`);
+    const ag = assignOf(i);
+    const agD = Object.keys(ag).map(Number).sort((a,b) => a-b);
+    if (agD.length) parts.push(`指班 ${agD.map(d => `${d} 日${SHIFT_NAME[ag[d]]}`).join('、')}`);
+    const wk = p.week || {};
+    const wkWorks = DOW.filter((_,k) => wk[k] === 'work');
+    const wkOffs = DOW.filter((_,k) => wk[k] === 'off');
+    if (wkWorks.length) parts.push(`每週${wkWorks.join('、')}固定班`);
+    if (wkOffs.length) parts.push(`每週${wkOffs.join('、')}固定休`);
+    return `<tr><td style="text-align:left;font-weight:700;white-space:nowrap">${p.name}</td>
+      <td style="text-align:left">${parts.length ? parts.join('；') : '<span style="color:var(--muted)">無特別安排 — 由系統自動排休</span>'}</td></tr>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="margin-bottom:8px">國定假日：${hol.length ? '<b>' + hol.join('、') + ' 日</b>' : '（本月無）'}</div>
+    <div style="overflow-x:auto"><table class="stat-table" style="font-size:12.5px"><tbody>${rows}</tbody></table></div>`;
+}
+function renderStep4Sum(violations){
+  const el = document.getElementById('step4Sum');
+  if (!el) return;
+  if (!RESULT){
+    el.innerHTML = '<div class="viol">⚠ 尚未產生班表 — 請回步驟③先完成自動排班與體檢。</div>';
+    return;
+  }
+  const v = violations || validate().violations;
+  const [y, m] = S.month.split('-');
+  el.innerHTML = `<div style="font-size:14.5px"><b>${y} 年 ${Number(m)} 月班表</b> ・ ${
+    v.length === 0
+      ? '<span style="color:var(--good);font-weight:700">✓ 體檢全數通過</span>'
+      : `<span style="color:var(--crit);font-weight:700">尚有 ${v.length} 項提醒</span>（可回步驟③查看，接受亦可定案）`
+  } ・ ${LOCKED ? '🔒 已鎖定' : '🔓 未鎖定'}</div>`;
+}
 
 /* ---------- init ---------- */
 document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = true;
@@ -1663,7 +1879,10 @@ document.getElementById('monthInput').value = S.month;
 document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; syncAll(); restoreResult(); });
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
+document.getElementById('regenBtn').addEventListener('click', generate);
 document.getElementById('alAutoBtn').addEventListener('click', autoInsertAL);
+document.querySelectorAll('#stepper .stp').forEach(b =>
+  b.addEventListener('click', () => gotoStep(Number(b.dataset.step))));
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
 document.getElementById('xlsxBtn').addEventListener('click', exportCompanyExcel);
 document.getElementById('undoBtn').addEventListener('click', undo);
@@ -1678,8 +1897,9 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
     `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · 早/中/晚/休 · BL/AL = 特殊假 · 底線 = 指休`;
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
-renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips();
+renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
 restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
+gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
 
 /* ============================================================
    同事看班（預設畫面）＋ 店長 PIN 後台 ＋ 發布
