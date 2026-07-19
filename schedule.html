@@ -162,6 +162,12 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .viol { border-left: 3px solid var(--crit); background: var(--crit-wash); padding: 12px 16px; font-size: 13px; color: var(--ink2); margin-bottom: 8px; }
 .ok-note { border-left: 3px solid var(--good); background: rgba(12,163,12,0.07); padding: 12px 16px; font-size: 13px; color: var(--ink2); }
 .status { font-size: 12px; color: var(--muted); margin-left: 12px; }
+.who-chip { display: inline-block; border: 1px solid var(--gold); color: var(--gold-dark); background: var(--gold-wash); border-radius: 20px; padding: 2px 10px; font-size: 11.5px; font-weight: 700; margin: 2px 3px 2px 0; cursor: pointer; }
+.who-chip:hover { background: var(--gold); color: #fff; }
+.who-chip.maybe { border-style: dashed; opacity: .85; }
+@keyframes cellFlash { 0%,100% { box-shadow: 0 0 0 3px rgba(180,151,90,0); } 20%,60% { box-shadow: 0 0 0 3px var(--gold); } }
+.cell-flash button { animation: cellFlash 1.6s ease-in-out 2; }
+.row-flash td:first-child { background: var(--gold-wash) !important; }
 
 .footer { text-align: center; padding: 30px 16px 20px; font-size: 9px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; border-top: 1px solid var(--hair); margin-top: 30px; }
 
@@ -506,11 +512,20 @@ function clearResult(){
 }
 function toggleLock(){
   if (!RESULT) return;
+  const wasLocked = LOCKED;
   LOCKED = !LOCKED;
   persistResult(); render();
   document.getElementById('status').textContent = LOCKED
     ? '🔒 班表已鎖定 — 不可再修改；切換月份即可回顧歷史班表'
     : '🔓 已解除鎖定，可繼續調整';
+  if (wasLocked && !LOCKED){
+    gotoStep(3);
+    requestAnimationFrame(() => {
+      const an = document.getElementById('anomalySec');
+      const target = an && an.style.display !== 'none' ? an : document.getElementById('resultSec');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 function updateButtons(){
   const has = !!RESULT;
@@ -1146,6 +1161,50 @@ function anomalyAdvice(msg){
   for (const [re, adv] of ANOMALY_ADVICE) if (re.test(msg)) return adv;
   return '按「重排」換方案，或手動微調後再定案';
 }
+/* 抓出訊息裡直接點名的同事；若無人被點名（純人力不足），改列出當天休假中的同事作為可調整候選 */
+function culpritsForDay(d, msgs){
+  const named = new Set();
+  msgs.forEach(msg => S.staff.forEach((p,i) => { if (msg.includes(p.name)) named.add(i); }));
+  if (named.size) return { idx: [...named], maybe: false };
+  return { idx: offStaffOnDay(d).slice(0,3), maybe: true };
+}
+function offStaffOnDay(d){
+  if (!RESULT) return [];
+  const exempt = exemptSet();
+  const out = [];
+  for (let i=0;i<S.staff.length;i++){
+    if (exempt.has(i)) continue;
+    if (RESULT.grid[i][d] === 3) out.push(i);
+  }
+  return out;
+}
+function whoChips(idxs, d, maybe){
+  if (!idxs.length) return '';
+  return idxs.map(i =>
+    `<span class="who-chip${maybe?' maybe':''}" title="跳到 ${d} 日、${S.staff[i].name} 的班表格" onclick="jumpToPerson(${i},${d})">${maybe?'可調整→':'→'} ${S.staff[i].name}</span>`
+  ).join('');
+}
+function jumpToPerson(i, d){
+  gotoStep(3);
+  requestAnimationFrame(() => {
+    const table = document.getElementById('schedTable');
+    const resultSec = document.getElementById('resultSec');
+    if (!table || !resultSec) return;
+    const exemptF = exemptSet();
+    const order = [];
+    S.staff.forEach((_,k) => { if (exemptF.has(k)) order.push(k); });
+    S.staff.forEach((_,k) => { if (!exemptF.has(k)) order.push(k); });
+    const rowPos = order.indexOf(i);
+    const rows = table.querySelectorAll('tbody tr');
+    const row = rows[rowPos];
+    if (!row) return;
+    const cell = row.children[d];
+    (cell || row).scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    row.classList.add('row-flash');
+    if (cell) cell.classList.add('cell-flash');
+    setTimeout(() => { row.classList.remove('row-flash'); if (cell) cell.classList.remove('cell-flash'); }, 3200);
+  });
+}
 function renderAnomalies(violations){
   const sec = document.getElementById('anomalySec');
   if (!sec) return;
@@ -1173,19 +1232,24 @@ function renderAnomalies(violations){
     const dayList = [...dayIssues.keys()].sort((a,b) => a-b);
     h += `<div class="card"><div class="subhead">異常日（${dayList.length} 天）</div>
       <div style="overflow-x:auto"><table class="stat-table">
-      <thead><tr><th style="text-align:left">日期</th><th style="text-align:left">問題</th><th style="text-align:left">建議</th></tr></thead><tbody>` +
+      <thead><tr><th style="text-align:left">日期</th><th style="text-align:left">問題</th><th style="text-align:left">相關同事</th><th style="text-align:left">建議</th></tr></thead><tbody>` +
       dayList.map(d => {
         const msgs = dayIssues.get(d);
+        const { idx, maybe } = culpritsForDay(d, msgs);
         return `<tr>
           <td style="text-align:left;white-space:nowrap;font-weight:700">${d} 日（${DOW[dowOf(d)]}）</td>
           <td style="text-align:left">${msgs.map(m => m.replace(/^\d+ 日[：:（(]?\s*/, '')).join('<br>')}</td>
+          <td style="text-align:left;white-space:nowrap">${whoChips(idx, d, maybe) || '<span style="color:var(--muted)">—</span>'}</td>
           <td style="text-align:left;color:var(--ink2)">${anomalyAdvice(msgs[0])}</td>
         </tr>`;
       }).join('') + '</tbody></table></div></div>';
   }
   if (otherIssues.length){
     h += `<div class="card"><div class="subhead">個人／整體提醒（${otherIssues.length} 項）</div>` +
-      otherIssues.map(m => `<div class="viol">⚠ ${m}<div style="font-size:11.5px;color:var(--muted);margin-top:3px">建議：${anomalyAdvice(m)}</div></div>`).join('') +
+      otherIssues.map(m => {
+        const who = S.staff.findIndex(p => m.includes(p.name));
+        return `<div class="viol">⚠ ${m}${who>=0 ? ` ${whoChips([who], 0, false)}` : ''}<div style="font-size:11.5px;color:var(--muted);margin-top:3px">建議：${anomalyAdvice(m)}</div></div>`;
+      }).join('') +
       '</div>';
   }
   box.innerHTML = h;
@@ -1879,7 +1943,10 @@ document.getElementById('monthInput').value = S.month;
 document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; syncAll(); restoreResult(); });
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
-document.getElementById('regenBtn').addEventListener('click', generate);
+document.getElementById('regenBtn').addEventListener('click', () => {
+  if (manualEdits.size > 0 && !confirm(`你已手動調整 ${manualEdits.size} 格班別，重排會產生新方案並覆蓋這些調整，確定要重排嗎？`)) return;
+  generate();
+});
 document.getElementById('alAutoBtn').addEventListener('click', autoInsertAL);
 document.querySelectorAll('#stepper .stp').forEach(b =>
   b.addEventListener('click', () => gotoStep(Number(b.dataset.step))));
