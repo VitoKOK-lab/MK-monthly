@@ -102,6 +102,18 @@ table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
 .wk .st { font-size: 9px; font-weight: 700; }
 .wk.off { background: var(--ink); color: #fff; border-color: var(--ink); }
 .wk.work { background: var(--gold-wash); color: var(--gold-dark); border-color: var(--gold); }
+.wk.morn { background: var(--m-wash); color: var(--ink); border-color: var(--gold-dark); text-decoration: underline; text-underline-offset: 2px; }
+/* 頁內對話框（取代 prompt/confirm — App 內建瀏覽器會忽略原生對話框） */
+.dlg-back { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(20,20,20,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+.dlg { background: #fff; border: 1px solid var(--line); border-radius: 4px; max-width: 460px;
+  width: 100%; padding: 22px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+.dlg-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.dlg-desc { font-size: 13px; color: var(--ink2); line-height: 1.65; white-space: pre-line; margin-bottom: 14px; }
+.dlg-input { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid var(--line);
+  border-radius: 3px; margin-bottom: 16px; font-family: inherit; }
+.dlg-input:focus { outline: none; border-color: var(--gold); }
+.dlg-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* mini calendars */
 .person-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; flex-wrap: wrap; }
@@ -248,7 +260,10 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       </div>
       <div class="hint" id="pubMeta"></div>
     </div>
-    <div class="hint" id="pubEmpty" style="display:none;padding:30px 0;text-align:center;font-size:14px">尚未發布任何班表，請等店長發布。</div>
+    <div class="hint" id="pubEmpty" style="display:none;padding:30px 0;text-align:center;font-size:14px">
+      尚未發布任何班表。<br>
+      <span style="color:var(--muted)">同事請等店長發布；店長要排新的月份，請按右上角「🔑 店長排班」。</span>
+    </div>
   </section>
 </div>
 
@@ -282,11 +297,13 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:14px">員工名單與週律</div>
     <div class="staff-scroll">
     <table class="staff">
-      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班）</th><th></th></tr></thead>
+      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班 → 早）</th><th></th></tr></thead>
       <tbody id="staffBody"></tbody>
     </table>
     </div>
-    <div class="hint">週律範例：Wiggie 週日、週一固定「班」，週二固定「休」。固定休會自動計入休假額度。</div>
+    <div class="hint">週律範例：Wiggie 週日、週一固定「班」，週二固定「休」；柏鴻 週三、週五、週日固定「早」。<br>
+      <b>休</b>＝固定休（自動計入休假額度）・<b>班</b>＝固定上班，班別由系統決定・<b>早</b>＝固定上早班（必上班且必早班，等同每週自動指班早）。<br>
+      設為「早」的同事早班天數天生遠多於他人，會自動排除在「早班落差 ≤1」的平衡與體檢之外。</div>
     <div style="margin-top:10px"><button class="btn ghost" id="addStaff" style="padding:8px 18px">＋ 新增員工</button></div>
 
     <div class="subhead" style="margin-top:18px">管理職互斥休假</div>
@@ -329,7 +346,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
 
     <div class="subhead" style="margin-top:22px">自動安插 AL 年假</div>
-    <div class="hint" style="margin-bottom:8px">為「本月沒有任何指休、也沒有 BL/AL」的同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。已排指休連假者自動跳過、維持現狀。點名字可切換天數與排除：2天 → 3天 → 排除 → 2天（不是每個人都要一樣的天數）。</div>
+    <div class="hint" style="margin-bottom:8px">為「本月沒有任何指休、也沒有 BL/AL」的同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。已排指休連假者自動跳過、維持現狀。點名字可切換天數與排除：1天 → 2天 → 3天 → 排除 → 1天（不是每個人都要一樣的天數）。</div>
     <div class="person-chips" id="alExChips"></div>
     <div class="ctrl-row" style="align-items:flex-end;margin-top:4px">
       <button class="btn ghost" id="alAutoBtn">⚡ 自動安插 AL</button>
@@ -498,9 +515,9 @@ function restoreResult(){
     ? `🔒 此月班表已於 ${rec.savedAt} 鎖定 — 唯讀回顧中（可按「解除鎖定」修改）`
     : `已載入先前儲存的班表（${rec.savedAt}）`;
 }
-function clearResult(){
-  if (LOCKED){ alert('班表已鎖定，請先解除鎖定再清除。'); return; }
-  if (!confirm(`確定清除 ${S.month} 的班表重新開始？（指休與設定會保留）`)) return;
+async function clearResult(){
+  if (LOCKED){ await uiConfirm('班表已鎖定', '請先解除鎖定再清除。'); return; }
+  if (!await uiConfirm('清除班表', `確定清除 ${S.month} 的班表重新開始？\n（指休與設定會保留）`)) return;
   const all = loadSavedAll();
   delete all[S.month];
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
@@ -549,6 +566,8 @@ function defaultState(){
       { name:'Kai',    role:'SA',  quota:10, week:{} },
       { name:'Bailey', role:'SA',  quota:10, week:{} },
       { name:'Vina',   role:'SA',  quota:10, week:{} },
+      /* 柏鴻：週三、週五、週日固定上早班（必上班且必早班） */
+      { name:'柏鴻',   role:'SA',  quota:10, week:{ 0:'morn', 3:'morn', 5:'morn' } },
     ],
     trio: ['Wiggie','Liv','Demi'],
     trioMode: 'all3',
@@ -596,11 +615,20 @@ function fixedOf(i){
 const bizOf = i => new Set((((S.biz||{})[S.month])||{})[i] || []);
 /* 指班：指定某日必須上某時段 {day: 0早|1中|2晚}（硬條件） */
 const assignOf = i => (((S.assign||{})[S.month])||{})[i] || {};
-/* 不可休 = 週律固定班 + 出差 + 指班 */
+/* 週律固定早班（week[dow] === 'morn'）：該星期幾「必須上班且必須早班」。
+   展開成與「指班・早」完全等價的硬條件；同一天若另有手動指班，以手動指班為準。 */
+function effAssign(i){
+  const out = {};
+  for (const d of weeklyDays(i,'morn')) out[d] = 0;
+  return Object.assign(out, assignOf(i));
+}
+/* 是否為「週律固定早班」員工 — 早班次數天生遠高於他人，不納入早班平衡 */
+const mornFixed = i => Object.values(S.staff[i].week || {}).includes('morn');
+/* 不可休 = 週律固定班 + 週律固定早班 + 出差 + 指班 */
 function blockedOf(i){
   const s = weeklyDays(i,'work');
   for (const d of bizOf(i)) s.add(d);
-  for (const d of Object.keys(assignOf(i)).map(Number)) s.add(d);
+  for (const d of Object.keys(effAssign(i)).map(Number)) s.add(d);
   return s;
 }
 /* 總休假目標 = 正常額度 + 特殊假天數 */
@@ -611,14 +639,12 @@ const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 const exemptSet = () => new Set(S.staff.map((p,i) => p.role === '店長' ? i : -1).filter(i => i >= 0));
 
 /* 每日需求（以「規則內」員工計，店長另外加不計數）：
-   假日（週六日＋國定假日）固定「早1、中1、晚3」，至少 5 人
-   平日兩種組合（多的人加開晚班）：
-   週一/三/四：「早2、晚2」（早班 2 人時不開中班）
-   週二/五：「早1、中1、晚2」（早班只有 1 人時必開 1 個中班） */
+   週五、六、日（含國定假日）：「早1、中1、晚3」，5–6 人
+   週一～週四：            「早1、中1、晚2–3」，4–5 人
+   註：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
+       不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
 function demand(d){
-  if (isRest(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
-  const w = dowOf(d);
-  if (w===1 || w===3 || w===4) return { m:2, mid:0, e:2, min:4, cap:5 };
+  if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
   return { m:1, mid:1, e:2, min:4, cap:5 };
 }
 
@@ -668,7 +694,14 @@ function scoreOff(off, cfg){
     const workers = nReg - offCount[d] - bizCnt[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
-    if (workers > dem.cap) sc += 8 * (workers - dem.cap);
+    /* 超過上限＝當天過剩人力全擠晚班（曾出現晚班 5–6 人的離譜班表）。
+       罰則需夠重才會被真正避開，但仍低於「人力不足」，
+       確保萬一真的無解時，寧可多一人上班也不要缺人。 */
+    if (workers > dem.cap) sc += 400 * (workers - dem.cap);
+    /* 五六日的規格是「剛好 早1中1晚3」（平日才明確允許 2–3 個晚班）。
+       人力有餘裕時輕推回規格人數，讓超編集中在少數幾天，
+       而不是每個週末都變成晚班 4 人。 */
+    if ((isRest(d) || isFri(d)) && workers > dem.min) sc += 15 * (workers - dem.min);
   }
   if (trioIdx.length >= 2){
     const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
@@ -801,6 +834,8 @@ function assignShifts(off, cfg){
   let lastCover = demiIdx;   /* 上一位補晚班的人（Liv/Demi 輪流用） */
 
   const exempt = cfg.exempt || exemptSet();
+  /* 有效指班（手動指班 ＋ 週律固定早班）— 迴圈內會反覆查詢，先展開一次 */
+  const asgAll = S.staff.map((_, i) => effAssign(i));
 
   for (let d=1; d<=days; d++){
     /* 0a. 出差：不在店，畫記 4，之後所有分配都跳過 */
@@ -815,7 +850,7 @@ function assignShifts(off, cfg){
     const w = dowOf(d);
     /* 0b. 指班：先套用強制班別（硬條件） */
     workers.forEach(i => {
-      const a = assignOf(i)[d];
+      const a = asgAll[i][d];
       if (a !== undefined){ grid[i][d] = a; if (a === 0 && !exempt.has(i)) mCount[i]++; }
     });
     /* 人力規則只對「規則內」員工計數；店長是額外加上去的 */
@@ -875,33 +910,64 @@ function assignShifts(off, cfg){
            .forEach(i => { grid[i][d] = (d > 1 && grid[i][d-1] === 3) ? 2 : 1; });
   }
 
-  /* 早班平衡修復（只平衡規則內員工；Demi 減少早班不計入平衡；
+  /* 早班平衡修復（只平衡規則內員工；Demi 與週律固定早班者不計入平衡；
      不可換走當天唯一的管理職晚班；不可動指班格）
      掃描所有落差 ≥2 的配對，避免單一配對無日可換就卡住 */
   const canTake = (i, d) =>
     (grid[i][d]===1 || grid[i][d]===2) &&
-    assignOf(i)[d] === undefined &&
+    asgAll[i][d] === undefined &&
     !(grid[i][d]===2 && trioAll.includes(i) && !trioAll.some(t => t !== i && grid[t][d] === 2));
-  for (let pass=0; pass<80; pass++){
-    let done = false;
-    const order = [];
-    for (let i=0;i<N;i++) if (!exempt.has(i) && i !== demiIdx) order.push(i);
-    order.sort((a,b) => mCount[b] - mCount[a]);
-    outer:
-    for (const hi of order){
-      for (let k=order.length-1; k>=0; k--){
-        const lo = order[k];
-        if (mCount[hi] - mCount[lo] <= 1) continue;
-        for (let d=1; d<=days; d++){
-          if (grid[hi][d]===0 && assignOf(hi)[d] === undefined && canTake(lo, d)){
-            const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
-            mCount[hi]--; mCount[lo]++; done = true;
-            break outer;
+  const peers = [];
+  for (let i=0;i<N;i++) if (!exempt.has(i) && i !== demiIdx && !mornFixed(i)) peers.push(i);
+  const balancePeers = () => {
+    for (let pass=0; pass<80; pass++){
+      let done = false;
+      const order = peers.slice().sort((a,b) => mCount[b] - mCount[a]);
+      outer:
+      for (const hi of order){
+        for (let k=order.length-1; k>=0; k--){
+          const lo = order[k];
+          if (mCount[hi] - mCount[lo] <= 1) continue;
+          for (let d=1; d<=days; d++){
+            if (grid[hi][d]===0 && asgAll[hi][d] === undefined && canTake(lo, d)){
+              const tmp = grid[lo][d]; grid[lo][d] = 0; grid[hi][d] = tmp;
+              mCount[hi]--; mCount[lo]++; done = true;
+              break outer;
+            }
           }
         }
       }
+      if (!done) break;
     }
-    if (!done) break;
+  };
+  balancePeers();
+
+  /* Demi 早班下限：刻意比別人少，但不可為 0 —
+     目標 ≈ 其他人平均的一半（至少 1 天）。
+     只從「早班比 Demi 目標值多 2 天以上」的人手上換，換完再重跑一次平衡，
+     避免為了補 Demi 反而把某位同事的早班壓出新的落差。 */
+  if (demiIdx >= 0 && !exempt.has(demiIdx) && peers.length){
+    const peerAvg = peers.reduce((a,i) => a + mCount[i], 0) / peers.length;
+    const target = Math.max(1, Math.round(peerAvg / 2));
+    for (let guard=0; guard<40 && mCount[demiIdx] < target; guard++){
+      let moved = false;
+      const donors = peers.slice().sort((a,b) => mCount[b] - mCount[a]);
+      for (const hi of donors){
+        /* 捐出後仍須嚴格多於 Demi，維持「Demi 早班最少」這條規則 */
+        if (mCount[hi] < mCount[demiIdx] + 2) continue;
+        for (let d=1; d<=days; d++){
+          if (grid[hi][d] !== 0 || asgAll[hi][d] !== undefined) continue;
+          if (!canTake(demiIdx, d)) continue;
+          const tmp = grid[demiIdx][d];
+          grid[demiIdx][d] = 0; grid[hi][d] = tmp;
+          mCount[demiIdx]++; mCount[hi]--; moved = true;
+          break;
+        }
+        if (moved) break;
+      }
+      if (!moved) break;
+    }
+    balancePeers();
   }
   return grid;
 }
@@ -997,7 +1063,7 @@ function validate(){
   for (let i=0;i<N;i++){
     const sp = specialSet(i);
     const isEx = exempt.has(i);
-    const asg = assignOf(i);
+    const asg = effAssign(i);
     let offN=0, restOff=0, spN=0, bizN=0, m=0, mid=0, e=0, maxRun=0, run=0;
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
@@ -1008,7 +1074,7 @@ function validate(){
       }
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else if (s===2) e++; else if (s===4) bizN++; }
     }
-    if (!isEx && i !== demiIdxV) mCounts.push(m);
+    if (!isEx && i !== demiIdxV && !mornFixed(i)) mCounts.push(m);
     stats.push({ offN, restOff, spN, bizN, m, mid, e, maxRun });
     if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
     if (!isEx){
@@ -1024,8 +1090,16 @@ function validate(){
       if (grid[i][dd] !== asg[dStr]) v.push(`${S.staff[i].name}：${dd} 日為指班（${SHIFT_NAME[asg[dStr]]}），實際排成「${SHIFT_NAME[grid[i][dd]] || '?'}」`);
     }
   }
-  const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
-  if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長/Demi 不計）`);
+  if (mCounts.length){
+    const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
+    if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長/${S.trio[2]}/週律固定早班者不計）`);
+  }
+  /* Demi 早班可以最少，但不可為 0 */
+  if (demiIdxV >= 0 && !exempt.has(demiIdxV)){
+    let dm = 0;
+    for (let d=1; d<=days; d++) if (grid[demiIdxV][d] === 0) dm++;
+    if (dm === 0) v.push(`${S.staff[demiIdxV].name}：整月 0 個早班（可比別人少，但不應完全沒有）`);
+  }
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
   const livIdxV = S.staff.findIndex(p => p.name === S.trio[1]);
   for (let d=1; d<=days; d++){
@@ -1039,13 +1113,14 @@ function validate(){
     for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
+    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3' : '早1、中1、晚2–3';
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
+    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人）`);
     if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
+    if (m > dem.m) v.push(`${d} 日：早班 ${m} 人超額（應 ${dem.m} 人，${shape}）`);
     if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
     if (dem.mid > 0 && mid < dem.mid && workers >= dem.min)
-      v.push(isRest(d) ? `${d} 日：假日應開「早1、中1、晚3」，中班缺 ${dem.mid-mid} 人`
-                       : `${d} 日：平日早班 1 人時應開 1 個中班（早1中1晚2）`);
-    if (m >= 2 && mid > 0) v.push(`${d} 日：早班已有 ${m} 人，不應再排中班`);
+      v.push(`${d} 日：應開 1 個中班（${shape}），目前中班 ${mid} 人`);
     const trioWorking = trioIdx.some(i => grid[i][d] !== 3);
     if (trioWorking && !trioIdx.some(i => grid[i][d] === 2))
       v.push(`${d} 日：${trioIdx.map(i=>S.staff[i].name).join('/')} 無人上晚班（每天至少一位管理職晚班）`);
@@ -1083,7 +1158,7 @@ function render(){
       hh += `<tr><td class="name-col">${S.staff[i].name}<span class="role-tag">${S.staff[i].role}</span></td>`;
       const fx = fixedOf(i);
       const sp = specialOf(i);
-      const asg = assignOf(i);
+      const asg = effAssign(i);
       for (let d=1; d<=days; d++){
         const s = grid[i][d];
         if (s===4){
@@ -1590,18 +1665,19 @@ async function exportCompanyExcelFromScratch({ grid, days, N, y, monAbbr }){
 /* ============================================================
    SETTINGS UI
 ============================================================ */
+const WK_STATE = { off:['off','休','固定休'], work:['work','班','固定上班（班別由系統決定）'], morn:['morn','早','固定上早班（必上班且必早班）'] };
 function weekCells(i){
   const w = S.staff[i].week || {};
   return `<div class="wkrow">` + DOW.map((lab, k) => {
-    const st = w[k] === 'off' ? 'off' : (w[k] === 'work' ? 'work' : '');
-    const stLab = w[k] === 'off' ? '休' : (w[k] === 'work' ? '班' : '·');
-    return `<button class="wk ${st}" onclick="cycleWeek(${i},${k})" title="週${lab}">${lab}<span class="st">${stLab}</span></button>`;
+    const [st, stLab, tip] = WK_STATE[w[k]] || ['','·','未設定'];
+    return `<button class="wk ${st}" onclick="cycleWeek(${i},${k})" title="週${lab}：${tip}">${lab}<span class="st">${stLab}</span></button>`;
   }).join('') + `</div>`;
 }
 function cycleWeek(i, k){
   const w = S.staff[i].week || (S.staff[i].week = {});
-  w[k] = w[k] === 'off' ? 'work' : (w[k] === 'work' ? undefined : 'off');
-  if (w[k] === undefined) delete w[k];
+  const cur = w[k];
+  const next = cur === undefined ? 'off' : cur === 'off' ? 'work' : cur === 'work' ? 'morn' : undefined;
+  if (next === undefined) delete w[k]; else w[k] = next;
   syncAll();
 }
 function renderStaff(){
@@ -1657,8 +1733,8 @@ function moveStaff(i, dir){
   syncAll();
   if (RESULT) render();
 }
-function delStaff(i){
-  if (!confirm(`移除 ${S.staff[i].name}？`)) return;
+async function delStaff(i){
+  if (!await uiConfirm('移除員工', `確定移除 ${S.staff[i].name}？`)) return;
   S.staff.splice(i,1);
   const fx = S.fixed[S.month] || {};
   const nf = {};
@@ -1792,17 +1868,18 @@ function toggleFix(d){
    （平日、跨週分散、優先人力最鬆的日子）；可點名排除
 ============================================================ */
 const alExcluded = new Set();   /* 以姓名記錄，換月/排序都不受影響 */
-const alDaysMap = new Map();    /* 姓名 → 2|3；未設定者預設 2 天（每人天數可以不一樣） */
+const alDaysMap = new Map();    /* 姓名 → 1|2|3；未設定者預設 2 天（每人天數可以不一樣） */
 function alEligible(i){
   return manualFixed(i).size === 0 && specialSet(i).size === 0;
 }
-function alDaysFor(name){ return alDaysMap.get(name) === 3 ? 3 : 2; }
+function alDaysFor(name){ const v = alDaysMap.get(name); return (v === 1 || v === 3) ? v : 2; }
 function alState(name){ return alExcluded.has(name) ? 'ex' : alDaysFor(name); }
 function cycleAl(name){
   const st = alState(name);
-  if (st === 2) alDaysMap.set(name, 3);                      /* 2天 → 3天 */
+  if (st === 1) alDaysMap.set(name, 2);                      /* 1天 → 2天 */
+  else if (st === 2) alDaysMap.set(name, 3);                 /* 2天 → 3天 */
   else if (st === 3) { alExcluded.add(name); alDaysMap.delete(name); }  /* 3天 → 排除 */
-  else { alExcluded.delete(name); alDaysMap.set(name, 2); }  /* 排除 → 2天 */
+  else { alExcluded.delete(name); alDaysMap.set(name, 1); }  /* 排除 → 1天 */
   renderAlChips();
 }
 function renderAlChips(){
@@ -1977,8 +2054,9 @@ document.getElementById('monthInput').value = S.month;
 document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; syncAll(); restoreResult(); });
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
-document.getElementById('regenBtn').addEventListener('click', () => {
-  if (manualEdits.size > 0 && !confirm(`你已手動調整 ${manualEdits.size} 格班別，重排會產生新方案並覆蓋這些調整，確定要重排嗎？`)) return;
+document.getElementById('regenBtn').addEventListener('click', async () => {
+  if (manualEdits.size > 0 && !await uiConfirm('重新排班',
+      `你已手動調整 ${manualEdits.size} 格班別。\n重排會產生新方案並覆蓋這些調整，確定要重排嗎？`)) return;
   generate();
 });
 document.getElementById('alAutoBtn').addEventListener('click', autoInsertAL);
@@ -2008,12 +2086,63 @@ gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所�
 const ADMIN_PIN = '0000';
 let pubSel = { month: null, person: -1 };
 
+/* ------------------------------------------------------------
+   頁內對話框 — 取代 prompt()／confirm()
+   LINE、FB、IG 等 App 內建瀏覽器與部分 webview 會「直接忽略」原生
+   prompt()／confirm()：prompt 回傳 null、confirm 回傳 false，畫面毫無
+   反應，使用者只會看到「按了沒用」。改用頁內元素才能在所有環境運作。
+------------------------------------------------------------ */
+function uiDialog({ title, desc, input, okText = '確定', cancelText = '取消', okOnly = false }){
+  return new Promise(resolve => {
+    const back = document.createElement('div');
+    back.className = 'dlg-back';
+    back.innerHTML = `
+      <div class="dlg" role="dialog" aria-modal="true">
+        <div class="dlg-title"></div>
+        <div class="dlg-desc"></div>
+        ${input ? `<input class="dlg-input" type="${input.password ? 'password' : 'text'}"
+            inputmode="${input.password ? 'numeric' : 'text'}" placeholder="${input.placeholder || ''}">` : ''}
+        <div class="dlg-btns">
+          <button class="btn ghost dlg-no"></button>
+          <button class="btn gold dlg-ok"></button>
+        </div>
+      </div>`;
+    back.querySelector('.dlg-title').textContent = title || '';
+    back.querySelector('.dlg-desc').textContent = desc || '';
+    back.querySelector('.dlg-ok').textContent = okText;
+    back.querySelector('.dlg-no').textContent = cancelText;
+    const field = back.querySelector('.dlg-input');
+    if (!desc) back.querySelector('.dlg-desc').style.display = 'none';
+    if (okOnly) back.querySelector('.dlg-no').style.display = 'none';
+
+    const done = val => { document.removeEventListener('keydown', onKey); back.remove(); resolve(val); };
+    const ok = () => done(field ? field.value : true);
+    const no = () => done(field ? null : false);
+    function onKey(e){
+      if (e.key === 'Escape') no();
+      else if (e.key === 'Enter' && field) ok();
+    }
+    back.querySelector('.dlg-ok').addEventListener('click', ok);
+    back.querySelector('.dlg-no').addEventListener('click', no);
+    back.addEventListener('click', e => { if (e.target === back) no(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(back);
+    if (field) field.focus();
+  });
+}
+const uiPrompt  = (title, desc, opts = {}) => uiDialog({ title, desc, input: opts });
+const uiConfirm = (title, desc) => uiDialog({ title, desc });
+const uiAlert   = (title, desc) => uiDialog({ title, desc, okOnly: true, okText: '知道了' });
+/* 舊有的 alert() 在 App 內建瀏覽器同樣會被忽略 — 統一改走頁內對話框。
+   宣告在此之後才被呼叫（全部都在事件處理器內），不會有 TDZ 問題。 */
+window.alert = (msg) => { uiAlert(String(msg)); };
+
 function pubData(){ return window.MK_SCHED_PUB || {}; }
 
-function enterAdmin(){
-  const pin = prompt('請輸入店長密碼：');
+async function enterAdmin(){
+  const pin = await uiPrompt('店長排班', '請輸入店長密碼', { password: true, placeholder: '密碼' });
   if (pin === null) return;
-  if (pin !== ADMIN_PIN){ alert('密碼錯誤'); return; }
+  if (pin !== ADMIN_PIN){ await uiConfirm('密碼錯誤', '請再試一次。'); return; }
   sessionStorage.setItem('mk-admin','1');
   applyMode();
 }
@@ -2035,9 +2164,12 @@ function renderViewer(){
   if (!months.length){
     document.getElementById('pubBody').style.display = 'none';
     document.getElementById('pubEmpty').style.display = '';
-    selEl.innerHTML = '<option>—</option>';
+    /* 空下拉看起來像壞掉 — 明講「還沒有已發布的班表」並停用選單 */
+    selEl.innerHTML = '<option>尚無已發布的班表</option>';
+    selEl.disabled = true;
     return;
   }
+  selEl.disabled = false;
   document.getElementById('pubBody').style.display = '';
   document.getElementById('pubEmpty').style.display = 'none';
   if (!pubSel.month || !pub[pubSel.month]) pubSel.month = months[0];
@@ -2122,14 +2254,15 @@ async function publish(){
   if (!RESULT){ alert('請先產生班表'); return; }
   let token = localStorage.getItem('mk-gh-token');
   if (!token){
-    token = prompt(
-      '第一次發布需要設定 GitHub Token（只需一次，之後自動記住）：\n\n' +
-      '1. 開啟 github.com → Settings → Developer settings → Fine-grained tokens → Generate new token\n' +
+    token = await uiPrompt('設定 GitHub Token',
+      '第一次發布需要設定 Token（只需一次，之後自動記住）：\n' +
+      '1. github.com → Settings → Developer settings → Fine-grained tokens → Generate new token\n' +
       '2. Repository access 選「Only select repositories」→ MK-monthly\n' +
       '3. Permissions → Contents → Read and write\n' +
-      '4. 產生後把 token 貼在下面：\n\n' +
-      '（不方便設定的話按取消，可改用「下載檔案」請 Claude 代為發布）');
-    if (!token){ downloadPubFile(); return; }
+      '4. 產生後貼在下面\n\n' +
+      '按取消可改用「下載檔案」請 Claude 代為發布。',
+      { placeholder: 'github_pat_...' });
+    if (!token || !token.trim()){ downloadPubFile(); return; }
     localStorage.setItem('mk-gh-token', token.trim());
     token = token.trim();
   }
@@ -2161,7 +2294,7 @@ async function publish(){
     st.textContent = '✓ 已發布！同事約 1–2 分鐘後重新整理頁面即可看到新班表';
   } catch(e){
     st.textContent = '⚠ 發布失敗：' + e.message + '（可改用下載檔案）';
-    if (confirm('線上發布失敗。要下載班表檔案改用手動方式嗎？')) downloadPubFile();
+    if (await uiConfirm('線上發布失敗', e.message + '\n\n要下載班表檔案改用手動方式嗎？')) downloadPubFile();
   }
 }
 function downloadPubFile(){
