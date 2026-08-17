@@ -103,6 +103,17 @@ table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
 .wk.off { background: var(--ink); color: #fff; border-color: var(--ink); }
 .wk.work { background: var(--gold-wash); color: var(--gold-dark); border-color: var(--gold); }
 .wk.morn { background: var(--m-wash); color: var(--ink); border-color: var(--gold-dark); text-decoration: underline; text-underline-offset: 2px; }
+/* 頁內對話框（取代 prompt/confirm — App 內建瀏覽器會忽略原生對話框） */
+.dlg-back { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(20,20,20,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+.dlg { background: #fff; border: 1px solid var(--line); border-radius: 4px; max-width: 460px;
+  width: 100%; padding: 22px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+.dlg-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.dlg-desc { font-size: 13px; color: var(--ink2); line-height: 1.65; white-space: pre-line; margin-bottom: 14px; }
+.dlg-input { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid var(--line);
+  border-radius: 3px; margin-bottom: 16px; font-family: inherit; }
+.dlg-input:focus { outline: none; border-color: var(--gold); }
+.dlg-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* mini calendars */
 .person-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; flex-wrap: wrap; }
@@ -504,9 +515,9 @@ function restoreResult(){
     ? `🔒 此月班表已於 ${rec.savedAt} 鎖定 — 唯讀回顧中（可按「解除鎖定」修改）`
     : `已載入先前儲存的班表（${rec.savedAt}）`;
 }
-function clearResult(){
-  if (LOCKED){ alert('班表已鎖定，請先解除鎖定再清除。'); return; }
-  if (!confirm(`確定清除 ${S.month} 的班表重新開始？（指休與設定會保留）`)) return;
+async function clearResult(){
+  if (LOCKED){ await uiConfirm('班表已鎖定', '請先解除鎖定再清除。'); return; }
+  if (!await uiConfirm('清除班表', `確定清除 ${S.month} 的班表重新開始？\n（指休與設定會保留）`)) return;
   const all = loadSavedAll();
   delete all[S.month];
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
@@ -1722,8 +1733,8 @@ function moveStaff(i, dir){
   syncAll();
   if (RESULT) render();
 }
-function delStaff(i){
-  if (!confirm(`移除 ${S.staff[i].name}？`)) return;
+async function delStaff(i){
+  if (!await uiConfirm('移除員工', `確定移除 ${S.staff[i].name}？`)) return;
   S.staff.splice(i,1);
   const fx = S.fixed[S.month] || {};
   const nf = {};
@@ -2043,8 +2054,9 @@ document.getElementById('monthInput').value = S.month;
 document.getElementById('monthInput').addEventListener('change', e => { S.month = e.target.value; syncAll(); restoreResult(); });
 document.getElementById('addStaff').addEventListener('click', () => { S.staff.push({ name:'新員工', role:'SA', quota:10, week:{} }); syncAll(); });
 document.getElementById('genBtn').addEventListener('click', generate);
-document.getElementById('regenBtn').addEventListener('click', () => {
-  if (manualEdits.size > 0 && !confirm(`你已手動調整 ${manualEdits.size} 格班別，重排會產生新方案並覆蓋這些調整，確定要重排嗎？`)) return;
+document.getElementById('regenBtn').addEventListener('click', async () => {
+  if (manualEdits.size > 0 && !await uiConfirm('重新排班',
+      `你已手動調整 ${manualEdits.size} 格班別。\n重排會產生新方案並覆蓋這些調整，確定要重排嗎？`)) return;
   generate();
 });
 document.getElementById('alAutoBtn').addEventListener('click', autoInsertAL);
@@ -2074,12 +2086,63 @@ gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所�
 const ADMIN_PIN = '0000';
 let pubSel = { month: null, person: -1 };
 
+/* ------------------------------------------------------------
+   頁內對話框 — 取代 prompt()／confirm()
+   LINE、FB、IG 等 App 內建瀏覽器與部分 webview 會「直接忽略」原生
+   prompt()／confirm()：prompt 回傳 null、confirm 回傳 false，畫面毫無
+   反應，使用者只會看到「按了沒用」。改用頁內元素才能在所有環境運作。
+------------------------------------------------------------ */
+function uiDialog({ title, desc, input, okText = '確定', cancelText = '取消', okOnly = false }){
+  return new Promise(resolve => {
+    const back = document.createElement('div');
+    back.className = 'dlg-back';
+    back.innerHTML = `
+      <div class="dlg" role="dialog" aria-modal="true">
+        <div class="dlg-title"></div>
+        <div class="dlg-desc"></div>
+        ${input ? `<input class="dlg-input" type="${input.password ? 'password' : 'text'}"
+            inputmode="${input.password ? 'numeric' : 'text'}" placeholder="${input.placeholder || ''}">` : ''}
+        <div class="dlg-btns">
+          <button class="btn ghost dlg-no"></button>
+          <button class="btn gold dlg-ok"></button>
+        </div>
+      </div>`;
+    back.querySelector('.dlg-title').textContent = title || '';
+    back.querySelector('.dlg-desc').textContent = desc || '';
+    back.querySelector('.dlg-ok').textContent = okText;
+    back.querySelector('.dlg-no').textContent = cancelText;
+    const field = back.querySelector('.dlg-input');
+    if (!desc) back.querySelector('.dlg-desc').style.display = 'none';
+    if (okOnly) back.querySelector('.dlg-no').style.display = 'none';
+
+    const done = val => { document.removeEventListener('keydown', onKey); back.remove(); resolve(val); };
+    const ok = () => done(field ? field.value : true);
+    const no = () => done(field ? null : false);
+    function onKey(e){
+      if (e.key === 'Escape') no();
+      else if (e.key === 'Enter' && field) ok();
+    }
+    back.querySelector('.dlg-ok').addEventListener('click', ok);
+    back.querySelector('.dlg-no').addEventListener('click', no);
+    back.addEventListener('click', e => { if (e.target === back) no(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(back);
+    if (field) field.focus();
+  });
+}
+const uiPrompt  = (title, desc, opts = {}) => uiDialog({ title, desc, input: opts });
+const uiConfirm = (title, desc) => uiDialog({ title, desc });
+const uiAlert   = (title, desc) => uiDialog({ title, desc, okOnly: true, okText: '知道了' });
+/* 舊有的 alert() 在 App 內建瀏覽器同樣會被忽略 — 統一改走頁內對話框。
+   宣告在此之後才被呼叫（全部都在事件處理器內），不會有 TDZ 問題。 */
+window.alert = (msg) => { uiAlert(String(msg)); };
+
 function pubData(){ return window.MK_SCHED_PUB || {}; }
 
-function enterAdmin(){
-  const pin = prompt('請輸入店長密碼：');
+async function enterAdmin(){
+  const pin = await uiPrompt('店長排班', '請輸入店長密碼', { password: true, placeholder: '密碼' });
   if (pin === null) return;
-  if (pin !== ADMIN_PIN){ alert('密碼錯誤'); return; }
+  if (pin !== ADMIN_PIN){ await uiConfirm('密碼錯誤', '請再試一次。'); return; }
   sessionStorage.setItem('mk-admin','1');
   applyMode();
 }
@@ -2191,14 +2254,15 @@ async function publish(){
   if (!RESULT){ alert('請先產生班表'); return; }
   let token = localStorage.getItem('mk-gh-token');
   if (!token){
-    token = prompt(
-      '第一次發布需要設定 GitHub Token（只需一次，之後自動記住）：\n\n' +
-      '1. 開啟 github.com → Settings → Developer settings → Fine-grained tokens → Generate new token\n' +
+    token = await uiPrompt('設定 GitHub Token',
+      '第一次發布需要設定 Token（只需一次，之後自動記住）：\n' +
+      '1. github.com → Settings → Developer settings → Fine-grained tokens → Generate new token\n' +
       '2. Repository access 選「Only select repositories」→ MK-monthly\n' +
       '3. Permissions → Contents → Read and write\n' +
-      '4. 產生後把 token 貼在下面：\n\n' +
-      '（不方便設定的話按取消，可改用「下載檔案」請 Claude 代為發布）');
-    if (!token){ downloadPubFile(); return; }
+      '4. 產生後貼在下面\n\n' +
+      '按取消可改用「下載檔案」請 Claude 代為發布。',
+      { placeholder: 'github_pat_...' });
+    if (!token || !token.trim()){ downloadPubFile(); return; }
     localStorage.setItem('mk-gh-token', token.trim());
     token = token.trim();
   }
@@ -2230,7 +2294,7 @@ async function publish(){
     st.textContent = '✓ 已發布！同事約 1–2 分鐘後重新整理頁面即可看到新班表';
   } catch(e){
     st.textContent = '⚠ 發布失敗：' + e.message + '（可改用下載檔案）';
-    if (confirm('線上發布失敗。要下載班表檔案改用手動方式嗎？')) downloadPubFile();
+    if (await uiConfirm('線上發布失敗', e.message + '\n\n要下載班表檔案改用手動方式嗎？')) downloadPubFile();
   }
 }
 function downloadPubFile(){
