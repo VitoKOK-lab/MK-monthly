@@ -249,7 +249,10 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       </div>
       <div class="hint" id="pubMeta"></div>
     </div>
-    <div class="hint" id="pubEmpty" style="display:none;padding:30px 0;text-align:center;font-size:14px">尚未發布任何班表，請等店長發布。</div>
+    <div class="hint" id="pubEmpty" style="display:none;padding:30px 0;text-align:center;font-size:14px">
+      尚未發布任何班表。<br>
+      <span style="color:var(--muted)">同事請等店長發布；店長要排新的月份，請按右上角「🔑 店長排班」。</span>
+    </div>
   </section>
 </div>
 
@@ -2098,9 +2101,12 @@ function renderViewer(){
   if (!months.length){
     document.getElementById('pubBody').style.display = 'none';
     document.getElementById('pubEmpty').style.display = '';
-    selEl.innerHTML = '<option>—</option>';
+    /* 空下拉看起來像壞掉 — 明講「還沒有已發布的班表」並停用選單 */
+    selEl.innerHTML = '<option>尚無已發布的班表</option>';
+    selEl.disabled = true;
     return;
   }
+  selEl.disabled = false;
   document.getElementById('pubBody').style.display = '';
   document.getElementById('pubEmpty').style.display = 'none';
   if (!pubSel.month || !pub[pubSel.month]) pubSel.month = months[0];
