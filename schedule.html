@@ -506,7 +506,12 @@ function restoreResult(){
   const rec = loadSavedAll()[S.month];
   if (!rec){ RESULT = null; LOCKED = false; manualEdits.clear(); UNDO.length = 0;
     document.getElementById('resultSec').style.display = 'none'; updateButtons(); return; }
-  RESULT = { grid: rec.grid, days: rec.days, month: S.month, offScore: 0 };
+  /* 名單增減過的話，舊班表的列數會對不上現在的員工數。
+     少的列補「休」（那位同事當月本來就不在），多的列直接丟掉，
+     避免 render() 讀到 undefined 整頁掛掉。 */
+  const grid = rec.grid.slice(0, S.staff.length).map(r => r.slice());
+  while (grid.length < S.staff.length) grid.push(new Array(rec.days + 1).fill(3));
+  RESULT = { grid, days: rec.days, month: S.month, offScore: 0 };
   LOCKED = !!rec.locked;
   manualEdits.clear(); (rec.manual||[]).forEach(k => manualEdits.add(k));
   UNDO.length = 0;
@@ -581,6 +586,42 @@ function normalize(s){
 }
 function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} }
 function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ return null; } }
+
+/* ---------- 一次性資料補寫 ----------
+   店長的設定存在自己的瀏覽器，改 defaultState() 只影響全新的裝置，
+   已經有存檔的機器不會拿到新資料。這裡替「規則已經談定、但舊存檔還沒有」
+   的內容做一次性補寫：每則以 id 記在 S.migrations，同一台裝置只跑一次，
+   之後店長自己改動不會被蓋回去。新增一則就在下面加一個 key。 */
+const MIGRATIONS = {
+  /* 2026-09：新夥伴柏鴻進來、9/25–28 連假、九月 AL 天數 */
+  '2026-09-setup'(){
+    if (!S.staff.some(p => p.name === '柏鴻'))
+      S.staff.push({ name:'柏鴻', role:'SA', quota:10, week:{ 0:'morn', 3:'morn', 5:'morn' } });
+
+    /* 9/25（五）、9/28（一）補進國定假日；26、27 本來就是週末不用加 */
+    if (!S.holidays) S.holidays = {};
+    const holi = new Set(S.holidays['2026-09'] || []);
+    [25, 28].forEach(d => holi.add(d));
+    S.holidays['2026-09'] = [...holi].sort((a,b) => a - b);
+
+    /* AL：Demi 2 天、Vina 1 天、Wiggie 1 天，名單上其他人不安插。
+       排除名單依當下實際名單算，店長改過名單也不會漏人。 */
+    const days = { Demi:2, Vina:1, Wiggie:1 };
+    if (!S.al) S.al = {};
+    S.al['2026-09'] = { days, excluded: S.staff.map(p => p.name).filter(n => !(n in days)) };
+  },
+};
+function runMigrations(){
+  if (!Array.isArray(S.migrations)) S.migrations = [];
+  let changed = false;
+  for (const [id, apply] of Object.entries(MIGRATIONS)){
+    if (S.migrations.includes(id)) continue;
+    try { apply(); } catch(e){ console.warn('資料補寫失敗：' + id, e); continue; }
+    S.migrations.push(id);
+    changed = true;
+  }
+  if (changed) saveState();
+}
 
 /* ---------- month helpers ---------- */
 function monthInfo(){
@@ -1864,19 +1905,27 @@ function toggleFix(d){
    自動安插 AL 年假：沒有指休/特假的同事每人安插 2–3 天 AL
    （平日、跨週分散、優先人力最鬆的日子）；可點名排除
 ============================================================ */
-const alExcluded = new Set();   /* 以姓名記錄，換月/排序都不受影響 */
-const alDaysMap = new Map();    /* 姓名 → 1|2|3；未設定者預設 2 天（每人天數可以不一樣） */
+/* AL 天數／排除名單存進 S 並依月份分開（以姓名記錄，員工排序改變不受影響）。
+   以前只放在記憶體，重新整理或換月就重置，店長每次都得重點一遍。 */
+function alBucket(){
+  if (!S.al) S.al = {};
+  const b = S.al[S.month] || (S.al[S.month] = {});
+  if (!b.days) b.days = {};
+  if (!Array.isArray(b.excluded)) b.excluded = [];
+  return b;
+}
 function alEligible(i){
   return manualFixed(i).size === 0 && specialSet(i).size === 0;
 }
-function alDaysFor(name){ const v = alDaysMap.get(name); return (v === 1 || v === 3) ? v : 2; }
-function alState(name){ return alExcluded.has(name) ? 'ex' : alDaysFor(name); }
+function alDaysFor(name){ const v = alBucket().days[name]; return (v === 1 || v === 3) ? v : 2; }
+function alState(name){ return alBucket().excluded.includes(name) ? 'ex' : alDaysFor(name); }
 function cycleAl(name){
-  const st = alState(name);
-  if (st === 1) alDaysMap.set(name, 2);                      /* 1天 → 2天 */
-  else if (st === 2) alDaysMap.set(name, 3);                 /* 2天 → 3天 */
-  else if (st === 3) { alExcluded.add(name); alDaysMap.delete(name); }  /* 3天 → 排除 */
-  else { alExcluded.delete(name); alDaysMap.set(name, 1); }  /* 排除 → 1天 */
+  const b = alBucket(), st = alState(name);
+  if (st === 1) b.days[name] = 2;                                             /* 1天 → 2天 */
+  else if (st === 2) b.days[name] = 3;                                        /* 2天 → 3天 */
+  else if (st === 3){ b.excluded.push(name); delete b.days[name]; }           /* 3天 → 排除 */
+  else { b.excluded = b.excluded.filter(n => n !== name); b.days[name] = 1; } /* 排除 → 1天 */
+  saveState();
   renderAlChips();
 }
 function renderAlChips(){
@@ -1901,7 +1950,7 @@ function autoInsertAL(){
   if (!S.special[S.month]) S.special[S.month] = {};
   const sp = S.special[S.month];
   const targets = S.staff.map((p,i) => i)
-    .filter(i => alEligible(i) && !alExcluded.has(S.staff[i].name));
+    .filter(i => alEligible(i) && !alBucket().excluded.includes(S.staff[i].name));
   if (!targets.length){
     document.getElementById('alStatus').textContent = '沒有符合條件的同事（都已有指休/特假或被排除）';
     return;
@@ -2073,6 +2122,7 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
     `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · 早/中/晚/休 · BL/AL = 特殊假 · 底線 = 指休`;
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
+runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
 renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
 restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
 gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
