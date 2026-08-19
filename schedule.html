@@ -297,7 +297,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:14px">員工名單與週律</div>
     <div class="staff-scroll">
     <table class="staff">
-      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th>每週固定（點格循環：空 → 休 → 班 → 早）</th><th></th></tr></thead>
+      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th title="打勾者為規則外的額外人力，不計入每日早/中/晚人數（店長一律不計）">不計人力</th><th>每週固定（點格循環：空 → 休 → 班 → 早）</th><th></th></tr></thead>
       <tbody id="staffBody"></tbody>
     </table>
     </div>
@@ -346,7 +346,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
 
     <div class="subhead" style="margin-top:22px">自動安插 AL 年假</div>
-    <div class="hint" style="margin-bottom:8px">為「本月沒有任何指休、也沒有 BL/AL」的同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。已排指休連假者自動跳過、維持現狀。點名字可切換天數與排除：1天 → 2天 → 3天 → 排除 → 1天（不是每個人都要一樣的天數）。</div>
+    <div class="hint" style="margin-bottom:8px">替同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。<b>已經有指休或 BL/AL 的人一樣會安插</b>，只是會避開他已經排定的日子。點名字可切換天數與排除：1天 → 2天 → 3天 → 排除 → 1天（不是每個人都要一樣的天數）。</div>
     <div class="person-chips" id="alExChips"></div>
     <div class="ctrl-row" style="align-items:flex-end;margin-top:4px">
       <button class="btn ghost" id="alAutoBtn">⚡ 自動安插 AL</button>
@@ -460,9 +460,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
    3. 人力下限（業務人數，不含店長）：平日至少 4 人、假日至少 5 人
-   4. 假日固定「早1、中1、晚3」；平日兩種組合（多的人加開晚班）：
-      週一/三/四「早2、晚2」（不開中班）；
-      週二/五「早1、中1、晚2」（早班 1 人時必開中班）
+   4. 每天固定「早 1、中 1」，其餘全部排晚班：
+      週五/六/日（含國定假日）晚班至少 3 人、週一～週四晚班至少 2 人。
+      晚班人數是下限不是上限 — 當天人力有多的就加開晚班，不算違規
    5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
       時由 Liv、Demi 輪流補位（三人可同時晚班）
    6. 週一早班盡量從前一天（週日）晚班的人挑；其中「週二剛好休假」
@@ -506,7 +506,12 @@ function restoreResult(){
   const rec = loadSavedAll()[S.month];
   if (!rec){ RESULT = null; LOCKED = false; manualEdits.clear(); UNDO.length = 0;
     document.getElementById('resultSec').style.display = 'none'; updateButtons(); return; }
-  RESULT = { grid: rec.grid, days: rec.days, month: S.month, offScore: 0 };
+  /* 名單增減過的話，舊班表的列數會對不上現在的員工數。
+     少的列補「休」（那位同事當月本來就不在），多的列直接丟掉，
+     避免 render() 讀到 undefined 整頁掛掉。 */
+  const grid = rec.grid.slice(0, S.staff.length).map(r => r.slice());
+  while (grid.length < S.staff.length) grid.push(new Array(rec.days + 1).fill(3));
+  RESULT = { grid, days: rec.days, month: S.month, offScore: 0 };
   LOCKED = !!rec.locked;
   manualEdits.clear(); (rec.manual||[]).forEach(k => manualEdits.add(k));
   UNDO.length = 0;
@@ -567,7 +572,7 @@ function defaultState(){
       { name:'Bailey', role:'SA',  quota:10, week:{} },
       { name:'Vina',   role:'SA',  quota:10, week:{} },
       /* 柏鴻：週三、週五、週日固定上早班（必上班且必早班） */
-      { name:'柏鴻',   role:'SA',  quota:10, week:{ 0:'morn', 3:'morn', 5:'morn' } },
+      { name:'柏鴻',   role:'SA',  quota:10, extra:true, week:{ 0:'morn', 3:'morn', 5:'morn' } },
     ],
     trio: ['Wiggie','Liv','Demi'],
     trioMode: 'all3',
@@ -581,6 +586,49 @@ function normalize(s){
 }
 function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} }
 function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ return null; } }
+
+/* ---------- 一次性資料補寫 ----------
+   店長的設定存在自己的瀏覽器，改 defaultState() 只影響全新的裝置，
+   已經有存檔的機器不會拿到新資料。這裡替「規則已經談定、但舊存檔還沒有」
+   的內容做一次性補寫：每則以 id 記在 S.migrations，同一台裝置只跑一次，
+   之後店長自己改動不會被蓋回去。新增一則就在下面加一個 key。 */
+const MIGRATIONS = {
+  /* 2026-09：新夥伴柏鴻進來、9/25–28 連假、九月 AL 天數 */
+  '2026-09-setup'(){
+    if (!S.staff.some(p => p.name === '柏鴻'))
+      S.staff.push({ name:'柏鴻', role:'SA', quota:10, week:{ 0:'morn', 3:'morn', 5:'morn' } });
+
+    /* 9/25（五）、9/28（一）補進國定假日；26、27 本來就是週末不用加 */
+    if (!S.holidays) S.holidays = {};
+    const holi = new Set(S.holidays['2026-09'] || []);
+    [25, 28].forEach(d => holi.add(d));
+    S.holidays['2026-09'] = [...holi].sort((a,b) => a - b);
+
+    /* AL：Demi 2 天、Vina 1 天、Wiggie 1 天，名單上其他人不安插。
+       排除名單依當下實際名單算，店長改過名單也不會漏人。 */
+    const days = { Demi:2, Vina:1, Wiggie:1 };
+    if (!S.al) S.al = {};
+    S.al['2026-09'] = { days, excluded: S.staff.map(p => p.name).filter(n => !(n in days)) };
+  },
+
+  /* 柏鴻改為「規則外額外人力」，跟店長一樣不計入每日早/中/晚人數。
+     獨立成一則，讓已經跑過上一則的裝置也拿得到。 */
+  '柏鴻-不計人力'(){
+    const p = S.staff.find(x => x.name === '柏鴻');
+    if (p) p.extra = true;
+  },
+};
+function runMigrations(){
+  if (!Array.isArray(S.migrations)) S.migrations = [];
+  let changed = false;
+  for (const [id, apply] of Object.entries(MIGRATIONS)){
+    if (S.migrations.includes(id)) continue;
+    try { apply(); } catch(e){ console.warn('資料補寫失敗：' + id, e); continue; }
+    S.migrations.push(id);
+    changed = true;
+  }
+  if (changed) saveState();
+}
 
 /* ---------- month helpers ---------- */
 function monthInfo(){
@@ -636,17 +684,21 @@ const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 
 /* 店長 = 規則外額外人力：照樣排班，但不計入任何每日人力數量規則、
    早班平衡與假日休 2–3 天限制（額度、週律、連五禁止仍適用） */
-const exemptSet = () => new Set(S.staff.map((p,i) => p.role === '店長' ? i : -1).filter(i => i >= 0));
+/* 規則外的額外人力：店長一律不計；其他人可在員工表勾「不計人力」（p.extra）。
+   這些人照樣上班、照樣算休假額度，但不計入每日早/中/晚人數，也不參與班別平衡。 */
+const exemptSet = () => new Set(S.staff.map((p,i) => (p.role === '店長' || p.extra) ? i : -1).filter(i => i >= 0));
 
 /* 每日需求（以「規則內」員工計，店長另外加不計數）：
-   週五、六、日（含國定假日）：「早1、中1、晚3」，5–6 人
-   週一～週四：            「早1、中1、晚2–3」，4–5 人
+   週五、六、日（含國定假日）：「早1、中1、晚3–4」，5–6 人
+   週一～週四：            「早1、中1、晚2–3」，4–5 人（晚班 3 人尤佳 → pref）
    註：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
        不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
 function demand(d){
   if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
-  return { m:1, mid:1, e:2, min:4, cap:5 };
+  return { m:1, mid:1, e:2, min:4, cap:5, pref:5 };
 }
+/* Demi 的早班要比其他人少幾天（其他人平均 − 這個數，最低仍為 1 天） */
+const DEMI_MORN_GAP = 3;
 
 /* ============================================================
    PHASE 1 — 休假日分配
@@ -694,14 +746,12 @@ function scoreOff(off, cfg){
     const workers = nReg - offCount[d] - bizCnt[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
-    /* 超過上限＝當天過剩人力全擠晚班（曾出現晚班 5–6 人的離譜班表）。
-       罰則需夠重才會被真正避開，但仍低於「人力不足」，
-       確保萬一真的無解時，寧可多一人上班也不要缺人。 */
+    /* 超過上限＝晚班擠太多人（假日晚班上限 4、平日 3），罰則需夠重才會被真正避開，
+       但仍低於「人力不足」，確保萬一無解時寧可多一人上班也不要缺人。 */
     if (workers > dem.cap) sc += 400 * (workers - dem.cap);
-    /* 五六日的規格是「剛好 早1中1晚3」（平日才明確允許 2–3 個晚班）。
-       人力有餘裕時輕推回規格人數，讓超編集中在少數幾天，
-       而不是每個週末都變成晚班 4 人。 */
-    if ((isRest(d) || isFri(d)) && workers > dem.min) sc += 15 * (workers - dem.min);
+    /* 平日晚班 2–3 人都合規，但 3 人尤佳 → 有餘裕時輕推到滿編。
+       （本店人力通常只夠少數幾天達成，這是軟性偏好，達不到不算違規。） */
+    if (dem.pref && workers < dem.pref) sc += 10 * (dem.pref - workers);
   }
   if (trioIdx.length >= 2){
     const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
@@ -825,6 +875,8 @@ function assignShifts(off, cfg){
   const { days, N } = cfg;
   const grid = Array.from({length:N}, () => new Array(days+1).fill(3));
   const mCount = new Array(N).fill(0);
+  const midCount = new Array(N).fill(0);   /* 中班次數，用來公平輪中班 */
+  const eveCount = new Array(N).fill(0);   /* 晚班次數，用來公平輪鎮店與晚班 */
   /* 晚班鎮店：互斥名單三人（Wiggie/Liv/Demi）每天至少一人晚班；
      Wiggie 沒上晚班時由 Liv、Demi 輪流補位 */
   const wiggieIdx = S.staff.findIndex(s => s.name === S.trio[0]);
@@ -851,13 +903,18 @@ function assignShifts(off, cfg){
     /* 0b. 指班：先套用強制班別（硬條件） */
     workers.forEach(i => {
       const a = asgAll[i][d];
-      if (a !== undefined){ grid[i][d] = a; if (a === 0 && !exempt.has(i)) mCount[i]++; }
+      if (a !== undefined){
+        grid[i][d] = a;
+        if (!exempt.has(i)){ if (a === 0) mCount[i]++; else if (a === 1) midCount[i]++; else if (a === 2) eveCount[i]++; }
+      }
     });
     /* 人力規則只對「規則內」員工計數；店長是額外加上去的 */
     const regular = workers.filter(i => !exempt.has(i));
 
-    /* 1. 晚班鎮店：若已有管理職被指班晚班則直接算數；
-       否則鎖定一位（Liv/Demi 輪流優先，都不可用才輪到 Wiggie） */
+    /* 1. 晚班鎮店：若已有管理職被指班晚班則直接算數；否則鎖定一位。
+       規則外人力（店長）鎮店是「免費」的 — 不佔計入的晚班名額，所以優先由他頂；
+       他不在時才在 Liv/Demi 之間挑「目前晚班最少」的人，避免這兩位被鎮店綁死
+       （曾出現 Liv 整月 15 個晚班、中班只有 1 個）。 */
     let anchor = -1;
     const preEve = trioAll.filter(t => workers.includes(t) && grid[t][d] === 2);
     if (preEve.length){
@@ -865,12 +922,17 @@ function assignShifts(off, cfg){
       if (anchor === livIdx || anchor === demiIdx) lastCover = anchor;
     } else {
       const avail = i => i >= 0 && workers.includes(i) && grid[i][d] === 3;
-      const livIn = avail(livIdx), demiIn = avail(demiIdx);
-      if (livIn && demiIn){ anchor = (lastCover === livIdx) ? demiIdx : livIdx; lastCover = anchor; }
-      else if (livIn){ anchor = livIdx; lastCover = livIdx; }
-      else if (demiIn){ anchor = demiIdx; lastCover = demiIdx; }
+      const cands = trioAll.filter(avail);
+      if (cands.length){
+        /* 三人之中挑「目前晚班最少」的頂，同分時沿用上一輪的輪替方向 */
+        const lo = Math.min(...cands.map(t => eveCount[t]));
+        const tied = cands.filter(t => eveCount[t] === lo);
+        anchor = tied.length > 1 && tied.includes(lastCover)
+          ? tied.find(t => t !== lastCover) : tied[0];
+        if (anchor === livIdx || anchor === demiIdx) lastCover = anchor;
+      }
       else if (avail(wiggieIdx)) anchor = wiggieIdx;
-      if (anchor >= 0) grid[anchor][d] = 2;
+      if (anchor >= 0){ grid[anchor][d] = 2; eveCount[anchor]++; }   /* 規則外人力也計，鎮店才輪得平均 */
     }
 
     /* 2. 早班（週一早班盡量從前一天週日晚班的人挑；
@@ -899,8 +961,12 @@ function assignShifts(off, cfg){
     let rest = regular.filter(i => grid[i][d] === 3);
     const midHave = regular.filter(i => grid[i][d] === 1).length;
     const mids = Math.max(0, Math.min(dem.mid - midHave, rest.length));
-    for (let k=0; k<mids; k++) grid[rest.shift()][d] = 1;
-    rest.forEach(i => grid[i][d] = 2);
+    /* 中班也要公平輪 — 依「目前中班次數」由少到多挑，否則會固定落在名單前面的人
+       （曾出現某位同事整月 13 個中班、另一位 0 個）。晚班是扣掉早/中後的其餘人，
+       早班與中班都平均了，晚班自然跟著平均。 */
+    rest.sort((a,b) => midCount[a] - midCount[b]);
+    for (let k=0; k<mids; k++){ const i = rest.shift(); grid[i][d] = 1; midCount[i]++; }
+    rest.forEach(i => { grid[i][d] = 2; eveCount[i]++; });
 
     /* 4. 店長（不做業績、只算人頭）上班日班別：
        前一天休假 → 晚班；前一天有上班（含出差）→ 中班（週日接週六休＝晚班、
@@ -942,30 +1008,34 @@ function assignShifts(off, cfg){
   };
   balancePeers();
 
-  /* Demi 早班下限：刻意比別人少，但不可為 0 —
-     目標 ≈ 其他人平均的一半（至少 1 天）。
-     只從「早班比 Demi 目標值多 2 天以上」的人手上換，換完再重跑一次平衡，
-     避免為了補 Demi 反而把某位同事的早班壓出新的落差。 */
+  /* Demi 早班：刻意比別人少「約 3 天」，但不可為 0（目標 = 其他人平均 − 3，至少 1 天）。
+     兩個方向都要修 — 太少就從早班最多的人手上換過來，太多就讓給早班最少的人。
+     換完再跑一次平衡，避免為了喬 Demi 反而把某位同事的早班壓出新的落差。 */
   if (demiIdx >= 0 && !exempt.has(demiIdx) && peers.length){
     const peerAvg = peers.reduce((a,i) => a + mCount[i], 0) / peers.length;
-    const target = Math.max(1, Math.round(peerAvg / 2));
-    for (let guard=0; guard<40 && mCount[demiIdx] < target; guard++){
-      let moved = false;
-      const donors = peers.slice().sort((a,b) => mCount[b] - mCount[a]);
-      for (const hi of donors){
-        /* 捐出後仍須嚴格多於 Demi，維持「Demi 早班最少」這條規則 */
-        if (mCount[hi] < mCount[demiIdx] + 2) continue;
-        for (let d=1; d<=days; d++){
-          if (grid[hi][d] !== 0 || asgAll[hi][d] !== undefined) continue;
-          if (!canTake(demiIdx, d)) continue;
-          const tmp = grid[demiIdx][d];
-          grid[demiIdx][d] = 0; grid[hi][d] = tmp;
-          mCount[demiIdx]++; mCount[hi]--; moved = true;
-          break;
-        }
-        if (moved) break;
+    const target = Math.max(1, Math.round(peerAvg) - DEMI_MORN_GAP);
+    /* 把 hi 的一個早班換給 lo（lo 當天要是可動的中/晚班） */
+    const swapMorning = (hi, lo) => {
+      for (let d=1; d<=days; d++){
+        if (grid[hi][d] !== 0 || asgAll[hi][d] !== undefined) continue;
+        if (!canTake(lo, d)) continue;
+        const tmp = grid[lo][d];
+        grid[lo][d] = 0; grid[hi][d] = tmp;
+        mCount[lo]++; mCount[hi]--;
+        return true;
       }
-      if (!moved) break;
+      return false;
+    };
+    for (let guard=0; guard<40 && mCount[demiIdx] < target; guard++){
+      /* 太少：從早班最多的人補過來，且捐出後仍須多於 Demi，維持「Demi 最少」 */
+      const donors = peers.slice().sort((a,b) => mCount[b] - mCount[a])
+                          .filter(hi => mCount[hi] >= mCount[demiIdx] + 2);
+      if (!donors.some(hi => swapMorning(hi, demiIdx))) break;
+    }
+    for (let guard=0; guard<40 && mCount[demiIdx] > target; guard++){
+      /* 太多：讓給早班最少的人 */
+      const takers = peers.slice().sort((a,b) => mCount[a] - mCount[b]);
+      if (!takers.some(lo => swapMorning(demiIdx, lo))) break;
     }
     balancePeers();
   }
@@ -1059,7 +1129,7 @@ function validate(){
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
   const exempt = exemptSet();
   const demiIdxV = S.staff.findIndex(p => p.name === S.trio[2]);
-  const mCounts = [];
+  const mCounts = [], midCounts = [], eveCounts = [];
   for (let i=0;i<N;i++){
     const sp = specialSet(i);
     const isEx = exempt.has(i);
@@ -1075,6 +1145,10 @@ function validate(){
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else if (s===2) e++; else if (s===4) bizN++; }
     }
     if (!isEx && i !== demiIdxV && !mornFixed(i)) mCounts.push(m);
+    if (!isEx){ midCounts.push(mid); eveCounts.push(e); }
+    /* 店長與「不計人力」的額外人力不排早班（柏鴻的週律固定早班除外） */
+    if (isEx && m > 0 && !mornFixed(i) && !Object.values(asg).includes(0))
+      v.push(`${S.staff[i].name}：排了 ${m} 個早班（規則外人力不上早班）`);
     stats.push({ offN, restOff, spN, bizN, m, mid, e, maxRun });
     if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
     if (!isEx){
@@ -1094,11 +1168,26 @@ function validate(){
     const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
     if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長/${S.trio[2]}/週律固定早班者不計）`);
   }
-  /* Demi 早班可以最少，但不可為 0 */
+  /* 中／晚班也要盡量平均（規則外人力不計）。早班另有 ≤1 的嚴格檢查，
+     中晚班受每日班型與休假日牽動，落差門檻放寬到 3。 */
+  const spread = (arr, name, lim) => {
+    if (arr.length < 2) return;
+    const hi = Math.max(...arr), lo = Math.min(...arr);
+    if (hi - lo > lim) v.push(`${name}天數落差 ${hi - lo}（最多 ${hi}、最少 ${lo}，應 ≤ ${lim}，規則外人力不計）`);
+  };
+  spread(midCounts, '中班', 3);
+  spread(eveCounts, '晚班', 3);
+  /* Demi 早班刻意比別人少約 DEMI_MORN_GAP 天，但不可為 0、也不該差太多 */
   if (demiIdxV >= 0 && !exempt.has(demiIdxV)){
     let dm = 0;
     for (let d=1; d<=days; d++) if (grid[demiIdxV][d] === 0) dm++;
     if (dm === 0) v.push(`${S.staff[demiIdxV].name}：整月 0 個早班（可比別人少，但不應完全沒有）`);
+    else if (mCounts.length){
+      const avg = mCounts.reduce((a,b) => a+b, 0) / mCounts.length;
+      const gap = avg - dm;
+      if (gap > DEMI_MORN_GAP + 1.5)
+        v.push(`${S.staff[demiIdxV].name}：早班 ${dm} 天，比其他人平均少 ${gap.toFixed(1)} 天（目標約少 ${DEMI_MORN_GAP} 天，差太多）`);
+    }
   }
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
   const livIdxV = S.staff.findIndex(p => p.name === S.trio[1]);
@@ -1113,9 +1202,9 @@ function validate(){
     for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
-    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3' : '早1、中1、晚2–3';
+    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3–4' : '早1、中1、晚2–3';
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
-    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人）`);
+    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人，${shape}）`);
     if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
     if (m > dem.m) v.push(`${d} 日：早班 ${m} 人超額（應 ${dem.m} 人，${shape}）`);
     if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
@@ -1687,6 +1776,7 @@ function renderStaff(){
       <td><input type="text" value="${p.name}" onchange="S.staff[${i}].name=this.value;syncAll()"></td>
       <td><select onchange="S.staff[${i}].role=this.value;saveState();if(RESULT)render()">${ROLES.map(r=>`<option ${p.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
       <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState();renderFixChips()"> 天</td>
+      <td style="text-align:center"><input type="checkbox" ${p.role==='店長'?'checked disabled title="店長一律不計入人力"':(p.extra?'checked':'')} onchange="S.staff[${i}].extra=this.checked;syncAll()"></td>
       <td>${weekCells(i)}</td>
       <td><button class="del" onclick="delStaff(${i})">✕</button></td>
     </tr>`).join('');
@@ -1867,27 +1957,30 @@ function toggleFix(d){
    自動安插 AL 年假：沒有指休/特假的同事每人安插 2–3 天 AL
    （平日、跨週分散、優先人力最鬆的日子）；可點名排除
 ============================================================ */
-const alExcluded = new Set();   /* 以姓名記錄，換月/排序都不受影響 */
-const alDaysMap = new Map();    /* 姓名 → 1|2|3；未設定者預設 2 天（每人天數可以不一樣） */
-function alEligible(i){
-  return manualFixed(i).size === 0 && specialSet(i).size === 0;
+/* AL 天數／排除名單存進 S 並依月份分開（以姓名記錄，員工排序改變不受影響）。
+   以前只放在記憶體，重新整理或換月就重置，店長每次都得重點一遍。 */
+function alBucket(){
+  if (!S.al) S.al = {};
+  const b = S.al[S.month] || (S.al[S.month] = {});
+  if (!b.days) b.days = {};
+  if (!Array.isArray(b.excluded)) b.excluded = [];
+  return b;
 }
-function alDaysFor(name){ const v = alDaysMap.get(name); return (v === 1 || v === 3) ? v : 2; }
-function alState(name){ return alExcluded.has(name) ? 'ex' : alDaysFor(name); }
+function alDaysFor(name){ const v = alBucket().days[name]; return (v === 1 || v === 3) ? v : 2; }
+function alState(name){ return alBucket().excluded.includes(name) ? 'ex' : alDaysFor(name); }
 function cycleAl(name){
-  const st = alState(name);
-  if (st === 1) alDaysMap.set(name, 2);                      /* 1天 → 2天 */
-  else if (st === 2) alDaysMap.set(name, 3);                 /* 2天 → 3天 */
-  else if (st === 3) { alExcluded.add(name); alDaysMap.delete(name); }  /* 3天 → 排除 */
-  else { alExcluded.delete(name); alDaysMap.set(name, 1); }  /* 排除 → 1天 */
+  const b = alBucket(), st = alState(name);
+  if (st === 1) b.days[name] = 2;                                             /* 1天 → 2天 */
+  else if (st === 2) b.days[name] = 3;                                        /* 2天 → 3天 */
+  else if (st === 3){ b.excluded.push(name); delete b.days[name]; }           /* 3天 → 排除 */
+  else { b.excluded = b.excluded.filter(n => n !== name); b.days[name] = 1; } /* 排除 → 1天 */
+  saveState();
   renderAlChips();
 }
 function renderAlChips(){
   const el = document.getElementById('alExChips');
   if (!el) return;
   el.innerHTML = S.staff.map((p,i) => {
-    if (!alEligible(i))
-      return `<button class="pchip" style="opacity:.4;cursor:default" title="已有指休或 BL/AL，維持現狀">${p.name}・已有指休</button>`;
     const st = alState(p.name);
     if (st === 'ex')
       return `<button class="pchip" style="text-decoration:line-through;color:var(--crit);border-color:var(--crit)" onclick="cycleAl('${p.name.replace(/'/g,"\\'")}')">${p.name}・排除</button>`;
@@ -1904,9 +1997,9 @@ function autoInsertAL(){
   if (!S.special[S.month]) S.special[S.month] = {};
   const sp = S.special[S.month];
   const targets = S.staff.map((p,i) => i)
-    .filter(i => alEligible(i) && !alExcluded.has(S.staff[i].name));
+    .filter(i => !alBucket().excluded.includes(S.staff[i].name));
   if (!targets.length){
-    document.getElementById('alStatus').textContent = '沒有符合條件的同事（都已有指休/特假或被排除）';
+    document.getElementById('alStatus').textContent = '沒有要安插的同事（名單上的人都被排除了）';
     return;
   }
   const exempt = exemptSet();
@@ -2076,6 +2169,7 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
     `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · 早/中/晚/休 · BL/AL = 特殊假 · 底線 = 指休`;
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
+runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
 renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
 restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
 gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
