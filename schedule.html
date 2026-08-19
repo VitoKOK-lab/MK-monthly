@@ -459,7 +459,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    1. 每人每月正常休假 10 天（可調）；BL/AL 特殊假另外加，不佔額度
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
-   3. 人力下限（業務人數，不含店長）：平日至少 4 人、假日至少 5 人
+   3. 人力下限（不含規則外人力）：平日至少 4 人、假日至少 5 人
    4. 每天固定「早 1、中 1」，其餘全部排晚班：
       週五/六/日（含國定假日）晚班至少 3 人、週一～週四晚班至少 2 人。
       晚班人數是下限不是上限 — 當天人力有多的就加開晚班，不算違規
@@ -1269,7 +1269,7 @@ function render(){
   /* 單一班表：店長排第一列；表尾「早/中/晚」只計業務
      （店長有上班但不計數；出差不在店也不計） */
   let h = headRow() + bodyRows([...exIdx, ...regIdx]);
-  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
+  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含額外人力）</span></td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
     let m=0, mid=0, e=0, workers=0;
@@ -2302,20 +2302,22 @@ function renderViewer(){
     return hh + '</tr>';
   };
 
-  /* 單一班表：店長排第一列；最下方加「業務人數」列（不含店長） */
+  /* 單一班表：規則外人力（店長／不計人力者）排在最下面；統計列不計這些人。
+     舊的發布資料沒有 extra 欄位，會自動退回「只看店長」的舊行為。 */
+  const isExtra = q => q.role === '店長' || q.extra;
   let exRows = '', regRows = '';
   rec.staff.forEach((p,i) => {
     if (pubSel.person >= 0 && pubSel.person !== i) return;
-    if (p.role === '店長') exRows += pubRow(p, i);
+    if (isExtra(p)) exRows += pubRow(p, i);
     else regRows += pubRow(p, i);
   });
   let foot = '';
   if (pubSel.person < 0){
-    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含店長）</span></td>';
+    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含額外人力）</span></td>';
     for (let d=1; d<=rec.days; d++){
       let m=0, mid=0, e=0;
       rec.staff.forEach((p,i) => {
-        if (p.role === '店長') return;
+        if (isExtra(p)) return;
         const s = rec.grid[i][d];
         if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
       });
@@ -2324,7 +2326,7 @@ function renderViewer(){
     foot += '</tr></tfoot>';
   }
   document.getElementById('pubTable').innerHTML = pubHead() + '<tbody>' + exRows + regRows + '</tbody>' + foot;
-  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 早/中/晚人數不含店長`;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 早/中/晚人數不含額外人力（店長等）`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
 document.getElementById('adminBtn').addEventListener('click', () => {
@@ -2337,7 +2339,7 @@ function buildPubRecord(){
   return {
     days: RESULT.days,
     grid: RESULT.grid,
-    staff: S.staff.map(p => ({ name: p.name, role: p.role })),
+    staff: S.staff.map(p => ({ name: p.name, role: p.role, extra: !!p.extra })),
     holidays: S.holidays[S.month] || [],
     special: (S.special||{})[S.month] || {},
     assign: (S.assign||{})[S.month] || {},
