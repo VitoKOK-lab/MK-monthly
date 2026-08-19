@@ -460,9 +460,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
    2. 假日（週六日＋國定假日）每人休 2–3 天（>3 違規、<2 提醒；
       BL/AL 特殊假若落在假日，也計入此限制；店長不受此限）
    3. 人力下限（業務人數，不含店長）：平日至少 4 人、假日至少 5 人
-   4. 假日固定「早1、中1、晚3」；平日兩種組合（多的人加開晚班）：
-      週一/三/四「早2、晚2」（不開中班）；
-      週二/五「早1、中1、晚2」（早班 1 人時必開中班）
+   4. 每天固定「早 1、中 1」，其餘全部排晚班：
+      週五/六/日（含國定假日）晚班至少 3 人、週一～週四晚班至少 2 人。
+      晚班人數是下限不是上限 — 當天人力有多的就加開晚班，不算違規
    5. 晚班鎮店：Wiggie/Liv/Demi 每天至少一人晚班；Wiggie 沒上晚班
       時由 Liv、Demi 輪流補位（三人可同時晚班）
    6. 週一早班盡量從前一天（週日）晚班的人挑；其中「週二剛好休假」
@@ -639,13 +639,14 @@ const totalQuota = i => S.staff[i].quota + specialSet(i).size;
 const exemptSet = () => new Set(S.staff.map((p,i) => p.role === '店長' ? i : -1).filter(i => i >= 0));
 
 /* 每日需求（以「規則內」員工計，店長另外加不計數）：
-   週五、六、日（含國定假日）：「早1、中1、晚3」，5–6 人
-   週一～週四：            「早1、中1、晚2–3」，4–5 人
-   註：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
-       不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
+   週五、六、日（含國定假日）：「早1、中1、晚3 以上」，至少 5 人
+   週一～週四：            「早1、中1、晚2 以上」，至少 4 人
+   註1：晚班人數是「下限」不是上限 — 當天多出來的人力一律加開晚班，不算違規。
+   註2：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
+        不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
 function demand(d){
-  if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
-  return { m:1, mid:1, e:2, min:4, cap:5 };
+  if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5 };
+  return { m:1, mid:1, e:2, min:4 };
 }
 
 /* ============================================================
@@ -694,14 +695,11 @@ function scoreOff(off, cfg){
     const workers = nReg - offCount[d] - bizCnt[d];
     const dem = demand(d);
     if (workers < dem.min) sc += 1000 * (dem.min - workers);
-    /* 超過上限＝當天過剩人力全擠晚班（曾出現晚班 5–6 人的離譜班表）。
-       罰則需夠重才會被真正避開，但仍低於「人力不足」，
-       確保萬一真的無解時，寧可多一人上班也不要缺人。 */
-    if (workers > dem.cap) sc += 400 * (workers - dem.cap);
-    /* 五六日的規格是「剛好 早1中1晚3」（平日才明確允許 2–3 個晚班）。
-       人力有餘裕時輕推回規格人數，讓超編集中在少數幾天，
-       而不是每個週末都變成晚班 4 人。 */
-    if ((isRest(d) || isFri(d)) && workers > dem.min) sc += 15 * (workers - dem.min);
+    /* 晚班是「下限」不是上限：多出來的人加開晚班本身不算違規，所以不再重罰。
+       但仍輕罰「超編集中」— 用平方讓「兩天各多 1 人」優於「一天多 2 人」，
+       多餘人力才會平均攤開，而不是某天塞一堆人、隔天剛好卡在下限。 */
+    const over = workers - dem.min;
+    if (over > 0) sc += 6 * over * over;
   }
   if (trioIdx.length >= 2){
     const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
@@ -1113,9 +1111,8 @@ function validate(){
     for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
-    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3' : '早1、中1、晚2–3';
+    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3 以上' : '早1、中1、晚2 以上';
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
-    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人）`);
     if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
     if (m > dem.m) v.push(`${d} 日：早班 ${m} 人超額（應 ${dem.m} 人，${shape}）`);
     if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
