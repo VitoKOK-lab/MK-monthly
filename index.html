@@ -677,7 +677,8 @@ function renderStoreCats(){
 }
 
 function renderBadges(){
-  document.getElementById('badgeWall').innerHTML = CUR.people.map(p => `
+  /* 沒有徽章的人不畫卡片 — 否則 badges[0] 是 undefined，整頁 render 會中斷 */
+  document.getElementById('badgeWall').innerHTML = CUR.people.filter(p => p.badges && p.badges.length).map(p => `
     <div class="badge-card" style="--pc:${p.hex}">
       <div class="b-ico">${p.badges[0].split(' ')[0]}</div>
       <div>
