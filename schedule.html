@@ -174,6 +174,17 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .viol { border-left: 3px solid var(--crit); background: var(--crit-wash); padding: 12px 16px; font-size: 13px; color: var(--ink2); margin-bottom: 8px; }
 .ok-note { border-left: 3px solid var(--good); background: rgba(12,163,12,0.07); padding: 12px 16px; font-size: 13px; color: var(--ink2); }
 .status { font-size: 12px; color: var(--muted); margin-left: 12px; }
+.alt-strip { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0 4px; }
+.alt-card { flex:1 1 200px; border:1px solid var(--hair); background:var(--bg); padding:12px 14px; cursor:pointer; font-size:12.5px; color:var(--ink2); }
+.alt-card.active { border-color:var(--gold-dark); box-shadow:0 0 0 1px var(--gold-dark); background:var(--gold-wash); }
+.alt-card b { display:block; font-size:14px; color:var(--ink); margin-bottom:4px; }
+.alt-card .num { font-family:var(--mono, monospace); }
+.rule-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:6px 14px; margin-bottom:14px; }
+.rule-row { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; color:var(--ink2); padding:5px 0; border-bottom:1px dashed var(--hair); }
+.rule-row .ic { flex:0 0 18px; font-weight:700; }
+.rule-row.ok .ic { color:var(--good); }
+.rule-row.bad .ic, .rule-row.bad .lab { color:var(--crit); font-weight:700; }
+.rule-row .det { color:var(--muted); font-size:11.5px; margin-top:2px; }
 .who-chip { display: inline-block; border: 1px solid var(--gold); color: var(--gold-dark); background: var(--gold-wash); border-radius: 20px; padding: 2px 10px; font-size: 11.5px; font-weight: 700; margin: 2px 3px 2px 0; cursor: pointer; }
 .who-chip:hover { background: var(--gold); color: #fff; }
 .who-chip.maybe { border-style: dashed; opacity: .85; }
@@ -395,6 +406,10 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
     <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
   </div>
+  <div class="no-print" id="altWrap" style="display:none">
+    <div class="subhead">方案比較 — 點一個套用（三版都符合硬規則，差在休假分佈與軟性偏好；分數越低越好）</div>
+    <div class="alt-strip" id="altStrip"></div>
+  </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
 
   <div class="card" style="margin-top:16px">
@@ -487,6 +502,44 @@ const LS_KEY = 'mk-scheduler-v2';
 let S = loadState() || defaultState();
 normalize(S);
 let RESULT = null;
+/* 自動排班產生的候選方案（最多 3 版）與目前套用的索引；只存在記憶體，重排即重算 */
+let ALTS = [];
+let ALT_SEL = 0;
+const cloneResult = r => ({ grid: r.grid.map(row => row.slice()), days: r.days, month: r.month, offScore: r.offScore });
+async function pickAlt(k){
+  if (!ALTS[k] || LOCKED) return;
+  if (manualEdits.size > 0 && !await uiConfirm('切換方案',
+      `你已手動調整 ${manualEdits.size} 格班別，切換方案會捨棄這些調整。確定切換嗎？`)) return;
+  ALT_SEL = k;
+  RESULT = cloneResult(ALTS[k]);
+  UNDO.length = 0; manualEdits.clear();
+  render();
+}
+function renderAltStrip(){
+  const wrap = document.getElementById('altWrap');
+  if (!wrap) return;
+  if (!RESULT || ALTS.length < 2 || ALTS[0].month !== S.month){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const base = RESULT;
+  const keep = RESULT;
+  const cards = ALTS.map((alt, k) => {
+    RESULT = alt;                       /* validate() 讀全域 RESULT，暫時借用 */
+    const { violations, stats } = validate();
+    RESULT = keep;
+    let diff = 0;
+    for (let i=0;i<alt.grid.length;i++) for (let d=1; d<=alt.days; d++) if (alt.grid[i][d] !== base.grid[i][d]) diff++;
+    const maxRun = Math.max(...stats.map(s => s.maxRun));
+    const runs4 = stats.filter(s => s.maxRun >= 4).length;
+    const restLow = stats.filter((s,i) => !exemptSet().has(i) && s.restOff < 2).length;
+    return `<div class="alt-card ${k===ALT_SEL?'active':''}" onclick="pickAlt(${k})">
+      <b>方案 ${'ABC'[k]}${k===ALT_SEL?' ・ 套用中':''}</b>
+      分數 <span class="num">${alt.offScore}</span> ・ 體檢 ${violations.length ? `<span style="color:var(--crit)">${violations.length} 項</span>` : '<span style="color:var(--good)">全過</span>'}<br>
+      連上四天：${runs4} 人 ・ 假日休不足 2 天：${restLow} 人 ・ 最長連上 ${maxRun} 天<br>
+      <span style="color:var(--muted)">${k===ALT_SEL ? '目前套用' : `與套用中方案相差 ${diff} 格`}</span>
+    </div>`;
+  });
+  document.getElementById('altStrip').innerHTML = cards.join('');
+}
 let LOCKED = false;
 let selPerson = 0;
 
@@ -526,7 +579,7 @@ async function clearResult(){
   const all = loadSavedAll();
   delete all[S.month];
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
-  RESULT = null; manualEdits.clear(); UNDO.length = 0;
+  RESULT = null; ALTS = []; manualEdits.clear(); UNDO.length = 0;
   document.getElementById('resultSec').style.display = 'none';
   document.getElementById('status').textContent = '已清除，可重新排班';
   updateButtons();
@@ -635,9 +688,23 @@ function monthInfo(){
   const [y,m] = S.month.split('-').map(Number);
   return { y, m, days: new Date(y, m, 0).getDate(), firstDow: new Date(y, m-1, 1).getDay() };
 }
-const dowOf = d => { const {y,m} = monthInfo(); return new Date(y, m-1, d).getDay(); };
-const holiSet = () => new Set(S.holidays[S.month] || []);
-const isRest = d => { const w = dowOf(d); return w===0 || w===6 || holiSet().has(d); };
+/* 月曆快取：dowOf/isRest 在求解器內每秒被呼叫數十萬次，每次 new Date 與重建 Set 是主要耗時。
+   以「月份＋國定假日清單」為 key 快取，任一項改變就自動重算，行為完全相同。 */
+let CAL_KEY = '', CAL = null;
+function cal(){
+  const key = S.month + '|' + (S.holidays[S.month] || []).join(',');
+  if (key !== CAL_KEY){
+    const { y, m, days } = monthInfo();
+    const holi = new Set(S.holidays[S.month] || []);
+    const dow = new Array(days+2).fill(0), rest = new Array(days+2).fill(false);
+    for (let d=1; d<=days; d++){ dow[d] = new Date(y, m-1, d).getDay(); rest[d] = dow[d]===0 || dow[d]===6 || holi.has(d); }
+    CAL = { dow, rest, holi }; CAL_KEY = key;
+  }
+  return CAL;
+}
+const dowOf = d => { const c = cal(); return c.dow[d] !== undefined ? c.dow[d] : new Date(monthInfo().y, monthInfo().m-1, d).getDay(); };
+const holiSet = () => cal().holi;
+const isRest = d => { const c = cal(); return c.rest[d] !== undefined ? c.rest[d] : false; };
 const isFri = d => dowOf(d) === 5;
 
 const manualFixed = i => new Set((S.fixed[S.month]||{})[i] || []);
@@ -1096,16 +1163,26 @@ function generate(){
       altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
       biz: S.staff.map((_,i) => bizOf(i)),
     };
-    let best = null;
+    /* 8 個隨機起點各解一次，留下分數最好的 3 個「彼此不同」方案讓店長挑。
+       以前只回傳最佳一版；多版本不增加計算量，只是把原本丟掉的解留下來。 */
+    const sols = [];
     let seed = Date.now() % 100000;
     const rand = s => () => { s = (s*1664525 + 1013904223) % 4294967296; return s/4294967296; };
-    for (let r=0; r<8; r++){
-      const sol = solveOff(cfg, rand(seed + r*7919));
-      if (!best || sol.score < best.score) best = sol;
-      if (best.score === 0) break;
+    for (let r=0; r<8; r++) sols.push(solveOff(cfg, rand(seed + r*7919)));
+    sols.sort((a,b) => a.score - b.score);
+    const offKey = sol => sol.off.map(s => [...s].sort((a,b)=>a-b).join(',')).join('|');
+    const seen = new Set();
+    ALTS = [];
+    for (const sol of sols){
+      const k = offKey(sol);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const grid = assignShifts(sol.off, cfg);
+      ALTS.push({ grid, days, month: S.month, offScore: sol.score });
+      if (ALTS.length >= 3) break;
     }
-    const grid = assignShifts(best.off, cfg);
-    RESULT = { grid, days, month: S.month, offScore: best.score };
+    ALT_SEL = 0;
+    RESULT = cloneResult(ALTS[0]);
     UNDO.length = 0; manualEdits.clear();
     render();
     btn.disabled = false;
@@ -1129,6 +1206,7 @@ function validate(){
   const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
   const exempt = exemptSet();
   const demiIdxV = S.staff.findIndex(p => p.name === S.trio[2]);
+  const livIdxV = S.staff.findIndex(p => p.name === S.trio[1]);
   const mCounts = [], midCounts = [], eveCounts = [];
   for (let i=0;i<N;i++){
     const sp = specialSet(i);
@@ -1145,7 +1223,8 @@ function validate(){
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else if (s===2) e++; else if (s===4) bizN++; }
     }
     if (!isEx && i !== demiIdxV && !mornFixed(i)) mCounts.push(m);
-    if (!isEx){ midCounts.push(mid); eveCounts.push(e); }
+    /* 晚班平衡不計 Liv/Demi：「晚班鎮店」本來就讓兩人晚班偏多，計入必然誤報 */
+    if (!isEx){ midCounts.push(mid); if (i !== livIdxV && i !== demiIdxV) eveCounts.push(e); }
     /* 店長與「不計人力」的額外人力不排早班（柏鴻的週律固定早班除外） */
     if (isEx && m > 0 && !mornFixed(i) && !Object.values(asg).includes(0))
       v.push(`${S.staff[i].name}：排了 ${m} 個早班（規則外人力不上早班）`);
@@ -1176,7 +1255,7 @@ function validate(){
     if (hi - lo > lim) v.push(`${name}天數落差 ${hi - lo}（最多 ${hi}、最少 ${lo}，應 ≤ ${lim}，規則外人力不計）`);
   };
   spread(midCounts, '中班', 3);
-  spread(eveCounts, '晚班', 3);
+  spread(eveCounts, `晚班（${S.trio[1]}/${S.trio[2]} 鎮店不計）`, 3);
   /* Demi 早班刻意比別人少約 DEMI_MORN_GAP 天，但不可為 0、也不該差太多 */
   if (demiIdxV >= 0 && !exempt.has(demiIdxV)){
     let dm = 0;
@@ -1190,7 +1269,6 @@ function validate(){
     }
   }
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
-  const livIdxV = S.staff.findIndex(p => p.name === S.trio[1]);
   for (let d=1; d<=days; d++){
     let c=0;
     for (const i of trioIdx) if (grid[i][d]===3) c++;
@@ -1300,6 +1378,7 @@ function render(){
   st += '</tbody>';
   document.getElementById('statTable').innerHTML = st;
 
+  renderAltStrip();
   renderAnomalies(violations);
   renderStep4Sum(violations);
   const ub = document.getElementById('undoBtn');
@@ -1368,6 +1447,36 @@ function jumpToPerson(i, d){
     setTimeout(() => { row.classList.remove('row-flash'); if (cell) cell.classList.remove('cell-flash'); }, 3200);
   });
 }
+/* 規則清單：每條規則一列，過關打勾、違規列出細節。順序＝店長關心的優先序。
+   每則違規訊息依第一個符合的 regex 歸類；沒對到的歸入「其他」。 */
+const RULE_CHECKS = [
+  ['休假額度：每人正常休假 = 額度', /≠ 額度/],
+  ['指休／特殊假／出差／指班／週律：全部照設定', /指休\/固定休|週律固定上班|為出差|為指班/],
+  ['每日人力下限：平日 ≥4、五六日假日 ≥5', /僅 \d+ 人上班/],
+  ['每日人力上限：平日 ≤5、五六日假日 ≤6', /人上班（上限/],
+  ['班型：每天早 1、中 1，其餘晚班', /早班 \d 人|晚班缺|應開 1 個中班/],
+  ['晚班鎮店：管理職每天至少一人晚班', /無人上晚班/],
+  ['管理職互斥：不可同天全休；週一 Liv/Demi 不同休', /互斥名單|同時休假/],
+  ['連續上班：禁止連五', /連續上班/],
+  ['假日休：每人 2–3 天', /假日休了|假日只休/],
+  ['早班平衡：落差 ≤1；Demi 少排但不為 0', /^早班天數落差|個早班|比其他人平均少/],
+  ['中／晚班平衡：落差 ≤3（鎮店者不計）', /^中班天數落差|^晚班（/],
+];
+function renderRuleList(violations){
+  const buckets = RULE_CHECKS.map(() => []);
+  const other = [];
+  violations.forEach(msg => {
+    const k = RULE_CHECKS.findIndex(([, re]) => re.test(msg));
+    (k >= 0 ? buckets[k] : other).push(msg);
+  });
+  const row = (label, msgs) => `<div class="rule-row ${msgs.length ? 'bad' : 'ok'}">
+    <span class="ic">${msgs.length ? '✗' : '✓'}</span>
+    <div><div class="lab">${label}${msgs.length ? `（${msgs.length}）` : ''}</div>
+    ${msgs.length ? `<div class="det">${msgs.slice(0,4).join('<br>')}${msgs.length > 4 ? `<br>…另 ${msgs.length-4} 項` : ''}</div>` : ''}</div>
+  </div>`;
+  return `<div class="card"><div class="subhead">規則總覽（${RULE_CHECKS.length - buckets.filter(b => b.length).length - (other.length?1:0)} / ${RULE_CHECKS.length + (other.length?1:0)} 項通過）</div>
+    <div class="rule-list">${RULE_CHECKS.map(([lab], k) => row(lab, buckets[k])).join('')}${other.length ? row('其他', other) : ''}</div></div>`;
+}
 function renderAnomalies(violations){
   const sec = document.getElementById('anomalySec');
   if (!sec) return;
@@ -1375,8 +1484,9 @@ function renderAnomalies(violations){
   sec.style.display = '';
   const box = document.getElementById('anomalyBox');
   const q = document.getElementById('anomalyQ');
+  const ruleHtml = renderRuleList(violations);
   if (!violations.length){
-    box.innerHTML = `<div class="ok-note" style="font-size:14px">✓ 體檢通過：${RESULT.days} 天的班型、人力下限、晚班鎮店與休假規則全部正常，沒有需要調整的異常日。</div>`;
+    box.innerHTML = ruleHtml + `<div class="ok-note" style="font-size:14px">✓ 體檢通過：${RESULT.days} 天的班型、人力下限、晚班鎮店與休假規則全部正常，沒有需要調整的異常日。</div>`;
     q.textContent = '沒有異常 — 直接前往定案？';
     return;
   }
@@ -1390,7 +1500,7 @@ function renderAnomalies(violations){
       dayIssues.get(d).push(msg);
     } else otherIssues.push(msg);
   });
-  let h = '';
+  let h = ruleHtml;
   if (dayIssues.size){
     const dayList = [...dayIssues.keys()].sort((a,b) => a-b);
     h += `<div class="card"><div class="subhead">異常日（${dayList.length} 天）</div>
