@@ -234,7 +234,7 @@ function render(){
         } else if (asg[d] !== undefined){
           hh += `<td><button class="cell s${s} asg" title="指班（於 Step 2 修改）" style="cursor:not-allowed">指${SHIFT_NAME[asg[d]]}</button></td>`;
         } else if (s===3 && sp[d]){
-          hh += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:#8f7439;font-weight:700">${sp[d]}</button></td>`;
+          hh += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:var(--gold-dark);font-weight:700">${sp[d]}</button></td>`;
         } else {
           const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
           hh += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
@@ -891,7 +891,7 @@ function renderFixCal(){
     if (wkOff.has(d)){ h += `<div class="mc-d lock">${d}<span class="sub">固休</span></div>`; continue; }
     const bz = bizOf(selPerson).has(d);
     const asg = assignOf(selPerson)[d];
-    if (bz){ h += `<div class="mc-d" style="background:#44546a;color:#fff;border-color:#44546a" onclick="toggleFix(${d})">${d}<span class="sub">出差</span></div>`; continue; }
+    if (bz){ h += `<div class="mc-d" style="background:var(--biz-ink);color:#fff;border-color:var(--biz-ink)" onclick="toggleFix(${d})">${d}<span class="sub">出差</span></div>`; continue; }
     if (asg !== undefined){ h += `<div class="mc-d" style="background:var(--gold-wash);border:2px solid var(--gold-dark);font-weight:700" onclick="toggleFix(${d})">${d}<span class="sub">指${SHIFT_NAME[asg]}</span></div>`; continue; }
     const sp = specialOf(selPerson)[d];
     let conflict = false;
@@ -1316,7 +1316,7 @@ function renderViewer(){
       const s = rec.grid[i][d];
       const isAsg = asg[d] !== undefined && s === asg[d];
       const label = (s===3 && sp[d]) ? sp[d] : (isAsg ? '指' + SHIFT_NAME[s] : SHIFT_NAME[s]);
-      const spStyle = (s===3 && sp[d]) ? 'color:#8f7439;font-weight:700' : '';
+      const spStyle = (s===3 && sp[d]) ? 'color:var(--gold-dark);font-weight:700' : '';
       hh += `<td><div class="cell s${s} ${isAsg?'asg':''}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
     }
     return hh + '</tr>';

@@ -4,23 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MICHAEL KORS 華泰店 — 班表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
+/* 配色：米白底＋寶石色編碼。--gold* 名稱沿用（JS 與多處 CSS 引用），實際值改為主色藍寶石。
+   早＝琥珀、中＝紫水晶、晚＝祖母綠、休＝石榴紅、出差＝板岩灰。 */
 :root {
-  --bg: #ffffff; --paper: #faf9f7; --ink: #111111; --ink2: #4a4a48; --muted: #8a887f;
-  --hair: rgba(17,17,17,0.14); --hair-soft: rgba(17,17,17,0.08);
-  --gold: #B4975A; --gold-dark: #8f7439; --gold-wash: rgba(180,151,90,0.12);
-  --good: #006300; --crit: #b32424; --crit-wash: rgba(208,59,59,0.08);
-  --track: #ecebe7;
-  --m-wash: #f5ecd8;   /* 早 */
-  --mid-wash: #dceaf8; /* 中 */
-  --e-wash: #e3efdf;   /* 晚 */
+  --bg: #FBFBFC; --paper: #F3F3F6; --ink: #1B1D29; --ink2: #474A5B; --muted: #868999;
+  --hair: rgba(27,29,41,0.14); --hair-soft: rgba(27,29,41,0.08);
+  --gold: #3B5BB5; --gold-dark: #27419A; --gold-wash: rgba(59,91,181,0.10);
+  --good: #1E7A4C; --crit: #A8253A; --crit-wash: rgba(168,37,58,0.08);
+  --track: #E8E8EE;
+  --m-wash: #FBEDCB;  --m-ink: #8A5600;    /* 早 琥珀 */
+  --mid-wash: #EAE2F8; --mid-ink: #5A3A9E; /* 中 紫水晶 */
+  --e-wash: #D9F0E4;  --e-ink: #176B47;    /* 晚 祖母綠 */
+  --biz-wash: #E6E9F0; --biz-ink: #4A5470; /* 出差 板岩 */
   --serif: 'Didot','Bodoni MT','Playfair Display',Georgia,'Times New Roman',serif;
-  --sans: system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
+  --sans: "Noto Sans TC",system-ui,-apple-system,"Segoe UI","PingFang TC",sans-serif;
+  --mono: "Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { overflow-x: hidden; max-width: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.6; }
-.num { font-variant-numeric: tabular-nums; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .92em; }
 
 .masthead { text-align: center; padding: 24px 16px 16px; border-bottom: 1px solid var(--ink); }
 .masthead .wordmark { font-size: clamp(19px,4.5vw,27px); letter-spacing: .42em; text-transform: uppercase; margin-right: -.42em; }
@@ -67,7 +74,7 @@ input[type="month"], select, input[type="text"], input[type="number"] {
 .stp.done { color: var(--gold-dark); }
 .stp.done .stp-n { background: var(--gold-wash); border-color: var(--gold); color: var(--gold-dark); }
 .stp-line { width: 24px; height: 1px; background: var(--hair); flex-shrink: 0; }
-.confirm-bar { border: 1px solid rgba(180,151,90,.5); border-left: 3px solid var(--gold); background: var(--gold-wash); padding: 16px 18px; margin-top: 14px; }
+.confirm-bar { border: 1px solid rgba(59,91,181,.35); border-left: 3px solid var(--gold); background: var(--gold-wash); padding: 16px 18px; margin-top: 14px; }
 .confirm-bar .cb-q { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
 .confirm-bar .cb-sum { font-size: 12.5px; color: var(--ink2); margin-bottom: 12px; }
 @media (max-width: 720px) {
@@ -132,8 +139,8 @@ table.staff { border-collapse: collapse; width: 100%; min-width: 640px; }
 .mc-d.wkend { background: var(--paper); }
 .mc-d.holi::after { content: '假'; position: absolute; top: 2px; right: 3px; font-size: 8px; color: var(--gold-dark); font-weight: 700; }
 .mc-d.sel { background: var(--ink); color: #fff; border-color: var(--ink); }
-.mc-d.lock { background: #55534d; color: #fff; border-color: #55534d; cursor: not-allowed; }
-.mc-d.blk { background: repeating-linear-gradient(45deg, var(--paper), var(--paper) 4px, #eceae4 4px, #eceae4 8px); color: var(--muted); cursor: not-allowed; }
+.mc-d.lock { background: var(--ink2); color: #fff; border-color: var(--ink2); cursor: not-allowed; }
+.mc-d.blk { background: repeating-linear-gradient(45deg, var(--paper), var(--paper) 4px, var(--track) 4px, var(--track) 8px); color: var(--muted); cursor: not-allowed; }
 .mc-d.sel.conflict { background: var(--crit); border-color: var(--crit); }
 .mc-d .sub { font-size: 8px; color: inherit; opacity: .7; }
 
@@ -144,18 +151,21 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .sched thead th { padding: 6px 4px; font-size: 10px; color: var(--muted); background: var(--bg); min-width: 34px; }
 .sched thead th.wkend { background: var(--paper); }
 .sched thead th.holi { background: var(--gold-wash); color: var(--gold-dark); }
-.sched thead th .dow { display: block; font-size: 9px; }
+.sched thead th { font-family: var(--mono); font-weight: 700; }
+.sched thead th .dow { display: block; font-size: 9px; font-family: var(--sans); font-weight: 400; }
+.mc-d { font-family: var(--mono); }
+.mc-d .sub { font-family: var(--sans); }
 .sched td.name-col, .sched th.name-col {
   position: sticky; left: 0; background: var(--bg); z-index: 2; min-width: 110px;
   text-align: left; padding: 6px 10px; font-weight: 700; font-size: 12px; border-right: 1px solid var(--ink);
 }
 .role-tag { font-size: 9px; font-weight: 600; color: var(--gold-dark); background: var(--gold-wash); padding: 1px 6px; margin-left: 5px; letter-spacing: .05em; }
 .cell { width: 100%; height: 100%; border: none; cursor: pointer; font-family: var(--sans); font-size: 11px; font-weight: 700; padding: 8px 2px; background: var(--bg); color: var(--ink); }
-.cell.s0 { background: var(--m-wash); color: #6e5518; }
-.cell.s1 { background: var(--mid-wash); color: #1c5cab; }
-.cell.s2 { background: var(--e-wash); color: #2f6030; }
-.cell.s3 { background: #ffffff; color: var(--crit); }
-.cell.s4 { background: #eceff4; color: #44546a; font-weight: 700; }
+.cell.s0 { background: var(--m-wash); color: var(--m-ink); }
+.cell.s1 { background: var(--mid-wash); color: var(--mid-ink); }
+.cell.s2 { background: var(--e-wash); color: var(--e-ink); }
+.cell.s3 { background: var(--bg); color: var(--crit); }
+.cell.s4 { background: var(--biz-wash); color: var(--biz-ink); font-weight: 700; }
 .cell.asg { text-decoration: underline; text-underline-offset: 2px; font-weight: 700; }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .cell.manual { position: relative; }
@@ -178,7 +188,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .alt-card { flex:1 1 200px; border:1px solid var(--hair); background:var(--bg); padding:12px 14px; cursor:pointer; font-size:12.5px; color:var(--ink2); }
 .alt-card.active { border-color:var(--gold-dark); box-shadow:0 0 0 1px var(--gold-dark); background:var(--gold-wash); }
 .alt-card b { display:block; font-size:14px; color:var(--ink); margin-bottom:4px; }
-.alt-card .num { font-family:var(--mono, monospace); }
+.alt-card .num { font-family:var(--mono); }
 .rule-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:6px 14px; margin-bottom:14px; }
 .rule-row { display:flex; gap:8px; align-items:flex-start; font-size:12.5px; color:var(--ink2); padding:5px 0; border-bottom:1px dashed var(--hair); }
 .rule-row .ic { flex:0 0 18px; font-weight:700; }
@@ -188,7 +198,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .who-chip { display: inline-block; border: 1px solid var(--gold); color: var(--gold-dark); background: var(--gold-wash); border-radius: 20px; padding: 2px 10px; font-size: 11.5px; font-weight: 700; margin: 2px 3px 2px 0; cursor: pointer; }
 .who-chip:hover { background: var(--gold); color: #fff; }
 .who-chip.maybe { border-style: dashed; opacity: .85; }
-@keyframes cellFlash { 0%,100% { box-shadow: 0 0 0 3px rgba(180,151,90,0); } 20%,60% { box-shadow: 0 0 0 3px var(--gold); } }
+@keyframes cellFlash { 0%,100% { box-shadow: 0 0 0 3px rgba(59,91,181,0); } 20%,60% { box-shadow: 0 0 0 3px var(--gold); } }
 .cell-flash button { animation: cellFlash 1.6s ease-in-out 2; }
 .row-flash td:first-child { background: var(--gold-wash) !important; }
 
@@ -264,8 +274,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
         <span><i style="background:var(--m-wash)"></i>早班</span>
         <span><i style="background:var(--mid-wash)"></i>中班</span>
         <span><i style="background:var(--e-wash)"></i>晚班</span>
-        <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
-        <span><i style="background:#eceff4"></i>出差（不在店）</span>
+        <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">休假</span></span>
+        <span><i style="background:var(--biz-wash)"></i>出差（不在店）</span>
         <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
         <span style="color:var(--gold-dark)">BL/AL/OL = 特殊假</span>
       </div>
@@ -399,8 +409,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <span><i style="background:var(--m-wash)"></i>早班</span>
     <span><i style="background:var(--mid-wash)"></i>中班</span>
     <span><i style="background:var(--e-wash)"></i>晚班</span>
-    <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
-        <span><i style="background:#eceff4"></i>出差（不在店）</span>
+    <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">休假</span></span>
+        <span><i style="background:var(--biz-wash)"></i>出差（不在店）</span>
         <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
     <span>底線 = 指休/固定休</span>
     <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
