@@ -36,7 +36,7 @@
        「指班」字樣（指早/指中/指晚）
 ============================================================ */
 const DOW = ['日','一','二','三','四','五','六'];
-const SHIFT_NAME = ['早','中','晚','休','出差'];
+const SHIFT_NAME = ['早','中','晚','休','出差','—'];   /* 5 = 未到職／已離職（不在職） */
 const ROLES = ['店長','Sup','SSA','SA'];
 const LS_KEY = 'mk-scheduler-v2';
 
@@ -100,6 +100,15 @@ const MIGRATIONS = {
   '柏鴻-不計人力'(){
     const p = S.staff.find(x => x.name === '柏鴻');
     if (p) p.extra = true;
+  },
+
+  /* 2026-11：新進 Ruby 11/9 到職。11 月額度由系統依在職天數折算（10 × 22/30 ≈ 7）。
+     插在 Vina 之後、額外人力之前。 */
+  'Ruby-2026-11-09'(){
+    if (S.staff.some(x => x.name === 'Ruby')) return;
+    const p = { name:'Ruby', role:'SA', quota:10, week:{}, joined:'2026-11-09' };
+    const at = S.staff.findIndex((x, idx) => idx > 0 && x.extra);
+    if (at >= 0) S.staff.splice(at, 0, p); else S.staff.push(p);
   },
 };
 function runMigrations(){
@@ -175,11 +184,37 @@ const mornFixed = i => Object.values(S.staff[i].week || {}).includes('morn');
 function blockedOf(i){
   const s = weeklyDays(i,'work');
   for (const d of bizOf(i)) s.add(d);
+  for (const d of absentOf(i)) s.add(d);
   for (const d of Object.keys(effAssign(i)).map(Number)) s.add(d);
   return s;
 }
-/* 總休假目標 = 正常額度 + 特殊假天數 */
-const totalQuota = i => S.staff[i].quota + specialSet(i).size;
+/* 到職／離職：staff.joined / staff.left = 'YYYY-MM-DD'（可空）。
+   當月不在職的日子 → 不排班、不佔額度、不計人力、不算連上，格子顯示「—」。 */
+function absentOf(i){
+  const p = S.staff[i], { y, m, days } = monthInfo();
+  const out = new Set();
+  const parse = s => { const mm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return mm ? { y:+mm[1], m:+mm[2], d:+mm[3] } : null; };
+  const j = parse(p.joined), l = parse(p.left);
+  for (let d=1; d<=days; d++){
+    const key = y*10000 + m*100 + d;
+    if (j && key < j.y*10000 + j.m*100 + j.d) out.add(d);
+    if (l && key > l.y*10000 + l.m*100 + l.d) out.add(d);
+  }
+  return out;
+}
+/* 本月正常休假額度：到職／離職月份依在職天數比例折算（四捨五入），可用 S.quotaOv[月][姓名] 覆寫 */
+function quotaFor(i){
+  const p = S.staff[i];
+  const ov = ((S.quotaOv||{})[S.month]||{})[p.name];
+  if (Number.isInteger(ov)) return ov;
+  const { days } = monthInfo();
+  const abs = absentOf(i).size;
+  if (!abs) return p.quota;
+  if (abs >= days) return 0;
+  return Math.round(p.quota * (days - abs) / days);
+}
+/* 總休假目標 = 本月額度 + 特殊假天數 */
+const totalQuota = i => quotaFor(i) + specialSet(i).size;
 
 /* 店長 = 規則外額外人力：照樣排班，但不計入任何每日人力數量規則、
    早班平衡與假日休 2–3 天限制（額度、週律、連五禁止仍適用） */

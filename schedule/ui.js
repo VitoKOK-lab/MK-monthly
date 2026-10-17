@@ -162,6 +162,7 @@ function generate(){
       exempt: exemptSet(),   /* 店長 = 不做業績、只算人頭 */
       altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
       biz: S.staff.map((_,i) => bizOf(i)),
+      absent: S.staff.map((_,i) => absentOf(i)),
     };
     /* 8 個隨機起點各解一次，留下分數最好的 3 個「彼此不同」方案讓店長挑。
        以前只回傳最佳一版；多版本不增加計算量，只是把原本丟掉的解留下來。 */
@@ -229,7 +230,9 @@ function render(){
       const asg = effAssign(i);
       for (let d=1; d<=days; d++){
         const s = grid[i][d];
-        if (s===4){
+        if (s===5){
+          hh += `<td><button class="cell s5" title="未到職／已離職（於 Step 1 修改到職日）" style="cursor:not-allowed">—</button></td>`;
+        } else if (s===4){
           hh += `<td><button class="cell s4" title="出差（於 Step 2 修改）" style="cursor:not-allowed">出差</button></td>`;
         } else if (asg[d] !== undefined){
           hh += `<td><button class="cell s${s} asg" title="指班（於 Step 2 修改）" style="cursor:not-allowed">指${SHIFT_NAME[asg[d]]}</button></td>`;
@@ -255,7 +258,7 @@ function render(){
     for (let i=0;i<N;i++){
       if (exemptF.has(i)) continue;
       const s=grid[i][d];
-      if(s!==3 && s!==4)workers++;
+      if(s!==3 && s!==4 && s!==5)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
     }
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
@@ -270,7 +273,7 @@ function render(){
     const s = stats[i];
     st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN - s.bizN}</td>
       <td class="num">${s.bizN}</td>
-      <td class="num ${s.offN!==S.staff[i].quota?'bad':''}">${s.offN}</td>
+      <td class="num ${s.offN!==quotaFor(i)?'bad':''}">${s.offN}${quotaFor(i)!==S.staff[i].quota?`<span style="color:var(--muted);font-size:10px">/${quotaFor(i)}</span>`:''}</td>
       <td class="num">${s.spN}</td>
       <td class="num ${!exemptF.has(i)&&(s.restOff>3||s.restOff<2)?'bad':''}">${s.restOff}</td>
       <td class="num">${s.m}</td><td class="num">${s.mid}</td><td class="num">${s.e}</td>
@@ -487,6 +490,7 @@ function xlsxCodeFor(i, d, grid){
   if (s === 1) return 'M';
   if (s === 2) return 'P';
   if (s === 4) return 'OL';   /* 出差 → 公假/培訓代碼 */
+  if (s === 5) return '';     /* 未到職／已離職 → 空白 */
   const sp = specialOf(i)[d];
   if (sp === 'BL') return 'BL';
   if (sp === 'AL') return 'AL';
@@ -787,7 +791,8 @@ function renderStaff(){
       <td class="ordcell"><button class="ord" onclick="moveStaff(${i},-1)" ${i===0?'disabled':''} title="上移">▲</button><button class="ord" onclick="moveStaff(${i},1)" ${i===S.staff.length-1?'disabled':''} title="下移">▼</button></td>
       <td><input type="text" value="${p.name}" onchange="S.staff[${i}].name=this.value;syncAll()"></td>
       <td><select onchange="S.staff[${i}].role=this.value;saveState();if(RESULT)render()">${ROLES.map(r=>`<option ${p.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
-      <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState();renderFixChips()"> 天</td>
+      <td><input type="number" min="0" max="15" value="${p.quota}" onchange="S.staff[${i}].quota=Number(this.value);saveState();renderFixChips();renderStep1Sum()"> 天${quotaFor(i)!==p.quota?`<div class="hint" style="margin-top:2px;white-space:nowrap">本月 <b>${quotaFor(i)}</b> 天（在職 ${monthInfo().days-absentOf(i).size}/${monthInfo().days} 天折算）</div>`:''}</td>
+      <td><input type="date" value="${p.joined||''}" title="到職日（空＝早已在職）" onchange="S.staff[${i}].joined=this.value||undefined;syncAll()"><br><input type="date" value="${p.left||''}" title="離職日（空＝仍在職）" style="margin-top:3px" onchange="S.staff[${i}].left=this.value||undefined;syncAll()"></td>
       <td style="text-align:center"><input type="checkbox" ${p.role==='店長'?'checked disabled title="店長一律不計入人力"':(p.extra?'checked':'')} onchange="S.staff[${i}].extra=this.checked;syncAll()"></td>
       <td>${weekCells(i)}</td>
       <td><button class="del" onclick="delStaff(${i})">✕</button></td>
@@ -1022,6 +1027,7 @@ function autoInsertAL(){
     if (exempt.has(i)) continue;
     for (const d of fixedOf(i)) lockedOff[d]++;
     for (const d of bizOf(i)) lockedOff[d]++;
+    for (const d of absentOf(i)) lockedOff[d]++;
   }
   /* 餘裕 = 目前上班人數 − 當天最低需求；每分配一天 AL 就會扣 1 */
   const slack = new Array(days+1).fill(0);
@@ -1107,9 +1113,11 @@ function renderStep1Sum(){
   if (!el) return;
   const ex = exemptSet();
   const nReg = S.staff.length - ex.size;
-  const quotas = [...new Set(S.staff.map(p => p.quota))].join('／');
+  const quotas = [...new Set(S.staff.map((p,i) => quotaFor(i)))].join('／');
+  const joiners = S.staff.map((p,i) => ({p,i,n:absentOf(i).size})).filter(x => x.n > 0 && x.n < monthInfo().days)
+    .map(x => `${x.p.name}（${x.p.joined && absentOf(x.i).has(1) ? '到職 ' + x.p.joined : '離職 ' + x.p.left}，本月額度 ${quotaFor(x.i)} 天）`);
   const [y, m] = S.month.split('-');
-  el.innerHTML = `排班月份 <b>${y} 年 ${Number(m)} 月</b> ・ 共 <b>${S.staff.length}</b> 位員工（業務 ${nReg} 位＋店長 ${ex.size} 位）・ 休假額度 ${quotas} 天 ・ 晚班鎮店三人組：${S.trio.filter(Boolean).join('、')}`;
+  el.innerHTML = `排班月份 <b>${y} 年 ${Number(m)} 月</b> ・ 共 <b>${S.staff.length}</b> 位員工（業務 ${nReg} 位＋店長 ${ex.size} 位）・ 休假額度 ${quotas} 天${joiners.length ? ' ・ ' + joiners.join('；') : ''} ・ 晚班鎮店三人組：${S.trio.filter(Boolean).join('、')}`;
 }
 function renderStep2Sum(){
   const el = document.getElementById('step2Sum');
@@ -1128,6 +1136,8 @@ function renderStep2Sum(){
     if (ol.length) parts.push(`OL ${ol.join('、')} 日`);
     const bz = [...bizOf(i)].sort((a,b) => a-b);
     if (bz.length) parts.push(`出差 ${bz.join('、')} 日`);
+    const ab = [...absentOf(i)].sort((a,b) => a-b);
+    if (ab.length) parts.push(`不在職 ${ab[0]}–${ab[ab.length-1]} 日（${p.joined && ab[0]===1 ? '到職 ' + p.joined : '離職 ' + p.left}）`);
     const ag = assignOf(i);
     const agD = Object.keys(ag).map(Number).sort((a,b) => a-b);
     if (agD.length) parts.push(`指班 ${agD.map(d => `${d} 日${SHIFT_NAME[ag[d]]}`).join('、')}`);

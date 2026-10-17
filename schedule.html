@@ -166,6 +166,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .cell.s2 { background: var(--e-wash); color: var(--e-ink); }
 .cell.s3 { background: var(--bg); color: var(--crit); }
 .cell.s4 { background: var(--biz-wash); color: var(--biz-ink); font-weight: 700; }
+.cell.s5 { background: repeating-linear-gradient(45deg, var(--paper), var(--paper) 4px, var(--track) 4px, var(--track) 8px); color: var(--muted); }
 .cell.asg { text-decoration: underline; text-underline-offset: 2px; font-weight: 700; }
 .cell.fixed { text-decoration: underline; text-underline-offset: 2px; }
 .cell.manual { position: relative; }
@@ -318,7 +319,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:14px">員工名單與週律</div>
     <div class="staff-scroll">
     <table class="staff">
-      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th title="打勾者為規則外的額外人力，不計入每日早/中/晚人數（店長一律不計）">不計人力</th><th>每週固定（點格循環：空 → 休 → 班 → 早）</th><th></th></tr></thead>
+      <thead><tr><th>順序</th><th>姓名</th><th>職級</th><th>正常休假</th><th>到職／離職日</th><th title="打勾者為規則外的額外人力，不計入每日早/中/晚人數（店長一律不計）">不計人力</th><th>每週固定（點格循環：空 → 休 → 班 → 早）</th><th></th></tr></thead>
       <tbody id="staffBody"></tbody>
     </table>
     </div>

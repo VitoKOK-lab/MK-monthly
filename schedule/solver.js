@@ -20,6 +20,7 @@ function scoreOff(off, cfg){
     if (exempt.has(i)) continue;
     nReg++;
     for (const d of (cfg.biz && cfg.biz[i] ? cfg.biz[i] : [])) bizCnt[d]++;
+    for (const d of (cfg.absent && cfg.absent[i] ? cfg.absent[i] : [])) bizCnt[d]++;   /* 未到職視同不在店 */
   }
   for (let i=0;i<N;i++){
     const isEx = exempt.has(i);
@@ -35,7 +36,9 @@ function scoreOff(off, cfg){
        其他人不喜歡單日工作段（傾向連上 2–3 天）；連四重罰、連五禁止 */
     const likesAlt = altIdx.has(i);
     let run = 0;
+    const absent = cfg.absent && cfg.absent[i] ? cfg.absent[i] : null;
     for (let d=1; d<=days; d++){
+      if (absent && absent.has(d)){ run = 0; continue; }   /* 不在職：既非休也非班，切斷連上計算 */
       if (off[i].has(d)){
         if (likesAlt){ if (run >= 2) sc += (run - 1) * 8; }
         else if (run === 1) sc += 25;
@@ -198,6 +201,7 @@ function assignShifts(off, cfg){
     const workers = [];
     for (let i=0;i<N;i++){
       if (off[i].has(d)) continue;
+      if (absentOf(i).has(d)){ grid[i][d] = 5; continue; }   /* 未到職／已離職 */
       if (bizOf(i).has(d)){ grid[i][d] = 4; continue; }
       workers.push(i);
     }
@@ -288,7 +292,8 @@ function assignShifts(off, cfg){
     asgAll[i][d] === undefined &&
     !(grid[i][d]===2 && trioAll.includes(i) && !trioAll.some(t => t !== i && grid[t][d] === 2));
   const peers = [];
-  for (let i=0;i<N;i++) if (!exempt.has(i) && i !== demiIdx && !mornFixed(i)) peers.push(i);
+  /* 當月有不在職日（到職／離職）的人上班天數較少，不納入早班平衡，避免被硬湊到同樣的早班數 */
+  for (let i=0;i<N;i++) if (!exempt.has(i) && i !== demiIdx && !mornFixed(i) && absentOf(i).size === 0) peers.push(i);
   const balancePeers = () => {
     for (let pass=0; pass<80; pass++){
       let done = false;
@@ -372,16 +377,19 @@ function validate(){
         if (isRest(d)) restOff++;
         run=0;
       }
+      else if (s===5){ run=0; }
       else { run++; maxRun = Math.max(maxRun, run); if (s===0) m++; else if (s===1) mid++; else if (s===2) e++; else if (s===4) bizN++; }
     }
-    if (!isEx && i !== demiIdxV && !mornFixed(i)) mCounts.push(m);
+    const partial = absentOf(i).size > 0;   /* 到職／離職月份上班天數較少，不比較班別落差 */
+    if (!isEx && i !== demiIdxV && !mornFixed(i) && !partial) mCounts.push(m);
     /* 晚班平衡不計 Liv/Demi：「晚班鎮店」本來就讓兩人晚班偏多，計入必然誤報 */
-    if (!isEx){ midCounts.push(mid); if (i !== livIdxV && i !== demiIdxV) eveCounts.push(e); }
+    if (!isEx && !partial){ midCounts.push(mid); if (i !== livIdxV && i !== demiIdxV) eveCounts.push(e); }
     /* 店長與「不計人力」的額外人力不排早班（柏鴻的週律固定早班除外） */
     if (isEx && m > 0 && !mornFixed(i) && !Object.values(asg).includes(0))
       v.push(`${S.staff[i].name}：排了 ${m} 個早班（規則外人力不上早班）`);
     stats.push({ offN, restOff, spN, bizN, m, mid, e, maxRun });
-    if (offN !== S.staff[i].quota) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${S.staff[i].quota} 天`);
+    if (offN !== quotaFor(i)) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${quotaFor(i)} 天`);
+    for (const d of absentOf(i)) if (grid[i][d] !== 5) v.push(`${S.staff[i].name}：${d} 日尚未到職／已離職，卻被排班或休假`);
     if (!isEx){
       if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
       if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
@@ -429,7 +437,7 @@ function validate(){
       v.push(`${d} 日（週一）：${S.trio[1]} 與 ${S.trio[2]} 同時休假（週一禁止兩人同休）`);
     /* 每日人力結構只計「規則內」員工（店長為額外人力不計數；出差不在店不計） */
     let m=0, mid=0, e=0, workers=0;
-    for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
+    for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4 && s!==5)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
     const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
     const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3–4' : '早1、中1、晚2–3';
