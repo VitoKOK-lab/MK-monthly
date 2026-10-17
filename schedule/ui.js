@@ -526,44 +526,56 @@ async function exportCompanyExcel(){
       await wb.xlsx.load(b64ToArrayBuffer(window.MK_TEMPLATE_XLSX_B64));
       const ws = wb.getWorksheet(sheetName);
       if (ws){
-        /* ExcelJS 對範本檔載入的儲存格常共用同一個樣式索引：直接改
-           `cell.fill` 會讓後面設定的顏色污染到前面的儲存格。改成整份
-           複製一個新的 style 物件（Object.assign 出全新參照）才能讓
-           每一格的顏色互不干擾。 */
+        /* 範本是店長手填的原檔：活動列、PT 列、小列記號、公式、備註全部保留，
+           只改「正職同事的班別格」。列位置依 B 欄姓名比對（不分大小寫、去空白、
+           含舊寫法別名）；名單上有、範本沒有的人，放進正職區塊第一個空列。 */
         const setFill = (cell, fill) => { cell.style = Object.assign({}, cell.style, { fill }); };
-        const NO_FILL = { type:'pattern', pattern:'none' };
-        const STAFF_ROW_START = 7, ROW_STEP = 2, TEMPLATE_SLOTS = 14;
-        if (N > TEMPLATE_SLOTS) alert(`範本最多支援 ${TEMPLATE_SLOTS} 位員工，本月有 ${N} 位，超出部分請手動於 Excel 補列。`);
-        for (let slot = 0; slot < TEMPLATE_SLOTS; slot++){
-          const row = STAFF_ROW_START + slot * ROW_STEP;
-          /* 姓名列下方的空白列在範本中可能殘留舊員工的註記（如 *），一律清空 */
-          for (let d = 1; d <= 31; d++){
-            const subCell = ws.getCell(row + 1, 2 + d);
-            subCell.value = null;
-            setFill(subCell, NO_FILL);
+        const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
+        const ALIAS = { '伯鴻':'柏鴻' };
+        const canon = s => { const n = norm(s); return norm(ALIAS[n] || n); };
+        const isPtOrFooter = v => /^pt/i.test(norm(v)) || /人數|時數|使用規範/.test(String(v || ''));
+        let blockEnd = ws.rowCount;
+        for (let r = 7; r <= ws.rowCount; r++){
+          const v = ws.getCell(r, 2).value;
+          if (v != null && String(v).trim() && isPtOrFooter(v)){ blockEnd = r - 1; break; }
+        }
+        const rowOf = {};
+        const emptyRows = [];
+        for (let r = 7; r <= blockEnd; r += 2){
+          const v = ws.getCell(r, 2).value;
+          if (v != null && String(v).trim()) rowOf[canon(v)] = r; else emptyRows.push(r);
+        }
+        /* 每一欄的「底色」＝星期列（第 3 列）該欄的填色：週末／國定假日欄的灰底就靠它保留。
+           （不取活動列：店長會在活動列填自己的顏色） */
+        const baseFill = {};
+        for (let d = 1; d <= 31; d++){
+          const f = ws.getCell(3, 2 + d).fill;
+          baseFill[d] = f && f.type ? JSON.parse(JSON.stringify(f)) : { type:'pattern', pattern:'none' };
+        }
+        const missing = [];
+        for (let i = 0; i < N; i++){
+          const p = S.staff[i];
+          if (absentOf(i).size >= days) continue;   /* 整月不在職（尚未到職／已離職）不寫入 */
+          let row = rowOf[canon(p.name)];
+          if (!row){
+            if (!emptyRows.length){ missing.push(p.name); continue; }
+            row = emptyRows.shift();
+            ws.getCell(row, 2).value = p.name;
           }
-          const nameCell = ws.getCell(row, 2);
-          if (slot < N){
-            nameCell.value = S.staff[slot].name;
-            for (let d = 1; d <= days; d++){
-              const code = xlsxCodeFor(slot, d, grid);
-              const cell = ws.getCell(row, 2 + d);
-              cell.value = code;
-              setFill(cell, XLSX_FILL[code] ? { type:'pattern', pattern:'solid', fgColor:{argb:XLSX_FILL[code]} } : NO_FILL);
-            }
-            ws.getCell(row, 41).value = null;  // AO 2025 特休天數（無資料，留空供人資填寫）
-            ws.getCell(row, 42).value = null;  // AP 已請天數
-          } else {
-            nameCell.value = null;
-            for (let d = 1; d <= 31; d++){
-              const cell = ws.getCell(row, 2 + d);
-              cell.value = null;
-              setFill(cell, NO_FILL);
-            }
-            ws.getCell(row, 41).value = null;
-            ws.getCell(row, 42).value = null;
+          const mf = manualFixed(i), sp = specialOf(i);
+          for (let d = 1; d <= days; d++){
+            const code = xlsxCodeFor(i, d, grid);
+            const cell = ws.getCell(row, 2 + d);
+            cell.value = code || null;
+            /* 上色照範本圖例：指休例假 RL 黃、指休休假 RL/ 紅；一般 RL／RL/ 不上色（保留欄底色）；
+               AL 灰、BL 紫、OL 青 */
+            let fill = null;
+            if (code === 'RL' || code === 'RL/'){ if (mf.has(d)) fill = XLSX_FILL[code]; }
+            else if (sp[d] || grid[i][d] === 4) fill = XLSX_FILL[code];
+            setFill(cell, fill ? { type:'pattern', pattern:'solid', fgColor:{ argb: fill } } : baseFill[d]);
           }
         }
+        if (missing.length) alert(`範本「${sheetName}」正職區塊已無空列，以下同事未寫入：${missing.join('、')}。請在 Excel 補列後自行填入。`);
         const buf = await wb.xlsx.writeBuffer();
         const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const a = document.createElement('a');
