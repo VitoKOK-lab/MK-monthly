@@ -160,7 +160,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   text-align: left; padding: 6px 10px; font-weight: 700; font-size: 12px; border-right: 1px solid var(--ink);
 }
 .role-tag { font-size: 9px; font-weight: 600; color: var(--gold-dark); background: var(--gold-wash); padding: 1px 6px; margin-left: 5px; letter-spacing: .05em; }
-.cell { width: 100%; height: 100%; border: none; cursor: pointer; font-family: var(--sans); font-size: 11px; font-weight: 700; padding: 8px 2px; background: var(--bg); color: var(--ink); }
+.cell { width: 100%; height: 100%; border: none; cursor: pointer; font-family: var(--mono); font-size: 10.5px; letter-spacing: -.02em; font-weight: 700; padding: 8px 2px; background: var(--bg); color: var(--ink); }
 .cell.s0 { background: var(--m-wash); color: var(--m-ink); }
 .cell.s1 { background: var(--mid-wash); color: var(--mid-ink); }
 .cell.s2 { background: var(--e-wash); color: var(--e-ink); }
@@ -272,11 +272,11 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       <div class="person-chips" id="pubChips" style="margin-top:8px"></div>
       <div class="grid-scroll"><table class="sched" id="pubTable"></table></div>
       <div class="legend">
-        <span><i style="background:var(--m-wash)"></i>早班</span>
-        <span><i style="background:var(--mid-wash)"></i>中班</span>
-        <span><i style="background:var(--e-wash)"></i>晚班</span>
-        <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">休假</span></span>
-        <span><i style="background:var(--biz-wash)"></i>出差（不在店）</span>
+        <span><i style="background:var(--m-wash)"></i>A 早班</span>
+        <span><i style="background:var(--mid-wash)"></i>M 中班</span>
+        <span><i style="background:var(--e-wash)"></i>P 晚班</span>
+        <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">RL 例假 / RL/ 休假</span></span>
+        <span><i style="background:var(--biz-wash)"></i>OL 出差（不在店）</span>
         <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
         <span style="color:var(--gold-dark)">BL/AL/OL = 特殊假</span>
       </div>
@@ -407,14 +407,14 @@ table.sched { border-collapse: collapse; background: var(--bg); }
   <div class="sec-kicker no-print">Result</div>
   <div class="sec-title" id="resultTitle">排班表</div>
   <div class="legend">
-    <span><i style="background:var(--m-wash)"></i>早班</span>
-    <span><i style="background:var(--mid-wash)"></i>中班</span>
-    <span><i style="background:var(--e-wash)"></i>晚班</span>
-    <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">休假</span></span>
-        <span><i style="background:var(--biz-wash)"></i>出差（不在店）</span>
+    <span><i style="background:var(--m-wash)"></i>A 早班</span>
+    <span><i style="background:var(--mid-wash)"></i>M 中班</span>
+    <span><i style="background:var(--e-wash)"></i>P 晚班</span>
+    <span><i style="background:var(--bg);border:1px solid var(--hair)"></i><span style="color:var(--crit)">RL 例假 / RL/ 休假</span></span>
+        <span><i style="background:var(--biz-wash)"></i>OL 出差（不在店）</span>
         <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
     <span>底線 = 指休/固定休</span>
-    <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（早→中→晚→休）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
+    <span class="no-print" style="color:var(--gold-dark)">點任一格手動微調（A→M→P→RL）— 允許違規，系統只提醒不阻擋；紅點 = 手動改過</span>
     <button class="btn ghost no-print" id="undoBtn" style="padding:6px 14px;font-size:10px" disabled>↩ 復原</button>
   </div>
   <div class="no-print" id="altWrap" style="display:none">

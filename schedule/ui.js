@@ -233,14 +233,14 @@ function render(){
         if (s===5){
           hh += `<td><button class="cell s5" title="未到職／已離職（於 Step 1 修改到職日）" style="cursor:not-allowed">—</button></td>`;
         } else if (s===4){
-          hh += `<td><button class="cell s4" title="出差（於 Step 2 修改）" style="cursor:not-allowed">出差</button></td>`;
+          hh += `<td><button class="cell s4" title="出差（於 Step 2 修改）" style="cursor:not-allowed">OL</button></td>`;
         } else if (asg[d] !== undefined){
-          hh += `<td><button class="cell s${s} asg" title="指班（於 Step 2 修改）" style="cursor:not-allowed">指${SHIFT_NAME[asg[d]]}</button></td>`;
+          hh += `<td><button class="cell s${s} asg" title="指班・${SHIFT_NAME[asg[d]]}（於 Step 2 修改）" style="cursor:not-allowed">${SHIFT_CODE[asg[d]]}</button></td>`;
         } else if (s===3 && sp[d]){
           hh += `<td><button class="cell s3 sp" title="特殊假（於 Step 2 修改）" style="cursor:not-allowed;color:var(--gold-dark);font-weight:700">${sp[d]}</button></td>`;
         } else {
           const man = manualEdits.has(i + ':' + d) ? 'manual' : '';
-          hh += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${SHIFT_NAME[s]}</button></td>`;
+          hh += `<td><button class="cell s${s} ${fx.has(d)&&s===3?'fixed':''} ${man}" onclick="cycle(${i},${d})">${cellCode(s, d)}</button></td>`;
         }
       }
       hh += '</tr>';
@@ -251,7 +251,7 @@ function render(){
   /* 單一班表：店長排第一列；表尾「早/中/晚」只計業務
      （店長有上班但不計數；出差不在店也不計） */
   let h = headRow() + bodyRows([...exIdx, ...regIdx]);
-  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含額外人力）</span></td>';
+  h += '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">A/M/P<br><span style="font-size:9px">（不含額外人力）</span></td>';
   for (let d=1; d<=days; d++){
     const dem = demand(d);
     let m=0, mid=0, e=0, workers=0;
@@ -465,7 +465,7 @@ function exportCsv(){
     const sp = specialOf(i);
     rows.push(p.name + ',' + p.role + ',' + Array.from({length:days}, (_,k) => {
       const d = k+1, s = grid[i][d];
-      return (s===3 && sp[d]) ? sp[d] : SHIFT_NAME[s];
+      return (s===3 && sp[d]) ? sp[d] : cellCode(s, d);
     }).join(','));
   });
   const blob = new Blob(['﻿' + rows.join('\n')], { type:'text/csv;charset=utf-8' });
@@ -1208,7 +1208,7 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
   document.getElementById('printTitle').textContent = `${y} 年 ${Number(m)} 月排班表`;
   const now = new Date();
   document.getElementById('printMeta').textContent =
-    `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · 早/中/晚/休 · BL/AL = 特殊假 · 底線 = 指休`;
+    `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · A 早／M 中／P 晚／RL 例假／RL/ 休假 · BL/AL = 特殊假 · 底線 = 指休`;
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
 runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
@@ -1337,7 +1337,7 @@ function renderViewer(){
     for (let d=1; d<=rec.days; d++){
       const s = rec.grid[i][d];
       const isAsg = asg[d] !== undefined && s === asg[d];
-      const label = (s===3 && sp[d]) ? sp[d] : (isAsg ? '指' + SHIFT_NAME[s] : SHIFT_NAME[s]);
+      const label = (s===3 && sp[d]) ? sp[d] : cellCode(s, d, x => { const w = dow(x); return w===0 || w===6 || holi.has(x); });
       const spStyle = (s===3 && sp[d]) ? 'color:var(--gold-dark);font-weight:700' : '';
       hh += `<td><div class="cell s${s} ${isAsg?'asg':''}" style="cursor:default;${spStyle}${d===todayD?';outline:2px solid var(--gold);outline-offset:-2px':''}">${label}</div></td>`;
     }
@@ -1355,7 +1355,7 @@ function renderViewer(){
   });
   let foot = '';
   if (pubSel.person < 0){
-    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">早/中/晚<br><span style="font-size:9px">（不含額外人力）</span></td>';
+    foot = '<tfoot><tr><td class="name-col" style="font-weight:400;color:var(--muted)">A/M/P<br><span style="font-size:9px">（不含額外人力）</span></td>';
     for (let d=1; d<=rec.days; d++){
       let m=0, mid=0, e=0;
       rec.staff.forEach((p,i) => {
@@ -1368,7 +1368,7 @@ function renderViewer(){
     foot += '</tr></tfoot>';
   }
   document.getElementById('pubTable').innerHTML = pubHead() + '<tbody>' + exRows + regRows + '</tbody>' + foot;
-  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · 早/中/晚人數不含額外人力（店長等）`;
+  document.getElementById('pubMeta').textContent = `發布時間：${rec.savedAt || '—'} · 如有異動以最新發布為準 · A/M/P 人數不含額外人力（店長等）`;
 }
 document.getElementById('pubMonthSel').addEventListener('change', e => { pubSel.month = e.target.value; pubSel.person = -1; renderViewer(); });
 document.getElementById('adminBtn').addEventListener('click', () => {

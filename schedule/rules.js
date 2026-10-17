@@ -36,7 +36,13 @@
        「指班」字樣（指早/指中/指晚）
 ============================================================ */
 const DOW = ['日','一','二','三','四','五','六'];
-const SHIFT_NAME = ['早','中','晚','休','出差','—'];   /* 5 = 未到職／已離職（不在職） */
+const SHIFT_NAME = ['早','中','晚','休','出差','—'];   /* 5 = 未到職／已離職（不在職）；體檢訊息用 */
+/* 畫面顯示用的公司班別代號（與 Excel 一致）：A 早、M 中、P 晚、RL 例假（週末／國定假日）、RL/ 休假（平日）、OL 出差 */
+const SHIFT_CODE = ['A','M','P','RL','OL','—'];
+function cellCode(s, d, restFn){
+  if (s === 3) return (restFn ? restFn(d) : isRest(d)) ? 'RL' : 'RL/';
+  return SHIFT_CODE[s] || '';
+}
 const ROLES = ['店長','Sup','SSA','SA'];
 const LS_KEY = 'mk-scheduler-v2';
 
