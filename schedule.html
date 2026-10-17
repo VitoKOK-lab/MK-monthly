@@ -256,7 +256,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
         <span><i style="background:#fff"></i><span style="color:var(--crit)">休假</span></span>
         <span><i style="background:#eceff4"></i>出差（不在店）</span>
         <span style="text-decoration:underline;text-underline-offset:2px">指班 = 指定時段</span>
-        <span style="color:var(--gold-dark)">BL/AL = 特殊假</span>
+        <span style="color:var(--gold-dark)">BL/AL/OL = 特殊假</span>
       </div>
       <div class="hint" id="pubMeta"></div>
     </div>
@@ -336,17 +336,17 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="subhead" style="margin-top:20px">指休 / 特殊假 / 出差 / 指班 — 先選人、選模式，再點日期</div>
     <div class="person-chips" id="fixChips"></div>
     <div class="fixmode-row" id="fixModeRow">
-      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="cycle" checked> 休假循環（空 → 指休 → BL → AL → 清除）</label>
+      <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="cycle" checked> 休假循環（空 → 指休 → BL → AL → OL → 清除）</label>
       <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="biz"> 出差（不在店、不排班）</label>
       <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a0"> 指班・早</label>
       <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a1"> 指班・中</label>
       <label class="check" style="padding:4px 0"><input type="radio" name="fixMode" value="a2"> 指班・晚</label>
     </div>
     <div class="mini-cal" id="fixCal"></div>
-    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
+    <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL/OL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
 
     <div class="subhead" style="margin-top:22px">自動安插 AL 年假</div>
-    <div class="hint" style="margin-bottom:8px">替同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。<b>已經有指休或 BL/AL 的人一樣會安插</b>，只是會避開他已經排定的日子。點名字可切換天數與排除：1天 → 2天 → 3天 → 排除 → 1天（不是每個人都要一樣的天數）。</div>
+    <div class="hint" style="margin-bottom:8px">替同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。<b>已經有指休或 BL/AL 的人一樣會安插</b>，只是會避開他已經排定的日子。每位同事填「額外 AL 天數」（0 = 不安插）（不是每個人都要一樣的天數）。</div>
     <div class="person-chips" id="alExChips"></div>
     <div class="ctrl-row" style="align-items:flex-end;margin-top:4px">
       <button class="btn ghost" id="alAutoBtn">⚡ 自動安插 AL</button>
@@ -641,7 +641,7 @@ const isRest = d => { const w = dowOf(d); return w===0 || w===6 || holiSet().has
 const isFri = d => dowOf(d) === 5;
 
 const manualFixed = i => new Set((S.fixed[S.month]||{})[i] || []);
-/* BL/AL 特殊假：{day: 'BL'|'AL'} */
+/* 特殊假：{day: 'BL'|'AL'|'OL'}，皆不佔正常休假額度、不計每日人力 */
 const specialOf = i => ((S.special||{})[S.month]||{})[i] || {};
 const specialSet = i => new Set(Object.keys(specialOf(i)).map(Number));
 /* 週律展開 */
@@ -1286,7 +1286,7 @@ function render(){
   h += '</tr></tfoot>';
   document.getElementById('schedTable').innerHTML = h;
 
-  let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>出差</th><th>正常休</th><th>BL/AL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
+  let st = `<thead><tr><th>員工</th><th>職級</th><th>上班</th><th>出差</th><th>正常休</th><th>BL/AL/OL</th><th>假日休</th><th>早班</th><th>中班</th><th>晚班</th><th>最長連上</th></tr></thead><tbody>`;
   for (const i of [...exIdx, ...regIdx]){
     const s = stats[i];
     st += `<tr><td>${S.staff[i].name}</td><td>${S.staff[i].role}</td><td class="num">${days - s.offN - s.spN - s.bizN}</td>
@@ -1479,6 +1479,7 @@ function xlsxCodeFor(i, d, grid){
   const sp = specialOf(i)[d];
   if (sp === 'BL') return 'BL';
   if (sp === 'AL') return 'AL';
+  if (sp === 'OL') return 'OL';
   return isRest(d) ? 'RL' : 'RL/';
 }
 function b64ToArrayBuffer(b64){
@@ -1943,7 +1944,9 @@ function toggleFix(d){
         sp[selPerson][d] = 'BL';
       } else if (sp[selPerson][d] === 'BL'){   /* BL → AL */
         sp[selPerson][d] = 'AL';
-      } else if (sp[selPerson][d] === 'AL'){   /* AL → 空 */
+      } else if (sp[selPerson][d] === 'AL'){   /* AL → OL */
+        sp[selPerson][d] = 'OL';
+      } else if (sp[selPerson][d] === 'OL'){   /* OL → 空 */
         delete sp[selPerson][d];
       } else {                           /* 空 → 指休 */
         fx[selPerson].push(d);
@@ -1966,25 +1969,23 @@ function alBucket(){
   if (!Array.isArray(b.excluded)) b.excluded = [];
   return b;
 }
-function alDaysFor(name){ const v = alBucket().days[name]; return (v === 1 || v === 3) ? v : 2; }
-function alState(name){ return alBucket().excluded.includes(name) ? 'ex' : alDaysFor(name); }
-function cycleAl(name){
-  const b = alBucket(), st = alState(name);
-  if (st === 1) b.days[name] = 2;                                             /* 1天 → 2天 */
-  else if (st === 2) b.days[name] = 3;                                        /* 2天 → 3天 */
-  else if (st === 3){ b.excluded.push(name); delete b.days[name]; }           /* 3天 → 排除 */
-  else { b.excluded = b.excluded.filter(n => n !== name); b.days[name] = 1; } /* 排除 → 1天 */
+function alDaysFor(name){
+  const b = alBucket(), v = b.days[name];
+  if (b.excluded.includes(name)) return 0;      /* 舊存檔的「排除」 = 0 天 */
+  return Number.isInteger(v) && v >= 0 ? Math.min(v, 15) : 2;
+}
+function setAlDays(name, v){
+  const b = alBucket();
+  b.excluded = b.excluded.filter(n => n !== name);
+  b.days[name] = Math.max(0, Math.min(15, Math.floor(Number(v)) || 0));
   saveState();
-  renderAlChips();
 }
 function renderAlChips(){
   const el = document.getElementById('alExChips');
   if (!el) return;
-  el.innerHTML = S.staff.map((p,i) => {
-    const st = alState(p.name);
-    if (st === 'ex')
-      return `<button class="pchip" style="text-decoration:line-through;color:var(--crit);border-color:var(--crit)" onclick="cycleAl('${p.name.replace(/'/g,"\\'")}')">${p.name}・排除</button>`;
-    return `<button class="pchip active" onclick="cycleAl('${p.name.replace(/'/g,"\\'")}')">${p.name}・${st}天</button>`;
+  el.innerHTML = S.staff.map(p => {
+    const nm = p.name.replace(/'/g,"\\'");
+    return `<label class="pchip" style="display:inline-flex;align-items:center;gap:6px;cursor:default">${p.name}<input type="number" min="0" max="15" value="${alDaysFor(p.name)}" style="width:52px" onchange="setAlDays('${nm}',this.value)"> 天</label>`;
   }).join('');
 }
 const weekOf = (d, firstDow) => Math.floor((d + firstDow - 1) / 7);
@@ -1996,10 +1997,11 @@ function autoInsertAL(){
   if (!S.special) S.special = {};
   if (!S.special[S.month]) S.special[S.month] = {};
   const sp = S.special[S.month];
+  const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name === n)).filter(i => i >= 0);
   const targets = S.staff.map((p,i) => i)
-    .filter(i => !alBucket().excluded.includes(S.staff[i].name));
+    .filter(i => alDaysFor(S.staff[i].name) > 0);
   if (!targets.length){
-    document.getElementById('alStatus').textContent = '沒有要安插的同事（名單上的人都被排除了）';
+    document.getElementById('alStatus').textContent = '沒有要安插的同事（所有人的額外 AL 天數都是 0）';
     return;
   }
   const exempt = exemptSet();
@@ -2020,6 +2022,7 @@ function autoInsertAL(){
     for (let d=1; d<=days; d++){
       if (isRest(d)) continue;                 /* 只挑平日，不吃假日休 2–3 天額度 */
       if (bl.has(d) || fx.has(d)) continue;
+      if (trioIdx.includes(i) && trioIdx.filter(j => j !== i && fixedOf(j).has(d)).length >= (S.trioMode === 'pair' ? 1 : trioIdx.length - 1)) continue;   /* 管理職互斥：不讓三人同天全休 */
       cands.push(d);
     }
     return { i, need: alDaysFor(S.staff[i].name), usedWeeks: new Set(), cands, chosen: [] };
@@ -2029,6 +2032,10 @@ function autoInsertAL(){
     let best = null, bestSlack = -Infinity;
     for (const d of p.cands){
       if (!allowSameWeek && p.usedWeeks.has(weekOf(d, firstDow))) continue;
+      if (trioIdx.includes(p.i)){   /* 本輪其他管理職已選的日子也算進互斥 */
+        const offN = trioIdx.filter(j => j !== p.i && (fixedOf(j).has(d) || (people.find(q => q.i === j) || {chosen:[]}).chosen.includes(d))).length;
+        if (offN >= (S.trioMode === 'pair' ? 1 : trioIdx.length - 1)) continue;
+      }
       if (slack[d] > bestSlack || (slack[d] === bestSlack && (best === null || d < best))){ bestSlack = slack[d]; best = d; }
     }
     return best;
@@ -2106,6 +2113,8 @@ function renderStep2Sum(){
     const al = Object.keys(sp).filter(d => sp[d] === 'AL').map(Number).sort((a,b) => a-b);
     if (bl.length) parts.push(`BL ${bl.join('、')} 日`);
     if (al.length) parts.push(`AL ${al.join('、')} 日`);
+    const ol = Object.keys(sp).filter(d => sp[d] === 'OL').map(Number).sort((a,b) => a-b);
+    if (ol.length) parts.push(`OL ${ol.join('、')} 日`);
     const bz = [...bizOf(i)].sort((a,b) => a-b);
     if (bz.length) parts.push(`出差 ${bz.join('、')} 日`);
     const ag = assignOf(i);
