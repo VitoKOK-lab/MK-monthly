@@ -620,27 +620,37 @@ async function copyCompanyBlock(){
   try {
     btn.disabled = true;
     const blk = await buildCompanyBlock();
+    /* 只放純文字：Excel 貼純文字時會保留目的儲存格原本的字型、框線、底色（含 Ruby 之類的灰色區塊），
+       只換值。帶 HTML 會把公司班表的格式整個蓋掉（實測），所以不放。 */
     let ok = false;
     try {
-      if (navigator.clipboard && window.ClipboardItem){
-        await navigator.clipboard.write([new ClipboardItem({
-          'text/html': new Blob([blk.html], { type: 'text/html' }),
-          'text/plain': new Blob([blk.text], { type: 'text/plain' }),
-        })]);
-        ok = true;
-      }
+      if (navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(blk.text); ok = true; }
     } catch(e){ ok = false; }
+    if (!ok){
+      const ta = document.createElement('textarea');
+      ta.value = blk.text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+    }
+    /* 需要手動上色的格子（貼值不會帶顏色）：指休 RL 黃／RL/ 紅、AL 灰、BL 紫、OL 青 */
+    const NAME = { 'FFFF00':'黃', 'FF2F2F':'紅', 'A5A5A5':'灰', 'B2A1C7':'紫', '00FFFF':'青' };
+    const todo = [];
+    blk.rows.forEach((cells, k) => {
+      const name = cells[0].v;
+      const items = [];
+      for (let d = 1; d <= 31; d++){
+        const c = cells[d];
+        if (c && c.bg && NAME[c.bg]) items.push(`${d} 日 ${c.v}（${NAME[c.bg]}）`);
+      }
+      if (items.length) todo.push(`<b>${name}</b>：${items.join('、')}`);
+    });
     const host = document.getElementById('copyPanel');
     host.style.display = '';
-    host.innerHTML = `<div class="hint" style="margin-bottom:6px">${ok ? '✓ 已複製到剪貼簿。' : '瀏覽器不允許自動複製，已替你全選下方表格，請按 Ctrl+C／⌘C。'}
-      打開公司班表「${blk.sheetName}」分頁，<b>點 B7 儲存格後貼上</b>（第 ${blk.firstRow}–${blk.lastRow} 列，B–AG 欄）。姓名列會一併貼上，貼完請對一下名字順序是否一致；姓名下方小列會被貼成空白，記號請貼完再補。</div>
-      <div style="overflow:auto;max-height:260px;border:1px solid var(--hair)" id="copyTableWrap">${blk.html.replace('<table ', '<table class="copy-table" ')}</div>`;
-    if (!ok){
-      const range = document.createRange();
-      range.selectNodeContents(document.querySelector('#copyTableWrap table'));
-      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-      try { document.execCommand('copy'); host.querySelector('.hint').textContent = '✓ 已複製到剪貼簿（含顏色）。' + host.querySelector('.hint').textContent.split('。').slice(1).join('。'); } catch(e){}
-    }
+    host.innerHTML = `<div class="hint" style="margin-bottom:6px">${ok ? '✓ 已複製（純文字，只貼值）。' : '⚠ 瀏覽器不允許寫入剪貼簿，請改用「匯出公司格式 Excel」。'}
+      打開公司班表「${blk.sheetName}」分頁，<b>點 B7 後貼上</b>（第 ${blk.firstRow}–${blk.lastRow} 列、B–AG 欄）。公司班表原本的字型、框線、底色都會保留，只換班別代號。姓名下方小列會貼成空白，記號請貼完再補。</div>
+      <div class="hint" style="margin-bottom:6px"><b>貼完請手動上色（${todo.length ? todo.length + ' 人' : '本月無'}）</b>：指休 RL 黃、RL/ 紅；AL 灰；BL 紫；OL 青</div>
+      ${todo.length ? `<div style="font-size:12.5px;line-height:1.9">${todo.join('<br>')}</div>` : ''}`;
   } catch(e){
     alert('複製失敗：' + e.message);
   } finally { btn.disabled = false; }
