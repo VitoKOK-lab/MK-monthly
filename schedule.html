@@ -185,6 +185,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .viol { border-left: 3px solid var(--crit); background: var(--crit-wash); padding: 12px 16px; font-size: 13px; color: var(--ink2); margin-bottom: 8px; }
 .ok-note { border-left: 3px solid var(--good); background: rgba(12,163,12,0.07); padding: 12px 16px; font-size: 13px; color: var(--ink2); }
 .status { font-size: 12px; color: var(--muted); margin-left: 12px; }
+.copy-table { border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.copy-table td { border: 1px solid var(--hair-soft); padding: 2px 5px; white-space: nowrap; }
 .alt-strip { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0 4px; }
 .alt-card { flex:1 1 200px; border:1px solid var(--hair); background:var(--bg); padding:12px 14px; cursor:pointer; font-size:12.5px; color:var(--ink2); }
 .alt-card.active { border-color:var(--gold-dark); box-shadow:0 0 0 1px var(--gold-dark); background:var(--gold-wash); }
@@ -461,7 +463,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       <button class="btn" id="pdfBtn">匯出 PDF 給主管</button>
       <button class="btn ghost" id="csvBtn">匯出 CSV</button>
       <button class="btn ghost" id="xlsxBtn">📊 匯出公司格式 Excel</button>
+      <button class="btn" id="copyBtn">📋 複製班表（貼到公司班表 B7）</button>
     </div>
+    <div id="copyPanel" style="display:none;margin-top:12px"></div>
     <div class="hint" style="margin-top:10px">建議順序：鎖定 → 發布給同事 → 匯出公司格式 Excel 給零售經理。發布後如需修改，先解除鎖定、改完再重新發布即可。</div>
     <div style="margin-top:14px"><button class="btn ghost" onclick="gotoStep(3)" style="padding:8px 18px">← 回排班檢視</button></div>
   </div>

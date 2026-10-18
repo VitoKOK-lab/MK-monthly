@@ -508,6 +508,144 @@ function b64ToArrayBuffer(b64){
    （員工姓名＋每日班別，含每人中間的空白列），其餘表頭／備註列／
    特休統計欄／圖例／使用規範完全維持範本原樣，逐一比對填入。
    範本目前只涵蓋 2026 年 1–12 月；其餘年份自動改用程式產生的相容版本。 */
+/* 公司範本分頁的版面解析（匯出與「複製貼上」共用）：
+   正職區塊＝第 7 列起、每 2 列一人、到第一個 PT／人數／規範列為止；列位置依 B 欄姓名比對。
+   baseFill＝第 3 列（星期列）各欄填色，週末／國定假日的灰藍底就靠它保留。 */
+function companyLayout(ws){
+  const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
+  const ALIAS = { '伯鴻':'柏鴻' };
+  const canon = s => { const n = norm(s); return norm(ALIAS[n] || n); };
+  const isPtOrFooter = v => /^pt/i.test(norm(v)) || /人數|時數|使用規範/.test(String(v || ''));
+  let blockEnd = ws.rowCount;
+  for (let r = 7; r <= ws.rowCount; r++){
+    const v = ws.getCell(r, 2).value;
+    if (v != null && String(v).trim() && isPtOrFooter(v)){ blockEnd = r - 1; break; }
+  }
+  const rowOf = {}, emptyRows = [], namedRows = [];
+  for (let r = 7; r <= blockEnd; r += 2){
+    const v = ws.getCell(r, 2).value;
+    if (v != null && String(v).trim()){ rowOf[canon(v)] = r; namedRows.push({ row: r, name: String(v).trim() }); }
+    else emptyRows.push(r);
+  }
+  const baseFill = {};
+  for (let d = 1; d <= 31; d++){
+    const f = ws.getCell(3, 2 + d).fill;
+    baseFill[d] = f && f.type ? JSON.parse(JSON.stringify(f)) : { type:'pattern', pattern:'none' };
+  }
+  return { rowOf, emptyRows, namedRows, blockEnd, baseFill, canon };
+}
+/* ExcelJS 填色 → 六位 hex（給 HTML 剪貼簿用）。佈景主題色依本範本的 Office 2007 主題，tint 依 Excel 的 HSL 亮度公式。 */
+const XLSX_THEME = ['FFFFFF','000000','EEECE1','1F497D','4F81BD','C0504D','9BBB59','8064A2','4BACC6','F79646'];
+function fillToHex(fill){
+  if (!fill || fill.type !== 'pattern' || fill.pattern !== 'solid' || !fill.fgColor) return null;
+  const c = fill.fgColor;
+  if (c.argb) return c.argb.slice(-6);
+  if (c.theme === undefined) return null;
+  const base = XLSX_THEME[c.theme] || 'FFFFFF';
+  const tint = c.tint || 0;
+  let r = parseInt(base.slice(0,2),16)/255, g = parseInt(base.slice(2,4),16)/255, b = parseInt(base.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min){
+    const d = max - min;
+    s = l > .5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  l = tint > 0 ? l * (1 - tint) + tint : l * (1 + tint);
+  const q = l < .5 ? l * (1 + s) : l + s - l * s, p2 = 2 * l - q;
+  const hue = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; };
+  const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0').toUpperCase();
+  return s === 0 ? toHex(l) + toHex(l) + toHex(l) : toHex(hue(p2, q, h + 1/3)) + toHex(hue(p2, q, h)) + toHex(hue(p2, q, h - 1/3));
+}
+
+/* 「複製貼上」區塊：依公司範本該月分頁的列順序，產出 B 欄姓名＋C–AG 班別（含顏色）的表格，
+   貼到公司共用班表的 B7 即可。範本有、名單沒有的人照範本原值輸出（不會被清掉）；
+   姓名下方的小列輸出空白。回傳 { html, text, rows }。 */
+async function buildCompanyBlock(){
+  if (!RESULT) throw new Error('請先產生排班表');
+  if (!window.ExcelJS || !window.MK_TEMPLATE_XLSX_B64) throw new Error('Excel 元件或範本尚未載入');
+  const { grid, days } = RESULT;
+  const [y, mNum] = S.month.split('-').map(Number);
+  const sheetName = `${y} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mNum-1]}`;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(b64ToArrayBuffer(window.MK_TEMPLATE_XLSX_B64));
+  const ws = wb.getWorksheet(sheetName);
+  if (!ws) throw new Error(`範本沒有「${sheetName}」分頁`);
+  const { rowOf, emptyRows, baseFill, canon } = companyLayout(ws);
+  const rowStaff = {};   /* 範本列 → 名單索引 */
+  for (let i = 0; i < S.staff.length; i++){
+    if (absentOf(i).size >= days) continue;
+    let row = rowOf[canon(S.staff[i].name)];
+    if (!row){ if (!emptyRows.length) continue; row = emptyRows.shift(); }
+    rowStaff[row] = i;
+  }
+  const lastRow = Math.max(...Object.keys(rowStaff).map(Number)) + 1;
+  const rows = [];
+  for (let r = 7; r <= lastRow; r++){
+    const i = rowStaff[r];
+    const cells = [];
+    if (i !== undefined){
+      cells.push({ v: S.staff[i].name, bg: null });
+      const mf = manualFixed(i), sp = specialOf(i);
+      for (let d = 1; d <= 31; d++){
+        if (d > days){ cells.push({ v: '', bg: null }); continue; }
+        const code = xlsxCodeFor(i, d, grid);
+        let bg = null;
+        if (code === 'RL' || code === 'RL/'){ if (mf.has(d)) bg = XLSX_FILL[code].slice(-6); }
+        else if (sp[d] || grid[i][d] === 4) bg = XLSX_FILL[code].slice(-6);
+        cells.push({ v: code, bg: bg || fillToHex(baseFill[d]) });
+      }
+    } else if (r % 2 === 1 && ws.getCell(r, 2).value){
+      /* 範本上有、名單上沒有的人：照原值輸出，貼上後不會動到他 */
+      for (let c = 2; c <= 33; c++){
+        const cell = ws.getCell(r, c);
+        const v = cell.value; cells.push({ v: v == null ? '' : (typeof v === 'object' && v.result !== undefined ? v.result : String(v)), bg: fillToHex(cell.fill) });
+      }
+    } else {
+      /* 小列：空白，底色沿用欄底色 */
+      cells.push({ v: '', bg: null });
+      for (let d = 1; d <= 31; d++) cells.push({ v: '', bg: fillToHex(baseFill[d]) });
+    }
+    rows.push(cells);
+  }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const html = '<table border="0" cellspacing="0" cellpadding="0"><tbody>' + rows.map(cells =>
+    '<tr>' + cells.map(c => `<td${c.bg ? ` bgcolor="#${c.bg}"` : ''} style="text-align:center${c.bg ? `;background:#${c.bg}` : ''}">${esc(c.v)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+  const text = rows.map(cells => cells.map(c => c.v).join('\t')).join('\n');
+  return { html, text, rows, sheetName, firstRow: 7, lastRow };
+}
+async function copyCompanyBlock(){
+  const btn = document.getElementById('copyBtn');
+  try {
+    btn.disabled = true;
+    const blk = await buildCompanyBlock();
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([blk.html], { type: 'text/html' }),
+          'text/plain': new Blob([blk.text], { type: 'text/plain' }),
+        })]);
+        ok = true;
+      }
+    } catch(e){ ok = false; }
+    const host = document.getElementById('copyPanel');
+    host.style.display = '';
+    host.innerHTML = `<div class="hint" style="margin-bottom:6px">${ok ? '✓ 已複製到剪貼簿。' : '瀏覽器不允許自動複製，已替你全選下方表格，請按 Ctrl+C／⌘C。'}
+      打開公司班表「${blk.sheetName}」分頁，<b>點 B7 儲存格後貼上</b>（第 ${blk.firstRow}–${blk.lastRow} 列，B–AG 欄）。姓名列會一併貼上，貼完請對一下名字順序是否一致；姓名下方小列會被貼成空白，記號請貼完再補。</div>
+      <div style="overflow:auto;max-height:260px;border:1px solid var(--hair)" id="copyTableWrap">${blk.html.replace('<table ', '<table class="copy-table" ')}</div>`;
+    if (!ok){
+      const range = document.createRange();
+      range.selectNodeContents(document.querySelector('#copyTableWrap table'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      try { document.execCommand('copy'); host.querySelector('.hint').textContent = '✓ 已複製到剪貼簿（含顏色）。' + host.querySelector('.hint').textContent.split('。').slice(1).join('。'); } catch(e){}
+    }
+  } catch(e){
+    alert('複製失敗：' + e.message);
+  } finally { btn.disabled = false; }
+}
+
 async function exportCompanyExcel(){
   if (!RESULT) return alert('請先產生排班表');
   if (!window.ExcelJS){ alert('Excel 匯出元件載入中，請稍後再試一次'); return; }
@@ -530,28 +668,7 @@ async function exportCompanyExcel(){
            只改「正職同事的班別格」。列位置依 B 欄姓名比對（不分大小寫、去空白、
            含舊寫法別名）；名單上有、範本沒有的人，放進正職區塊第一個空列。 */
         const setFill = (cell, fill) => { cell.style = Object.assign({}, cell.style, { fill }); };
-        const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
-        const ALIAS = { '伯鴻':'柏鴻' };
-        const canon = s => { const n = norm(s); return norm(ALIAS[n] || n); };
-        const isPtOrFooter = v => /^pt/i.test(norm(v)) || /人數|時數|使用規範/.test(String(v || ''));
-        let blockEnd = ws.rowCount;
-        for (let r = 7; r <= ws.rowCount; r++){
-          const v = ws.getCell(r, 2).value;
-          if (v != null && String(v).trim() && isPtOrFooter(v)){ blockEnd = r - 1; break; }
-        }
-        const rowOf = {};
-        const emptyRows = [];
-        for (let r = 7; r <= blockEnd; r += 2){
-          const v = ws.getCell(r, 2).value;
-          if (v != null && String(v).trim()) rowOf[canon(v)] = r; else emptyRows.push(r);
-        }
-        /* 每一欄的「底色」＝星期列（第 3 列）該欄的填色：週末／國定假日欄的灰底就靠它保留。
-           （不取活動列：店長會在活動列填自己的顏色） */
-        const baseFill = {};
-        for (let d = 1; d <= 31; d++){
-          const f = ws.getCell(3, 2 + d).fill;
-          baseFill[d] = f && f.type ? JSON.parse(JSON.stringify(f)) : { type:'pattern', pattern:'none' };
-        }
+        const { rowOf, emptyRows, baseFill, canon } = companyLayout(ws);
         const missing = [];
         for (let i = 0; i < N; i++){
           const p = S.staff[i];
@@ -1199,6 +1316,7 @@ document.querySelectorAll('#stepper .stp').forEach(b =>
   b.addEventListener('click', () => gotoStep(Number(b.dataset.step))));
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
 document.getElementById('xlsxBtn').addEventListener('click', exportCompanyExcel);
+document.getElementById('copyBtn').addEventListener('click', copyCompanyBlock);
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('lockBtn').addEventListener('click', toggleLock);
 document.getElementById('clearBtn').addEventListener('click', clearResult);
