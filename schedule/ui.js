@@ -112,9 +112,9 @@ function renderAltStrip(){
     const restLow = stats.filter((s,i) => !exemptSet().has(i) && s.restOff < 2).length;
     return `<div class="alt-card ${k===ALT_SEL?'active':''}" onclick="pickAlt(${k})">
       <b>方案 ${'ABC'[k]}${k===ALT_SEL?' ・ 套用中':''}</b>
-      硬 <span class="num">${scoreParts(alt.offScore).hard}</span> ・ 軟 <span class="num">${scoreParts(alt.offScore).soft}</span> ・ 體檢 ${violations.length ? `<span style="color:var(--crit)">${violations.length} 項</span>` : '<span style="color:var(--good)">全過</span>'}<br>
-      連上四天：${runs4} 人 ・ 假日休不足 2 天：${restLow} 人 ・ 最長連上 ${maxRun} 天<br>
-      <span style="color:var(--muted)">${k===ALT_SEL ? '目前套用' : `與套用中方案相差 ${diff} 格`}</span>
+      一定要的規則：${scoreParts(alt.offScore).hard ? `<span style="color:var(--crit)">有違反</span>` : '都守住'} ・ 盡量的規則扣 <span class="num">${scoreParts(alt.offScore).soft}</span> 分 ・ 體檢 ${violations.length ? `<span style="color:var(--crit)">${violations.length} 項</span>` : '<span style="color:var(--good)">全過</span>'}<br>
+      連上 4 天的人：${runs4} ・ 假日休不到 2 天的人：${restLow} ・ 最多連上 ${maxRun} 天<br>
+      <span style="color:var(--muted)">${k===ALT_SEL ? '現在用的是這個' : `跟現在用的差 ${diff} 格`}</span>
     </div>`;
   });
   document.getElementById('altStrip').innerHTML = cards.join('');
@@ -224,13 +224,13 @@ function renderScoreBreakdown(result){
   const soft = rows.filter(r => r.level === 'soft').reduce((s,r) => s + r.total, 0);
   const who = i => i >= 0 && S.staff[i] ? S.staff[i].name : '';
   const item = it => `${who(it.who)}${it.day ? `${who(it.who) ? ' ' : ''}${it.day} 日` : ''}${it.note ? `：${it.note}` : ''}（−${it.w}）`;
-  return `<div class="card"><div class="subhead">分數明細 — 硬違規 <span class="num">${hard}</span> ・ 軟偏好 <span class="num">${soft}</span>（分數越低越好；硬違規沒清零前軟偏好不參與比較）</div>
+  return `<div class="card"><div class="subhead">扣分明細 — 一定要的規則被違反 <span class="num">${hard}</span> 分 ・ 盡量的規則扣 <span class="num">${soft}</span> 分（越低越好）</div>
     ${rows.length ? `<table class="stat-table" style="font-size:12.5px"><tbody>${rows.map(r => `<tr>
-      <td style="text-align:left;white-space:nowrap;font-weight:700;color:${r.level==='hard'?'var(--crit)':'var(--ink)'}">${r.level==='hard'?'硬':'軟'} ・ ${r.name}</td>
+      <td style="text-align:left;white-space:nowrap;font-weight:700;color:${r.level==='hard'?'var(--crit)':'var(--ink)'}">${r.level==='hard'?'一定要':'盡量'} ・ ${r.name}</td>
       <td class="num" style="white-space:nowrap">−${r.total}</td>
       <td style="text-align:left;color:var(--ink2)">${r.items.slice(0,6).map(item).join('、')}${r.items.length > 6 ? `、…另 ${r.items.length-6} 項` : ''}</td>
     </tr>`).join('')}</tbody></table>` : '<div class="ok-note">所有規則零扣分。</div>'}
-    <div class="hint" style="margin-top:8px">這是「休假日分配」階段的規則；班別（早／中／晚）相關檢查在上方規則總覽。</div></div>`;
+    <div class="hint" style="margin-top:8px">這裡列的是「排休假」的規則扣了哪些分、是誰、哪一天；早／中／晚班的檢查在上面的規則總覽。</div></div>`;
 }
 function generate(){
   if (LOCKED){ document.getElementById('status').textContent = '🔒 班表已鎖定，請先解除鎖定'; return; }
@@ -1393,26 +1393,30 @@ function renderRuleSettings(){
   const el = document.getElementById('ruleSettings');
   if (!el) return;
   const p = P();
-  const grid = PARAM_META.map(([k, label, lo, hi]) => {
+  const groups = [];
+  PARAM_META.forEach(([k, label, lo, hi, grp]) => {
+    let g = groups.find(x => x.name === grp); if (!g){ g = { name: grp, html: '' }; groups.push(g); }
     const chg = p[k] !== PARAMS_DEFAULT[k];
-    return `<label><span class="${chg ? 'chg' : ''}">${label}${chg ? ` <span style="font-size:10px">(預設 ${PARAMS_DEFAULT[k]})</span>` : ''}</span><input type="number" min="${lo}" max="${hi}" value="${p[k]}" onchange="setParam('${k}', this.value)"></label>`;
-  }).join('') + `<label><span class="${p.friAsWeekend !== PARAMS_DEFAULT.friAsWeekend ? 'chg' : ''}">週五人力比照假日</span><input type="checkbox" ${p.friAsWeekend ? 'checked' : ''} onchange="setParamBool('friAsWeekend', this.checked)"></label>`;
+    g.html += `<label><span class="${chg ? 'chg' : ''}">${label}${chg ? ` <span style="font-size:10px">(原本 ${PARAMS_DEFAULT[k]})</span>` : ''}</span><input type="number" min="${lo}" max="${hi}" value="${p[k]}" onchange="setParam('${k}', this.value)"></label>`;
+  });
+  groups.find(x => x.name.startsWith('平日')).html += `<label><span class="${p.friAsWeekend !== PARAMS_DEFAULT.friAsWeekend ? 'chg' : ''}">週五要不要當假日算（人數照假日）</span><input type="checkbox" ${p.friAsWeekend ? 'checked' : ''} onchange="setParamBool('friAsWeekend', this.checked)"></label>`;
+  const grid = groups.map(g => `<div style="grid-column:1/-1;font-size:11px;letter-spacing:.15em;color:var(--gold-dark);font-weight:700;margin-top:8px">${g.name}</div>${g.html}`).join('');
   const rows = OFF_CONSTRAINTS.map(c => {
     const rc = ruleCfg(c);
     const chgL = rc.level !== c.level, chgW = rc.w !== c.w;
     return `<tr class="${rc.on ? '' : 'off'}">
       <td><input type="checkbox" ${rc.on ? 'checked' : ''} onchange="setRule('${c.id}','on',this.checked)" title="關掉＝這條規則不計分"></td>
       <td>${c.name(p)}</td>
-      <td class="${chgL ? 'chg' : ''}"><select onchange="setRule('${c.id}','level',this.value)"><option value="hard" ${rc.level==='hard'?'selected':''}>硬</option><option value="soft" ${rc.level==='soft'?'selected':''}>軟</option></select></td>
-      <td class="${chgW ? 'chg' : ''}"><input type="number" min="0" max="100000" value="${rc.w}" onchange="setRule('${c.id}','w',this.value)">${chgW ? `<span style="font-size:10px;margin-left:4px">(預設 ${c.w})</span>` : ''}</td>
+      <td class="${chgL ? 'chg' : ''}"><select onchange="setRule('${c.id}','level',this.value)"><option value="hard" ${rc.level==='hard'?'selected':''}>一定要</option><option value="soft" ${rc.level==='soft'?'selected':''}>盡量</option></select></td>
+      <td class="${chgW ? 'chg' : ''}"><input type="number" min="0" max="100000" value="${rc.w}" onchange="setRule('${c.id}','w',this.value)">${chgW ? `<span style="font-size:10px;margin-left:4px">(原本 ${c.w})</span>` : ''}</td>
     </tr>`;
   }).join('');
   const n = ruleChangesCount();
   el.innerHTML = `<div class="rs-grid">${grid}</div>
-    <table class="rs-table"><thead><tr><th>計分</th><th>休假分配規則</th><th>等級</th><th>權重（每次違規扣分）</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="rs-table"><thead><tr><th>要用嗎</th><th>排休假時的規則</th><th>一定要／盡量</th><th>違反一次扣幾分（越大越重要）</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="ctrl-row" style="margin-top:10px;align-items:center">
       <button class="btn ghost" onclick="resetRules()" style="padding:8px 18px" ${n ? '' : 'disabled'}>↺ 恢復預設</button>
-      <span class="hint" style="margin:0">${n ? `目前與預設不同：${n} 項（金色標示）` : '目前全部為預設值'}。改完請到步驟③重新「自動排班」。</span>
+      <span class="hint" style="margin:0">${n ? `你改過 ${n} 個地方（金色的）` : '目前都是原本的設定'}。改完請到步驟③重新按「自動排班」。</span>
     </div>`;
 }
 

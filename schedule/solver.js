@@ -16,34 +16,34 @@
    權重仍沿用舊值，方便對照歷史分數；差別在硬軟不再互相抵換。
 ------------------------------------------------------------ */
 const OFF_CONSTRAINTS = [
-  { id:'quota', level:'hard', w:1000, name:p=>'正常休假 = 額度',
+  { id:'quota', level:'hard', w:1000, name:p=>'每個人的休假天數要剛好等於額度',
     run(ctx, emit, u){ const { N, off, quotas } = ctx;
       for (let i=0;i<N;i++){ const d = off[i].size - quotas[i]; if (d) emit(u*Math.abs(d), i, 0, `休 ${off[i].size} 天 ≠ 額度 ${quotas[i]}`); } } },
-  { id:'restMax', level:'hard', w:800, name:p=>`假日休 ≤${p.restMax} 天`,
+  { id:'restMax', level:'hard', w:800, name:p=>`假日休不能超過 ${p.restMax} 天`,
     run(ctx, emit, u){ const lim = ctx.p.restMax; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i)) continue; const r = ctx.restDays[i]; if (r > lim) emit(u*(r-lim), i, 0, `假日休 ${r} 天`); } } },
-  { id:'run5', level:'hard', w:500, name:p=>`連上超過 ${p.maxRun} 天`,
+  { id:'run5', level:'hard', w:500, name:p=>`不能連續上班超過 ${p.maxRun} 天`,
     run(ctx, emit, u){ const lim = ctx.p.maxRun; for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len > lim) emit(u*(seg.len-lim), i, seg.end, `連上 ${seg.len} 天`); } },
-  { id:'minStaff', level:'hard', w:1000, name:p=>`每日人力下限（平日 ${p.wdMin}、假日 ${p.weMin}）`,
+  { id:'minStaff', level:'hard', w:1000, name:p=>`每天上班人數不能少於最少人數（平日 ${p.wdMin}、假日 ${p.weMin}）`,
     run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w < dem.min) emit(u*(dem.min-w), -1, d, `僅 ${w} 人（最少 ${dem.min}）`); } } },
-  { id:'trio', level:'hard', w:800, name:p=>'管理職不可同天全休',
+  { id:'trio', level:'hard', w:800, name:p=>'店長、Liv、Demi 不能同一天全部休假',
     run(ctx, emit, u){ const { trioIdx, off, days } = ctx; if (trioIdx.length < 2) return;
       const th = ctx.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
       for (let d=1; d<=days; d++){ let c=0; for (const i of trioIdx) if (off[i].has(d)) c++; if (c >= th) emit(u*(c-th+1), -1, d, `${c} 位管理職同休`); } } },
-  { id:'monAlt', level:'hard', w:900, name:p=>'週一 Liv/Demi 不同休',
+  { id:'monAlt', level:'hard', w:900, name:p=>'Liv 和 Demi 週一不能同時休',
     run(ctx, emit, u){ const alt = [...ctx.altIdx]; if (alt.length < 2) return;
       for (let d=1; d<=ctx.days; d++) if (dowOf(d) === 1 && alt.every(i => ctx.off[i].has(d))) emit(u, -1, d, '兩位管理職週一同休'); } },
 
-  { id:'restMin', level:'soft', w:120, name:p=>`假日休 ≥${p.restMin} 天`,
+  { id:'restMin', level:'soft', w:120, name:p=>`每個人假日至少休 ${p.restMin} 天`,
     run(ctx, emit, u){ const lim = ctx.p.restMin; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; const r = ctx.restDays[i]; if (r < lim) emit(u*(lim-r), i, 0, `假日只休 ${r} 天`); } } },
-  { id:'rest3', level:'soft', w:60, name:p=>`假日休到上限 ${p.restMax} 天（優先少一天）`,
+  { id:'rest3', level:'soft', w:60, name:p=>`假日休到 ${p.restMax} 天會小扣分（讓大家優先少休一天假日）`,
     run(ctx, emit, u){ const lim = ctx.p.restMax; if (lim <= ctx.p.restMin) return; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; if (ctx.restDays[i] === lim) emit(u, i, 0, `假日休 ${lim} 天`); } } },
-  { id:'run4', level:'soft', w:60, name:p=>`連上剛好 ${p.maxRun} 天`,
+  { id:'run4', level:'soft', w:60, name:p=>`連續上班剛好 ${p.maxRun} 天會小扣分（盡量 2–3 天）`,
     run(ctx, emit, u){ const lim = ctx.p.maxRun; for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len === lim) emit(u, i, seg.end, `連上 ${lim} 天`); } },
-  { id:'altPref', level:'soft', w:8, name:p=>'Liv/Demi 做一休一',
+  { id:'altPref', level:'soft', w:8, name:p=>'Liv、Demi 盡量做一天休一天',
     run(ctx, emit, u){ for (const i of ctx.altIdx) for (const seg of ctx.runs[i]) if (seg.len >= 2) emit((seg.len-1)*u, i, seg.end, `連上 ${seg.len} 天`); } },
-  { id:'noSingle', level:'soft', w:25, name:p=>'其他人避免單日上班',
+  { id:'noSingle', level:'soft', w:25, name:p=>'其他人盡量不要只上一天就休',
     run(ctx, emit, u){ for (let i=0;i<ctx.N;i++){ if (ctx.altIdx.has(i)) continue; for (const seg of ctx.runs[i]) if (seg.len === 1 && !seg.tail) emit(u, i, seg.end, '只上 1 天就休'); } } },
-  { id:'cap', level:'soft', w:400, name:p=>`每日人力上限（平日 ${p.wdCap}、假日 ${p.weCap}）`,
+  { id:'cap', level:'soft', w:400, name:p=>`每天上班人數不要超過最多人數（平日 ${p.wdCap}、假日 ${p.weCap}）`,
     /* 超編人數平方計分：1 人 400、2 人 1600、3 人 3600 → 人力過剩時寧可多天各多 1 人，也不要擠在同一天 */
     run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap){ const o = w - dem.cap; emit(u*o*o, -1, d, `${w} 人（上限 ${dem.cap}，超 ${o}）`); } } } },
 ];

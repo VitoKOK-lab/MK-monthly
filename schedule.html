@@ -383,8 +383,8 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="hint">「任兩人不可同休」在多數月份數學上無解（三人 30 天休假需完全不重疊，平日僅約 21 天，超出部分受假日 2 天上限卡死），建議用「至少一位在班」。</div>
   </div>
   <div class="card" id="ruleCard">
-    <div class="subhead" style="margin-bottom:6px">規則設定（店長可自行調整，改完立即生效並同步雲端）</div>
-    <div class="hint" style="margin-bottom:10px">數字類是每日人力、假日休、連上等門檻；下方清單是休假分配的每條規則，可開關、改「硬／軟」、改權重。硬＝沒清零前軟偏好不參與；權重只在同一層內互相比較。改壞了按「恢復預設」。</div>
+    <div class="subhead" style="margin-bottom:6px">規則設定（店長可以自己改，改完馬上生效）</div>
+    <div class="hint" style="margin-bottom:10px">上半部是數字：每天要幾個人、早班幾人、假日休幾天、最多連上幾天。下半部是排休假時系統遵守的規則：「一定要」的規則系統絕不違反；「盡量」的規則能做到就做，做不到會在體檢裡提醒。「扣幾分」越大代表越重要。改壞了按「恢復預設」就回來。</div>
     <div id="ruleSettings"></div>
   </div>
   <div class="confirm-bar">
@@ -469,7 +469,7 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <button class="btn ghost no-print" id="pickReportBtn" style="padding:6px 14px;font-size:10px" title="按一下，再點班表上有問題的那一格">⚑ 回報某一格</button>
   </div>
   <div class="no-print" id="altWrap" style="display:none">
-    <div class="subhead">方案比較 — 點一個套用（硬違規先比、再比軟偏好；分數越低越好）</div>
+    <div class="subhead">系統排了三個版本，點一個用（扣分越少越好）</div>
     <div class="alt-strip" id="altStrip"></div>
   </div>
   <div class="grid-scroll"><table class="sched" id="schedTable"></table></div>
