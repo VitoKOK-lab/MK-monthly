@@ -282,12 +282,16 @@ function generate(){
         nReg++;
         supply += (days - cfg.absent[i].size) - cfg.quotas[i] - cfg.biz[i].size;
       }
-      for (let d=1; d<=days; d++) need += demand(d).min;
+      let capSum = 0;
+      for (let d=1; d<=days; d++){ const dm = demand(d); need += dm.min; capSum += dm.cap; }
+      const PV = P();
       if (supply < need){
         const avg = (supply / days).toFixed(1);
-        const PV = P();
         feasNote = `⚠ 人力不足：業績同仁 ${nReg} 人、扣掉休假後平均每天只有 ${avg} 人可上班，低於下限（平日 ${PV.wdMin}、假日 ${PV.weMin}），全月短少 ${need - supply} 人日。` +
           `系統仍會排出最接近的班表，但一定有人力不足的日子。解法：補人、減少本月休假／AL，或到步驟①「規則設定」調低每日最少人數。`;
+      } else if (supply > capSum){
+        feasNote = `⚠ 人力多出 ${supply - capSum} 人日：業績同仁 ${nReg} 人扣掉休假後，比每日上限（平日 ${PV.wdCap}、假日 ${PV.weCap}）加總還多，` +
+          `一定有 ${supply - capSum} 個人日會超編（平日第 ${PV.wdCap+1} 人或假日第 ${PV.weCap+1} 人）。解法：請同事多排 AL／指休吸收，或到步驟①「規則設定」調高上限。系統會把超編集中在少數幾天。`;
       }
     }
     /* 8 個隨機起點各解一次，留下分數最好的 3 個「彼此不同」方案讓店長挑。
@@ -388,8 +392,8 @@ function render(){
       if(s!==3 && s!==4 && s!==5)workers++;
       if(s===0)m++; else if(s===1)mid++; else if(s===2)e++;
     }
-    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
-    const short = workers<dem.min || m<Math.min(dem.m, workers) || e<eMin || (dem.mid>0 && mid<dem.mid && workers>dem.m+eMin);
+    const sh = dem.shape(workers);
+    const short = workers<dem.min || workers>dem.cap || m!==sh.m || mid!==sh.mid || e!==sh.e;
     h += `<td class="${short?'short':''} num">${m}/${mid}/${e}</td>`;
   }
   h += '</tr></tfoot>';
@@ -484,12 +488,14 @@ function jumpToPerson(i, d){
 function ruleChecks(){
   const p = P();
   const we = p.friAsWeekend ? '五六日假日' : '六日假日';
+  const wdShape = `平日 ${p.wdMin} 人＝早${p.wdMornLow}${p.wdMid ? '中'+p.wdMid : ''}晚${Math.max(0,p.wdMin-p.wdMornLow-p.wdMid)}、${p.wdMin+1} 人＝早${p.wdMornHigh}${p.wdMid ? '中'+p.wdMid : ''}晚${Math.max(0,p.wdMin+1-p.wdMornHigh-p.wdMid)}`;
+  const weShape = `${we} 早${p.weMorn}${p.weMid ? '中'+p.weMid : ''}其餘晚`;
   return [
     ['休假額度：每人正常休假 = 額度', /≠ 額度/],
     ['指休／特殊假／出差／指班／週律：全部照設定', /指休\/固定休|週律固定上班|為出差|為指班/],
     [`每日人力下限：平日 ≥${p.wdMin}、${we} ≥${p.weMin}`, /僅 \d+ 人上班/],
     [`每日人力上限：平日 ≤${p.wdCap}、${we} ≤${p.weCap}`, /人上班（上限/],
-    [`班型：每天早 1、中 1，其餘晚班（平日晚班 ≥${p.wdEve}、${we} ≥${p.weEve}）`, /早班 \d 人|晚班缺|應開 1 個中班/],
+    [`班型：${wdShape}；${weShape}`, /早班 \d+ 人|中班 \d+ 人|晚班 \d+ 人/],
     ['晚班鎮店：管理職每天至少一人晚班', /無人上晚班/],
     ['管理職互斥：不可同天全休；週一 Liv/Demi 不同休', /互斥名單|同時休假/],
     [`連續上班：最多 ${p.maxRun} 天`, /連續上班/],

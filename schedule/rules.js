@@ -116,6 +116,13 @@ const MIGRATIONS = {
     if (!S.params) S.params = {};
     Object.assign(S.params, { wdMin: 6, wdCap: 7, weMin: 6, weCap: 7, wdPref: 6 });
   },
+  /* 2026-11-20 定案版：平日 5–6（5＝早1晚4、6＝早2晚4）、假日 7–8（早2中1其餘晚）、週五算平日。
+     這些已成為程式預設，把先前補寫進 S.params 的舊值清掉，規則設定頁回到「全部預設」。 */
+  '人力5-6_7-8-2026-11-20'(){
+    if (!S.params) return;
+    ['wdMin','wdCap','weMin','weCap','wdPref','wdEve','weEve','friAsWeekend'].forEach(k => delete S.params[k]);
+    if (!Object.keys(S.params).length) delete S.params;
+  },
 
   'Ruby-2026-11-09'(){
     if (S.staff.some(x => x.name === 'Ruby')) return;
@@ -235,24 +242,24 @@ const totalQuota = i => quotaFor(i) + specialSet(i).size;
    這些人照樣上班、照樣算休假額度，但不計入每日早/中/晚人數，也不參與班別平衡。 */
 const exemptSet = () => new Set(S.staff.map((p,i) => (p.role === '店長' || p.extra) ? i : -1).filter(i => i >= 0));
 
-/* 每日需求（以「規則內」員工計，店長另外加不計數）：
-   週五、六、日（含國定假日）：「早1、中1、晚3–4」，5–6 人
-   週一～週四：            「早1、中1、晚2–3」，4–5 人（晚班 3 人尤佳 → pref）
-   註：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
-       不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
+/* 每日需求（以「規則內」員工計，店長與額外人力不計數）— 見下方 PARAMS_DEFAULT 與 demand() */
 /* ---------- 可調參數（Step① 規則設定；存在 S.params，雲端同步） ---------- */
+/* 2026-11-20 Vito 定案：平日（含週五）5–6 人，5 人＝早1晚4、6 人＝早2晚4，不排中班；
+   假日（六日＋國定假日）7–8 人，早2中1其餘晚。 */
 const PARAMS_DEFAULT = Object.freeze({
-  wdMin: 4,  wdCap: 5,  wdEve: 2,  wdPref: 5,   /* 週一～四：最少、上限、晚班至少、偏好滿編 */
-  weMin: 5,  weCap: 6,  weEve: 3,                /* 五六日＋國定假日：最少、上限、晚班至少 */
-  friAsWeekend: true,                            /* 週五人力比照假日 */
+  wdMin: 5,  wdCap: 6,                           /* 平日：最少、上限 */
+  wdMornLow: 1, wdMornHigh: 2, wdMid: 0,         /* 平日：人數＝下限時早班數、人數多於下限時早班數、中班數 */
+  weMin: 7,  weCap: 8,                           /* 假日：最少、上限 */
+  weMorn: 2, weMid: 1,                           /* 假日：早班數、中班數（其餘晚班） */
+  friAsWeekend: false,                           /* 週五人力比照假日 */
   restMin: 2, restMax: 3,                        /* 假日休天數範圍 */
   maxRun: 4,                                     /* 連上上限（超過＝硬違規） */
   demiGap: 3,                                    /* Demi 早班比其他人平均少幾天 */
   mornSpread: 1, shiftSpread: 3,                 /* 早班落差、中／晚班落差門檻 */
 });
 const PARAM_META = [
-  ['wdMin','週一～四 最少人數',1,10],['wdCap','週一～四 上限人數',1,12],['wdEve','週一～四 晚班至少',0,8],['wdPref','週一～四 偏好滿編人數',0,12],
-  ['weMin','五六日／假日 最少人數',1,10],['weCap','五六日／假日 上限人數',1,12],['weEve','五六日／假日 晚班至少',0,8],
+  ['wdMin','平日 最少人數',1,12],['wdCap','平日 上限人數',1,12],['wdMornLow','平日 人數＝下限時 早班數',0,4],['wdMornHigh','平日 人數＞下限時 早班數',0,4],['wdMid','平日 中班數',0,4],
+  ['weMin','假日 最少人數',1,12],['weCap','假日 上限人數',1,12],['weMorn','假日 早班數',0,4],['weMid','假日 中班數',0,4],
   ['restMin','假日休 至少（天）',0,10],['restMax','假日休 至多（天）',0,10],['maxRun','連上上限（天）',1,7],
   ['demiGap','Demi 早班少於平均（天）',0,10],['mornSpread','早班落差 ≤',0,10],['shiftSpread','中／晚班落差 ≤',0,15],
 ];
@@ -260,11 +267,21 @@ const PARAM_META = [
 let P_CACHE = null;
 function P(){ if (!P_CACHE) P_CACHE = Object.assign({}, PARAMS_DEFAULT, S.params || {}); return P_CACHE; }
 function invalidateParams(){ P_CACHE = null; }
+/* 每日需求：min／cap 給休假分配用；shape(w) 依「當天實際上班人數」回傳 {m, mid, e} 給班別分配與體檢用 */
 function demand(d){
   const p = P();
-  if (isRest(d) || (p.friAsWeekend && isFri(d))) return { m:1, mid:1, e:p.weEve, min:p.weMin, cap:p.weCap };
-  return { m:1, mid:1, e:p.wdEve, min:p.wdMin, cap:p.wdCap, pref:p.wdPref };
+  const we = isRest(d) || (p.friAsWeekend && isFri(d));
+  const min = we ? p.weMin : p.wdMin, cap = we ? p.weCap : p.wdCap;
+  const shape = w => {
+    let m = we ? p.weMorn : (w > p.wdMin ? p.wdMornHigh : p.wdMornLow);
+    let mid = we ? p.weMid : p.wdMid;
+    m = Math.max(0, Math.min(m, w)); mid = Math.max(0, Math.min(mid, w - m));
+    return { m, mid, e: Math.max(0, w - m - mid) };
+  };
+  return { we, min, cap, shape };
 }
+/* 班型文字，例如「早2、中1、晚4」 */
+const shapeText = sh => `早${sh.m}${sh.mid ? `、中${sh.mid}` : ''}、晚${sh.e}`;
 /* ---------- 跨月連上：上月月底連上天數 ----------
    自動：讀已發布的上月班表（window.MK_SCHED_PUB，按姓名對應），從月底往回數上班天（早/中/晚/出差）。
    手動：S.prevRuns[本月][姓名] 覆寫（上月沒發布、或店長知道實況時用）。 */

@@ -44,9 +44,8 @@ const OFF_CONSTRAINTS = [
   { id:'noSingle', level:'soft', w:25, name:p=>'其他人避免單日上班',
     run(ctx, emit, u){ for (let i=0;i<ctx.N;i++){ if (ctx.altIdx.has(i)) continue; for (const seg of ctx.runs[i]) if (seg.len === 1 && !seg.tail) emit(u, i, seg.end, '只上 1 天就休'); } } },
   { id:'cap', level:'soft', w:400, name:p=>`每日人力上限（平日 ${p.wdCap}、假日 ${p.weCap}）`,
-    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap) emit(u*(w-dem.cap), -1, d, `${w} 人（上限 ${dem.cap}）`); } } },
-  { id:'pref', level:'soft', w:10, name:p=>`平日偏好滿編 ${p.wdPref} 人`,
-    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (dem.pref && w < dem.pref) emit(u*(dem.pref-w), -1, d, `${w} 人（偏好 ${dem.pref}）`); } } },
+    /* 超編人數平方計分：1 人 400、2 人 1600、3 人 3600 → 人力過剩時寧可多天各多 1 人，也不要擠在同一天 */
+    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap){ const o = w - dem.cap; emit(u*o*o, -1, d, `${w} 人（上限 ${dem.cap}，超 ${o}）`); } } } },
 ];
 /* 硬軟兩段合成一個可比較的數字：硬 ×1e6 ＋ 軟。軟分數實務上遠小於 1e6，
    所以比較結果等同先比硬、再比軟。 */
@@ -250,6 +249,8 @@ function assignShifts(off, cfg){
     });
     /* 人力規則只對「規則內」員工計數；店長是額外加上去的 */
     const regular = workers.filter(i => !exempt.has(i));
+    /* 班型隨當天實際人數：平日 5 人＝早1晚4、6 人＝早2晚4；假日早2中1其餘晚 */
+    const sh = dem.shape(regular.length);
 
     /* 1. 晚班鎮店：若已有管理職被指班晚班則直接算數；否則鎖定一位。
        規則外人力（店長）鎮店是「免費」的 — 不佔計入的晚班名額，所以優先由他頂；
@@ -286,21 +287,20 @@ function assignShifts(off, cfg){
       const tueOff = i => (d + 1 <= days) && off[i].has(d + 1);
       const sunEve = pool.filter(i => grid[i][d-1] === 2)
         .sort((a,b) => (demiBias(a) - demiBias(b)) || (tueOff(b) - tueOff(a)) || (mCount[a] - mCount[b]));
-      for (const i of sunEve){ if (mHave + morning.length >= dem.m) break; morning.push(i); }
+      for (const i of sunEve){ if (mHave + morning.length >= sh.m) break; morning.push(i); }
     }
     const fairKey = i => mCount[i] + (d>1 && grid[i][d-1]===2 ? 0.6 : 0) + demiBias(i);
     const sorted = pool.slice().sort((a,b) => fairKey(a) - fairKey(b));
     for (const i of sorted){
-      if (mHave + morning.length >= dem.m) break;
+      if (mHave + morning.length >= sh.m) break;
       if (!morning.includes(i)) morning.push(i);
     }
     morning.forEach(i => { grid[i][d] = 0; mCount[i]++; });
 
-    /* 3. 中班／晚班（只以規則內員工湊數）
-       假日固定 1 中班；週二/五「早1」必開 1 中班；週一/三/四「早2」不開中班 */
+    /* 3. 中班／晚班（只以規則內員工湊數）：中班數依班型（平日 0、假日 1），其餘全部晚班 */
     let rest = regular.filter(i => grid[i][d] === 3);
     const midHave = regular.filter(i => grid[i][d] === 1).length;
-    const mids = Math.max(0, Math.min(dem.mid - midHave, rest.length));
+    const mids = Math.max(0, Math.min(sh.mid - midHave, rest.length));
     /* 中班也要公平輪 — 依「目前中班次數」由少到多挑，否則會固定落在名單前面的人
        （曾出現某位同事整月 13 個中班、另一位 0 個）。晚班是扣掉早/中後的其餘人，
        早班與中班都平均了，晚班自然跟著平均。 */
@@ -482,15 +482,15 @@ function validate(){
     let m=0, mid=0, e=0, workers=0;
     for (let i=0;i<N;i++){ if (exempt.has(i)) continue; const s=grid[i][d]; if(s!==3 && s!==4 && s!==5)workers++; if(s===0)m++; else if(s===1)mid++; else if(s===2)e++; }
     const dem = demand(d);
-    const eMin = Math.min(dem.e, Math.max(0, workers - dem.m - dem.mid));
-    const shape = (isRest(d) || isFri(d)) ? '早1、中1、晚3–4' : '早1、中1、晚2–3';
+    const sh = dem.shape(workers);
+    const shape = shapeText(sh);
     if (workers < dem.min) v.push(`${d} 日：僅 ${workers} 人上班（最少 ${dem.min} 人）`);
-    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人，${shape}）`);
-    if (m < Math.min(dem.m, workers)) v.push(`${d} 日：早班 ${m} 人（應 ${dem.m} 人）`);
-    if (m > dem.m) v.push(`${d} 日：早班 ${m} 人超額（應 ${dem.m} 人，${shape}）`);
-    if (e < eMin) v.push(`${d} 日：晚班缺 ${eMin-e} 人`);
-    if (dem.mid > 0 && mid < dem.mid && workers >= dem.min)
-      v.push(`${d} 日：應開 1 個中班（${shape}），目前中班 ${mid} 人`);
+    if (workers > dem.cap) v.push(`${d} 日：${workers} 人上班（上限 ${dem.cap} 人）`);
+    if (m < sh.m) v.push(`${d} 日：早班 ${m} 人（應 ${sh.m} 人，${workers} 人上班＝${shape}）`);
+    if (m > sh.m) v.push(`${d} 日：早班 ${m} 人超額（應 ${sh.m} 人，${workers} 人上班＝${shape}）`);
+    if (mid < sh.mid) v.push(`${d} 日：中班 ${mid} 人（應 ${sh.mid} 人，${workers} 人上班＝${shape}）`);
+    if (mid > sh.mid) v.push(`${d} 日：中班 ${mid} 人超額（應 ${sh.mid}${sh.mid ? ' 人' : '，平日不排中班'}，${workers} 人上班＝${shape}）`);
+    if (e < sh.e) v.push(`${d} 日：晚班 ${e} 人（應 ${sh.e} 人，${workers} 人上班＝${shape}）`);
     const trioWorking = trioIdx.some(i => grid[i][d] !== 3);
     if (trioWorking && !trioIdx.some(i => grid[i][d] === 2))
       v.push(`${d} 日：${trioIdx.map(i=>S.staff[i].name).join('/')} 無人上晚班（每天至少一位管理職晚班）`);
