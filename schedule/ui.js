@@ -272,6 +272,24 @@ function generate(){
       }
     }
     const cfg = buildSolveCfg();
+    /* 預檢 3：人力可行性 — 全月「規則內」同事可上班的人日 vs 每日下限加總。
+       不夠就先講清楚（人太少／休太多／下限太高），仍照常排，讓店長看到最接近的結果 */
+    let feasNote = '';
+    {
+      let supply = 0, need = 0, nReg = 0;
+      for (let i=0;i<N;i++){
+        if (cfg.exempt.has(i)) continue;
+        nReg++;
+        supply += (days - cfg.absent[i].size) - cfg.quotas[i] - cfg.biz[i].size;
+      }
+      for (let d=1; d<=days; d++) need += demand(d).min;
+      if (supply < need){
+        const avg = (supply / days).toFixed(1);
+        const PV = P();
+        feasNote = `⚠ 人力不足：業績同仁 ${nReg} 人、扣掉休假後平均每天只有 ${avg} 人可上班，低於下限（平日 ${PV.wdMin}、假日 ${PV.weMin}），全月短少 ${need - supply} 人日。` +
+          `系統仍會排出最接近的班表，但一定有人力不足的日子。解法：補人、減少本月休假／AL，或到步驟①「規則設定」調低每日最少人數。`;
+      }
+    }
     /* 8 個隨機起點各解一次，留下分數最好的 3 個「彼此不同」方案讓店長挑。
        以前只回傳最佳一版；多版本不增加計算量，只是把原本丟掉的解留下來。 */
     const sols = [];
@@ -296,9 +314,9 @@ function generate(){
     render();
     btn.disabled = false;
     const nViol = validate().violations.length;
-    document.getElementById('status').textContent = nViol === 0
+    document.getElementById('status').textContent = feasNote || (nViol === 0
       ? '✓ 完成 — 體檢全數通過，請往下確認'
-      : `完成 — 體檢發現 ${nViol} 項須留意，請看下方「每日人力體檢」`;
+      : `完成 — 體檢發現 ${nViol} 項須留意，請看下方「每日人力體檢」`);
     const an = document.getElementById('anomalySec');
     if (an && an.style.display !== 'none') an.scrollIntoView({ behavior: 'smooth' });
   }, 30);
@@ -310,6 +328,7 @@ function generate(){
 ============================================================ */
 function render(){
   if (!RESULT) return;
+  syncGridToStaff();
   const { grid, days } = RESULT;
   const N = S.staff.length;
   const { violations, stats } = validate();

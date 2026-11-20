@@ -387,7 +387,16 @@ function assignShifts(off, cfg){
 /* ============================================================
    驗證 + 統計
 ============================================================ */
+/* 排好班之後名單又增減（店長補人、刪人）：把班表列數對齊名單，新人整列「休」待重排，
+   多出來的列丟掉，避免 render／validate 讀到 undefined 整頁掛掉 */
+function syncGridToStaff(){
+  if (!RESULT) return;
+  const { days } = RESULT;
+  while (RESULT.grid.length < S.staff.length) RESULT.grid.push(new Array(days + 1).fill(3));
+  if (RESULT.grid.length > S.staff.length) RESULT.grid.length = S.staff.length;
+}
 function validate(){
+  syncGridToStaff();
   const { grid, days } = RESULT;
   const PV = P();
   const N = S.staff.length;

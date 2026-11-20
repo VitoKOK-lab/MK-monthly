@@ -110,6 +110,13 @@ const MIGRATIONS = {
 
   /* 2026-11：新進 Ruby 11/9 到職。11 月額度由系統依在職天數折算（10 × 22/30 ≈ 7）。
      插在 Vina 之後、額外人力之前。 */
+  /* 2026-11-20 Vito：業績同仁 10 人，每天至少 6 人、最多 7 人（平日與假日相同）。
+     寫進 S.params（＝規則設定頁的值），店長可再調。 */
+  '人力6-7-2026-12'(){
+    if (!S.params) S.params = {};
+    Object.assign(S.params, { wdMin: 6, wdCap: 7, weMin: 6, weCap: 7, wdPref: 6 });
+  },
+
   'Ruby-2026-11-09'(){
     if (S.staff.some(x => x.name === 'Ruby')) return;
     const p = { name:'Ruby', role:'SA', quota:10, week:{}, joined:'2026-11-09' };
