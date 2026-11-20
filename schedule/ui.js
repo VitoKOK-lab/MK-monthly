@@ -137,7 +137,7 @@ function persistResult(){
 function restoreResult(){
   const rec = loadSavedAll()[S.month];
   if (!rec){ RESULT = null; LOCKED = false; manualEdits.clear(); UNDO.length = 0;
-    document.getElementById('resultSec').style.display = 'none'; updateButtons(); return; }
+    document.getElementById('resultSec').style.display = 'none'; updateButtons(); renderGuide(); return; }
   /* 名單增減過的話，舊班表的列數會對不上現在的員工數。
      少的列補「休」（那位同事當月本來就不在），多的列直接丟掉，
      避免 render() 讀到 undefined 整頁掛掉。 */
@@ -393,6 +393,7 @@ function render(){
   renderAltStrip();
   renderAnomalies(violations);
   renderStep4Sum(violations);
+  renderGuide();
   const ub = document.getElementById('undoBtn');
   if (ub) ub.disabled = UNDO.length === 0 || LOCKED;
   updateButtons();
@@ -546,11 +547,169 @@ function renderAnomalies(violations){
   q.textContent = `發現 ${dayIssues.size} 個異常日、${otherIssues.length} 項提醒 — 要重排、回步驟②調整，還是接受後前往定案？`;
 }
 
+
+/* ============================================================
+   本月流程引導：每月照順序做完哪些事、自動判斷完成狀態、一鍵跳到該做的地方
+   店長勾「本月不需要」的項目存 S.guide[月][key]（雲端同步）
+============================================================ */
+const GUIDE_DEADLINE_DAY = 20;   /* 公司規定：每月 20 日前把下月班表 Email 給零售經理 */
+function guideFlags(){ if (!S.guide) S.guide = {}; return S.guide[S.month] || (S.guide[S.month] = {}); }
+function guideSkip(key, on){ const g = guideFlags(); if (on) g[key] = true; else delete g[key]; saveState(); renderGuide(); }
+function guideMark(key){ const g = guideFlags(); if (!g[key]){ g[key] = true; saveState(); } renderGuide(); }
+function guideJump(step, elId){
+  gotoStep(step);
+  requestAnimationFrame(() => { const el = elId && document.getElementById(elId); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+}
+function guideItems(){
+  const g = guideFlags();
+  const m = S.month, { days } = monthInfo();
+  const nFix = S.staff.reduce((n,_,i) => n + manualFixed(i).size + specialSet(i).size + bizOf(i).size + Object.keys(assignOf(i)).length, 0);
+  const nAL = S.staff.reduce((n,_,i) => n + Object.values(specialOf(i)).filter(v => v === 'AL').length, 0);
+  const prev = prevMonthId();
+  const hasPrevPub = !!pubData()[prev];
+  const nPrevOv = Object.keys((S.prevRuns || {})[m] || {}).length;
+  const viol = RESULT ? validate().violations.length : null;
+  const published = pubData()[m];
+  const joiners = S.staff.filter((p,i) => { const a = absentOf(i).size; return a > 0 && a < days; }).map(p => p.name);
+  /* status: 'done' | 'todo' | 'skip'；now = 第一個 todo */
+  return [
+    { key:'staff', step:1, el:'staffBody', t:'① 核對員工名單', d: joiners.length ? `本月有到職／離職：${joiners.join('、')}，確認日期與額度折算` : '有人到職、離職、改額度嗎？沒有就按「正確，下一步」',
+      status: g.staff ? 'done' : 'todo', skippable:false },
+    { key:'holi', step:2, el:'holiCal', t:'② 國定假日', d: (S.holidays[m]||[]).length ? `已設 ${(S.holidays[m]||[]).join('、')} 日` : '點日曆標國定假日與補假；本月沒有就勾「不需要」',
+      status: (S.holidays[m]||[]).length ? 'done' : (g.holi ? 'skip' : 'todo'), skippable:true },
+    { key:'fix', step:2, el:'fixChips', t:'③ 指休／特殊假／出差／指班', d: nFix ? `已輸入 ${nFix} 筆` : '同事的指休、BL/AL/OL、出差、指班；先選人、選模式、點日期',
+      status: nFix ? 'done' : (g.fix ? 'skip' : 'todo'), skippable:true },
+    { key:'prev', step:2, el:'prevRuns', t:'④ 上月月底連上天數', d: hasPrevPub ? `已自動讀取 ${prev} 發布班表${nPrevOv ? `，手動覆寫 ${nPrevOv} 人` : ''}` : `${prev} 沒有發布班表，上月月底有人連上請手動填`,
+      status: (hasPrevPub || nPrevOv || g.prev) ? (hasPrevPub || nPrevOv ? 'done' : 'skip') : 'todo', skippable:true },
+    { key:'al', step:2, el:'alExChips', t:'⑤ 安插 AL 年假（可選）', d: nAL ? `本月已有 ${nAL} 天 AL` : '填每人天數後按「自動安插 AL」；本月不排年假就勾「不需要」',
+      status: nAL ? 'done' : (g.al ? 'skip' : 'todo'), skippable:true },
+    { key:'gen', step:3, el:'genBtn', t:'⑥ 自動排班', d: RESULT ? `已產生（方案 ${'ABC'[ALT_SEL] || 'A'}）` : '按「自動排班」，約 3 秒',
+      status: RESULT ? 'done' : 'todo', skippable:false },
+    { key:'check', step:3, el:'anomalySec', t:'⑦ 看體檢、挑方案', d: !RESULT ? '排班後才有' : (viol === 0 ? '體檢全過' : `還有 ${viol} 項提醒：看分數明細，可重排、換方案 A/B/C，或接受`),
+      status: !RESULT ? 'todo' : (viol === 0 || g.check ? 'done' : 'todo'), skippable: !!RESULT && viol > 0, skipLabel:'我接受這些提醒' },
+    { key:'adjust', step:3, el:'schedTable', t:'⑧ 手動微調（可選）', d: RESULT ? (manualEdits.size ? `已手動改 ${manualEdits.size} 格` : '點任一格循環 A→M→P→RL；改完體檢會重算') : '排班後才有',
+      status: !RESULT ? 'todo' : 'done', skippable:false, optional:true },
+    { key:'lock', step:4, el:'lockBtn', t:'⑨ 鎖定班表', d: LOCKED ? '已鎖定' : '定案後鎖定，避免誤改',
+      status: LOCKED ? 'done' : 'todo', skippable:false },
+    { key:'pub', step:4, el:'pubBtn', t:'⑩ 發布給同事', d: published ? `已發布（${published.savedAt || ''}）` : '同事在首頁看班用',
+      status: published ? 'done' : 'todo', skippable:false },
+    { key:'xlsx', step:4, el:'xlsxBtn', t:'⑪ 匯出 Excel／貼到公司班表', d: g.xlsx ? '已匯出或複製' : `每月 ${GUIDE_DEADLINE_DAY} 日前 Email 零售經理：匯出公司格式 Excel，或「複製班表」貼到公司班表 B7`,
+      status: g.xlsx ? 'done' : 'todo', skippable:false },
+  ];
+}
+function guideDeadline(){
+  /* 本月班表的截止＝上個月 20 日 */
+  const { y, m } = monthInfo();
+  const dl = new Date(y, m-2, GUIDE_DEADLINE_DAY);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((dl - today) / 86400000);
+  const label = `${dl.getFullYear()}-${String(dl.getMonth()+1).padStart(2,'0')}-${String(GUIDE_DEADLINE_DAY).padStart(2,'0')}`;
+  return { label, diff };
+}
+function renderGuide(){
+  const body = document.getElementById('guideBody');
+  if (!body) return;
+  const items = guideItems();
+  const doneN = items.filter(x => x.status !== 'todo').length;
+  let nowSet = false;
+  const [y, mo] = S.month.split('-');
+  const dl = guideDeadline();
+  document.getElementById('guideTitle').textContent = `本月流程 — ${y} 年 ${Number(mo)} 月班表`;
+  document.getElementById('guideRight').innerHTML = `${doneN}/${items.length} 完成 ・ 截止 ${dl.label}${dl.diff >= 0 ? `（還有 ${dl.diff} 天）` : `<span style="color:var(--crit)">（已過 ${-dl.diff} 天）</span>`}`;
+  body.innerHTML = `<div class="guide-list">${items.map(it => {
+    const now = !nowSet && it.status === 'todo'; if (now) nowSet = true;
+    const cls = it.status === 'done' ? 'done' : it.status === 'skip' ? 'skip' : (now ? 'now' : '');
+    const ic = it.status === 'done' ? '✓' : it.status === 'skip' ? '—' : it.t.charAt(0);
+    const safeT = it.t.replace(/^[①-⑳]\s*/, '');
+    return `<div class="g-row ${cls}">
+      <span class="g-ic">${ic}</span>
+      <span class="g-t">${safeT}<span class="g-d">${it.d}</span></span>
+      ${it.status === 'todo' ? `<button class="g-go" onclick="guideJump(${it.step}, '${it.el}')">去做</button>` : ''}
+      ${it.skippable && it.status === 'todo' ? `<button class="g-skip" onclick="guideSkip('${it.key}', true)">${it.skipLabel || '本月不需要'}</button>` : ''}
+      ${it.status === 'skip' ? `<button class="g-skip" onclick="guideSkip('${it.key}', false)">取消略過</button>` : ''}
+    </div>`;
+  }).join('')}</div>
+  <div class="hint" style="padding:0 16px 12px">有任何一格不對、規則想改、或系統看不懂的狀況，按「⚑ 回報問題給 Vito」，文字會自動帶上月份、同事、日期與目前狀態。</div>`;
+}
+
+/* ============================================================
+   問題回報：店長描述 → 產生固定格式文字 → 開 LINE 分享（或複製）
+   本機留一份 S.reports，Step④ 可看已回報幾則
+============================================================ */
+let REPORT_PICK = false;
+const REPORT_TYPES = ['排錯班／不合理', '人力不夠或太多', '規則要改', '同事臨時請假', '系統怪怪的', '其他'];
+function openReport(i, d){
+  const old = document.querySelector('.dlg-back'); if (old) old.remove();
+  const back = document.createElement('div');
+  back.className = 'dlg-back';
+  const names = S.staff.map((p,k) => `<option value="${k}" ${k===i?'selected':''}>${p.name}</option>`).join('');
+  const { days } = monthInfo();
+  back.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" style="max-width:520px">
+    <div class="dlg-title">⚑ 回報問題給 Vito</div>
+    <div class="rp-chips" id="rpTypes">${REPORT_TYPES.map((t,k) => `<button class="pchip ${k===0?'active':''}" data-k="${k}">${t}</button>`).join('')}</div>
+    <div class="rp-row">同事 <select id="rpWho"><option value="-1" ${i==null?'selected':''}>（不指定）</option>${names}</select>
+      日期 <input type="number" id="rpDay" min="1" max="${days}" style="width:64px" value="${d || ''}" placeholder="日"></div>
+    <textarea id="rpText" class="dlg-input" rows="3" placeholder="發生什麼事？應該怎樣才對？（可空白）" style="resize:vertical;margin-bottom:8px"></textarea>
+    <div class="rp-pre" id="rpPre"></div>
+    <div class="dlg-btns">
+      <button class="btn ghost" id="rpCancel">取消</button>
+      <button class="btn ghost" id="rpCopy">複製文字</button>
+      <button class="btn gold" id="rpLine">用 LINE 傳送</button>
+    </div>
+  </div>`;
+  document.body.appendChild(back);
+  let typeK = 0;
+  const build = () => {
+    const who = Number(back.querySelector('#rpWho').value);
+    const day = Number(back.querySelector('#rpDay').value) || 0;
+    const txt = back.querySelector('#rpText').value.trim();
+    const [y, mo] = S.month.split('-');
+    const lines = [`【MK 排班回報】${y}/${Number(mo)} 月班表`, `類型：${REPORT_TYPES[typeK]}`];
+    if (who >= 0 || day){
+      let cur = '';
+      if (who >= 0 && day && RESULT && RESULT.grid[who]){ const s = RESULT.grid[who][day]; const sp = specialOf(who)[day]; cur = (s === 3 && sp) ? sp : cellCode(s, day); }
+      lines.push(`${who >= 0 ? `同事：${S.staff[who].name}` : ''}${who >= 0 && day ? ' ｜ ' : ''}${day ? `日期：${Number(mo)}/${day}（${DOW[dowOf(day)]}）` : ''}${cur ? ` 目前：${cur}` : ''}`);
+    }
+    if (txt) lines.push(`說明：${txt}`);
+    const viol = RESULT ? validate().violations.length : null;
+    lines.push(`狀態：${RESULT ? `已排班（方案 ${'ABC'[ALT_SEL] || 'A'}，體檢 ${viol === 0 ? '全過' : viol + ' 項'}）` : '尚未排班'}${LOCKED ? '、已鎖定' : ''}${pubData()[S.month] ? '、已發布' : ''}${ruleChangesCount() ? `、規則已調整 ${ruleChangesCount()} 項` : ''}`);
+    lines.push(`時間：${new Date().toLocaleString('zh-TW', { hour12: false })}`);
+    return lines.join('\n');
+  };
+  const refresh = () => { back.querySelector('#rpPre').textContent = build(); };
+  back.querySelectorAll('#rpTypes .pchip').forEach(b => b.addEventListener('click', () => { typeK = Number(b.dataset.k); back.querySelectorAll('#rpTypes .pchip').forEach(x => x.classList.toggle('active', x === b)); refresh(); }));
+  ['rpWho','rpDay','rpText'].forEach(id => back.querySelector('#' + id).addEventListener('input', refresh));
+  const close = () => back.remove();
+  const log = (via) => { if (!S.reports) S.reports = []; S.reports.push({ ts: new Date().toISOString(), month: S.month, via, text: build() }); if (S.reports.length > 200) S.reports.shift(); saveState(); };
+  back.querySelector('#rpCancel').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelector('#rpCopy').addEventListener('click', async () => {
+    const txt = build();
+    try { await navigator.clipboard.writeText(txt); } catch(e){ const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(_){} ta.remove(); }
+    log('copy'); close(); document.getElementById('status').textContent = '✓ 回報文字已複製，貼到 LINE 給 Vito 即可';
+  });
+  back.querySelector('#rpLine').addEventListener('click', () => {
+    const txt = build();
+    log('line');
+    window.open('https://line.me/R/share?text=' + encodeURIComponent(txt), '_blank');
+    close();
+  });
+  refresh();
+  back.querySelector('#rpText').focus();
+}
+function togglePickReport(){
+  REPORT_PICK = !REPORT_PICK;
+  const btn = document.getElementById('pickReportBtn');
+  if (btn) btn.textContent = REPORT_PICK ? '⚑ 請點班表上的那一格（再按一次取消）' : '⚑ 回報某一格';
+  document.querySelectorAll('#schedTable .cell').forEach(c => c.classList.toggle('pick-mode', REPORT_PICK));
+}
+
 /* 手動微調：允許違背規定（違規只會顯示警告）；支援復原 */
 const UNDO = [];
 const manualEdits = new Set();
 function cycle(i, d){
   if (!RESULT) return;
+  if (REPORT_PICK){ togglePickReport(); openReport(i, d); return; }
   if (LOCKED){ document.getElementById('status').textContent = '🔒 班表已鎖定，如需修改請先按「解除鎖定」'; return; }
   UNDO.push({ i, d, val: RESULT.grid[i][d] });
   if (UNDO.length > 50) UNDO.shift();
@@ -1433,7 +1592,7 @@ function renderPrevRuns(){
       return `<label class="pchip" style="display:inline-flex;align-items:center;gap:6px;cursor:default;${has ? 'border-color:var(--gold-dark);color:var(--gold-dark)' : ''}">${p.name}<input type="number" min="0" max="14" style="width:52px" value="${has ? ov[p.name] : ''}" placeholder="${auto == null ? '0' : auto}" onchange="setPrevRun('${nm}', this.value)"> 天</label>`;
     }).join('')}</div>`;
 }
-function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderPrevRuns(); renderRuleSettings(); renderStep1Sum(); renderStep2Sum(); }
+function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderPrevRuns(); renderRuleSettings(); renderStep1Sum(); renderStep2Sum(); renderGuide(); }
 
 /* ============================================================
    排班流程精靈：①員工 → ②假別 → ③排班體檢 → ④定案
@@ -1453,6 +1612,7 @@ function gotoStep(n){
   });
   if (WSTEP === 1) renderStep1Sum();
   if (WSTEP === 2) renderStep2Sum();
+  renderGuide();
   if (WSTEP === 4) renderStep4Sum();
   window.scrollTo({ top: 0 });
 }
@@ -1537,8 +1697,9 @@ document.getElementById('alAutoBtn').addEventListener('click', autoInsertAL);
 document.querySelectorAll('#stepper .stp').forEach(b =>
   b.addEventListener('click', () => gotoStep(Number(b.dataset.step))));
 document.getElementById('csvBtn').addEventListener('click', exportCsv);
-document.getElementById('xlsxBtn').addEventListener('click', exportCompanyExcel);
-document.getElementById('copyBtn').addEventListener('click', copyCompanyBlock);
+document.getElementById('xlsxBtn').addEventListener('click', () => { exportCompanyExcel(); if (RESULT) guideMark('xlsx'); });
+document.getElementById('copyBtn').addEventListener('click', () => { copyCompanyBlock(); if (RESULT) guideMark('xlsx'); });
+document.getElementById('pickReportBtn').addEventListener('click', togglePickReport);
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('lockBtn').addEventListener('click', toggleLock);
 document.getElementById('clearBtn').addEventListener('click', clearResult);
@@ -1754,6 +1915,7 @@ async function publish(){
       const r = await cloudApi('published/' + S.month, { method: 'PUT', body: JSON.stringify(rec) });
       if (!r.ok){ const err = await r.json().catch(() => ({})); throw new Error(err.error || ('HTTP ' + r.status)); }
       const pub = { ...pubData() }; pub[S.month] = rec; window.MK_SCHED_PUB = pub;
+    renderGuide();
       st0.textContent = '✓ 已發布！同事重新整理頁面即可看到新班表';
       return;
     } catch(e){
@@ -1800,6 +1962,7 @@ async function publish(){
       throw new Error(err.message || ('HTTP ' + put.status));
     }
     window.MK_SCHED_PUB = pub;   /* 本機立即生效 */
+    renderGuide();
     st.textContent = '✓ 已發布！同事約 1–2 分鐘後重新整理頁面即可看到新班表';
   } catch(e){
     st.textContent = '⚠ 發布失敗：' + e.message + '（可改用下載檔案）';
