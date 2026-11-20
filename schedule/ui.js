@@ -210,6 +210,7 @@ function buildSolveCfg(){
     altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
     biz: S.staff.map((_,i) => bizOf(i)),
     absent: S.staff.map((_,i) => absentOf(i)),
+    prevRuns: S.staff.map((_,i) => prevRunOf(i)),   /* 跨月連上 */
   };
 }
 /* 分數明細：由目前班表反推休假集合，逐條規則列出扣分與對象（Timefold score analysis 的做法） */
@@ -1406,7 +1407,33 @@ function autoInsertAL(){
   document.getElementById('alStatus').textContent =
     `✓ 已安插 AL（${summary.join('；')}）— 請按「⚙ 自動排班」重新產生班表`;
 }
-function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderRuleSettings(); renderStep1Sum(); renderStep2Sum(); }
+/* Step②：上月月底連上天數（自動＋可覆寫） */
+function setPrevRun(name, val){
+  if (!S.prevRuns) S.prevRuns = {};
+  const b = S.prevRuns[S.month] || (S.prevRuns[S.month] = {});
+  const n = Math.round(Number(val));
+  if (val === '' || !Number.isFinite(n) || n < 0) delete b[name]; else b[name] = Math.min(14, n);
+  if (!Object.keys(b).length) delete S.prevRuns[S.month];
+  saveState(); renderPrevRuns(); renderStep2Sum();
+}
+function renderPrevRuns(){
+  const el = document.getElementById('prevRuns');
+  if (!el) return;
+  const prev = prevMonthId();
+  const hasPub = !!pubData()[prev];
+  const ov = (S.prevRuns || {})[S.month] || {};
+  el.innerHTML = `<div class="hint" style="margin-bottom:8px">${hasPub
+      ? `已自動讀取 <b>${prev}</b> 已發布班表的月底連上天數；數字不對可直接改（留空＝用自動值）。`
+      : `<b>${prev} 沒有已發布的班表</b>，系統當作每人月初從 0 天起算。若上月月底有人連上，請在這裡填天數，避免月初排成連五。`}</div>
+    <div class="person-chips">${S.staff.map((p,i) => {
+      if (absentOf(i).has(1)) return '';
+      const auto = prevRunAuto(p.name);
+      const has = Number.isInteger(ov[p.name]);
+      const nm = p.name.replace(/'/g, "\\'");
+      return `<label class="pchip" style="display:inline-flex;align-items:center;gap:6px;cursor:default;${has ? 'border-color:var(--gold-dark);color:var(--gold-dark)' : ''}">${p.name}<input type="number" min="0" max="14" style="width:52px" value="${has ? ov[p.name] : ''}" placeholder="${auto == null ? '0' : auto}" onchange="setPrevRun('${nm}', this.value)"> 天</label>`;
+    }).join('')}</div>`;
+}
+function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderPrevRuns(); renderRuleSettings(); renderStep1Sum(); renderStep2Sum(); }
 
 /* ============================================================
    排班流程精靈：①員工 → ②假別 → ③排班體檢 → ④定案
@@ -1458,6 +1485,8 @@ function renderStep2Sum(){
     if (ol.length) parts.push(`OL ${ol.join('、')} 日`);
     const bz = [...bizOf(i)].sort((a,b) => a-b);
     if (bz.length) parts.push(`出差 ${bz.join('、')} 日`);
+    const pr = prevRunOf(i);
+    if (pr > 0) parts.push(`上月月底已連上 ${pr} 天`);
     const ab = [...absentOf(i)].sort((a,b) => a-b);
     if (ab.length) parts.push(`不在職 ${ab[0]}–${ab[ab.length-1]} 日（${p.joined && ab[0]===1 ? '到職 ' + p.joined : '離職 ' + p.left}）`);
     const ag = assignOf(i);
@@ -1527,7 +1556,7 @@ const INIT_READY = cloudLoad().finally(() => {
   runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
   document.getElementById('monthInput').value = S.month;
   document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = true;
-  renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderRuleSettings(); renderStep1Sum();
+  renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderPrevRuns(); renderRuleSettings(); renderStep1Sum();
   restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
   gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
   applyMode();

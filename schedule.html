@@ -386,6 +386,9 @@ table.sched { border-collapse: collapse; background: var(--bg); }
     <div class="mini-cal" id="fixCal"></div>
     <div class="hint">黑 = 指休（佔正常 10 天額度）；金 = BL/AL/OL 特殊假（額度外另加，但若落在假日仍計入假日 2–3 天限制）；藍灰 = 出差（不在店、不佔額度、不計人力）；底線金框 = 指班（指定時段必上班，硬條件）；深灰 = 週律固定休；斜線 = 週律固定上班（不可休）；紅 = 與互斥名單撞休。同一天設新狀態會自動清掉舊狀態；再點一次可清除。</div>
 
+    <div class="subhead" style="margin-top:22px">上月月底連上天數（跨月連上）</div>
+    <div id="prevRuns"></div>
+
     <div class="subhead" style="margin-top:22px">自動安插 AL 年假</div>
     <div class="hint" style="margin-bottom:8px">替同事自動安插年假（挑平日、跨週分散，並同時參考當天實際人力需求聯合分配，避免大家擠同一天）。<b>已經有指休或 BL/AL 的人一樣會安插</b>，只是會避開他已經排定的日子。每位同事填「額外 AL 天數」（0 = 不安插）（不是每個人都要一樣的天數）。</div>
     <div class="person-chips" id="alExChips"></div>

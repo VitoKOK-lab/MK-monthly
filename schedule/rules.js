@@ -258,6 +258,27 @@ function demand(d){
   if (isRest(d) || (p.friAsWeekend && isFri(d))) return { m:1, mid:1, e:p.weEve, min:p.weMin, cap:p.weCap };
   return { m:1, mid:1, e:p.wdEve, min:p.wdMin, cap:p.wdCap, pref:p.wdPref };
 }
+/* ---------- 跨月連上：上月月底連上天數 ----------
+   自動：讀已發布的上月班表（window.MK_SCHED_PUB，按姓名對應），從月底往回數上班天（早/中/晚/出差）。
+   手動：S.prevRuns[本月][姓名] 覆寫（上月沒發布、或店長知道實況時用）。 */
+function prevMonthId(){ const { y, m } = monthInfo(); const d = new Date(y, m-2, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function prevRunAuto(name){
+  const pub = (typeof pubData === 'function' ? pubData() : (window.MK_SCHED_PUB || {}));
+  const rec = pub[prevMonthId()];
+  if (!rec || !Array.isArray(rec.staff) || !Array.isArray(rec.grid)) return null;   /* null = 上月沒資料 */
+  const k = rec.staff.findIndex(s => s && s.name === name);
+  if (k < 0 || !rec.grid[k]) return null;
+  let n = 0;
+  for (let d = rec.days; d >= 1; d--){ const s = rec.grid[k][d]; if (s === 0 || s === 1 || s === 2 || s === 4) n++; else break; }
+  return n;
+}
+function prevRunOf(i){
+  const name = S.staff[i].name;
+  const ov = ((S.prevRuns || {})[S.month] || {})[name];
+  if (Number.isInteger(ov) && ov >= 0) return ov;
+  const auto = prevRunAuto(name);
+  return auto == null ? 0 : auto;
+}
 /* 規則覆寫（Step① 規則設定）：S.rules[id] = { on, level, w }，沒設的用程式預設 */
 function ruleCfg(c){ const o = (S.rules || {})[c.id] || {}; return { on: o.on !== false, level: o.level || c.level, w: Number.isFinite(o.w) ? o.w : c.w }; }
 

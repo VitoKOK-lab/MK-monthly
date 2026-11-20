@@ -68,7 +68,8 @@ function offContext(off, cfg){
     const biz = cfg.biz && cfg.biz[i] ? cfg.biz[i] : null;
     for (const d of off[i]){ if (!isEx) workers[d]--; if (isRest(d)) restDays[i]++; }
     if (!isEx){ if (biz) for (const d of biz) workers[d]--; if (absent) for (const d of absent) workers[d]--; }
-    const segs = []; let run = 0;
+    /* 跨月：從上月月底已連上的天數起算，月初接著數 */
+    const segs = []; let run = (cfg.prevRuns && cfg.prevRuns[i]) || 0;
     for (let d=1; d<=days; d++){
       if (absent && absent.has(d)){ if (run) segs.push({ len: run, end: d-1 }); run = 0; continue; }
       if (off[i].has(d)){ if (run) segs.push({ len: run, end: d-1 }); run = 0; }
@@ -401,7 +402,8 @@ function validate(){
     const sp = specialSet(i);
     const isEx = exempt.has(i);
     const asg = effAssign(i);
-    let offN=0, restOff=0, spN=0, bizN=0, m=0, mid=0, e=0, maxRun=0, run=0;
+    const prevRun = prevRunOf(i);
+    let offN=0, restOff=0, spN=0, bizN=0, m=0, mid=0, e=0, maxRun=0, run=prevRun;   /* 連上從上月月底接著算 */
     for (let d=1; d<=days; d++){
       const s = grid[i][d];
       if (s===3){
@@ -426,7 +428,7 @@ function validate(){
       if (restOff > PV.restMax) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 ${PV.restMax} 天）`);
       if (restOff < PV.restMin) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 ${PV.restMin}–${PV.restMax} 天，公平性提醒）`);
     }
-    if (maxRun > PV.maxRun) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（最多 ${PV.maxRun} 天，禁止）`);
+    if (maxRun > PV.maxRun) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（最多 ${PV.maxRun} 天，禁止${prevRun ? `；含上月月底已連上 ${prevRun} 天` : ''}）`);
     for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日為指休/固定休/特殊假，卻被排班`);
     for (const d of weeklyDays(i,'work')) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
     for (const d of bizOf(i)) if (grid[i][d] !== 4) v.push(`${S.staff[i].name}：${d} 日為出差，卻被排班或休假`);
