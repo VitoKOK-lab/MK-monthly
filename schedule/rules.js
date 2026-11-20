@@ -73,7 +73,7 @@ function normalize(s){
   s.staff.forEach(p => { if (!p.role) p.role = 'SA'; if (!p.week) p.week = {}; });
   if (!s.trioMode) s.trioMode = 'all3';
 }
-function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} if (typeof cloudMarkDirty === 'function') cloudMarkDirty(); }
+function saveState(){ invalidateParams(); try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} if (typeof cloudMarkDirty === 'function') cloudMarkDirty(); }
 function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ return null; } }
 
 /* ---------- 一次性資料補寫 ----------
@@ -233,12 +233,33 @@ const exemptSet = () => new Set(S.staff.map((p,i) => (p.role === '店長' || p.e
    週一～週四：            「早1、中1、晚2–3」，4–5 人（晚班 3 人尤佳 → pref）
    註：週五只是「人力配置」比照假日；休假額度上「週五休」仍算平日休，
        不佔假日休 2–3 天的配額（假日認定仍只看 isRest）。 */
+/* ---------- 可調參數（Step① 規則設定；存在 S.params，雲端同步） ---------- */
+const PARAMS_DEFAULT = Object.freeze({
+  wdMin: 4,  wdCap: 5,  wdEve: 2,  wdPref: 5,   /* 週一～四：最少、上限、晚班至少、偏好滿編 */
+  weMin: 5,  weCap: 6,  weEve: 3,                /* 五六日＋國定假日：最少、上限、晚班至少 */
+  friAsWeekend: true,                            /* 週五人力比照假日 */
+  restMin: 2, restMax: 3,                        /* 假日休天數範圍 */
+  maxRun: 4,                                     /* 連上上限（超過＝硬違規） */
+  demiGap: 3,                                    /* Demi 早班比其他人平均少幾天 */
+  mornSpread: 1, shiftSpread: 3,                 /* 早班落差、中／晚班落差門檻 */
+});
+const PARAM_META = [
+  ['wdMin','週一～四 最少人數',1,10],['wdCap','週一～四 上限人數',1,12],['wdEve','週一～四 晚班至少',0,8],['wdPref','週一～四 偏好滿編人數',0,12],
+  ['weMin','五六日／假日 最少人數',1,10],['weCap','五六日／假日 上限人數',1,12],['weEve','五六日／假日 晚班至少',0,8],
+  ['restMin','假日休 至少（天）',0,10],['restMax','假日休 至多（天）',0,10],['maxRun','連上上限（天）',1,7],
+  ['demiGap','Demi 早班少於平均（天）',0,10],['mornSpread','早班落差 ≤',0,10],['shiftSpread','中／晚班落差 ≤',0,15],
+];
+/* 求解器每秒讀參數數十萬次，快取一份；saveState／載入雲端時失效 */
+let P_CACHE = null;
+function P(){ if (!P_CACHE) P_CACHE = Object.assign({}, PARAMS_DEFAULT, S.params || {}); return P_CACHE; }
+function invalidateParams(){ P_CACHE = null; }
 function demand(d){
-  if (isRest(d) || isFri(d)) return { m:1, mid:1, e:3, min:5, cap:6 };
-  return { m:1, mid:1, e:2, min:4, cap:5, pref:5 };
+  const p = P();
+  if (isRest(d) || (p.friAsWeekend && isFri(d))) return { m:1, mid:1, e:p.weEve, min:p.weMin, cap:p.weCap };
+  return { m:1, mid:1, e:p.wdEve, min:p.wdMin, cap:p.wdCap, pref:p.wdPref };
 }
-/* Demi 的早班要比其他人少幾天（其他人平均 − 這個數，最低仍為 1 天） */
-const DEMI_MORN_GAP = 3;
+/* 規則覆寫（Step① 規則設定）：S.rules[id] = { on, level, w }，沒設的用程式預設 */
+function ruleCfg(c){ const o = (S.rules || {})[c.id] || {}; return { on: o.on !== false, level: o.level || c.level, w: Number.isFinite(o.w) ? o.w : c.w }; }
 
 /* ---------- 全域狀態（三個檔案共用） ---------- */
 let S = loadState() || defaultState();

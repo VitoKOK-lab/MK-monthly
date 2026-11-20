@@ -16,37 +16,37 @@
    權重仍沿用舊值，方便對照歷史分數；差別在硬軟不再互相抵換。
 ------------------------------------------------------------ */
 const OFF_CONSTRAINTS = [
-  { id:'quota', level:'hard', name:'正常休假 = 額度',
-    run(ctx, emit){ const { N, off, quotas } = ctx;
-      for (let i=0;i<N;i++){ const d = off[i].size - quotas[i]; if (d) emit(1000*Math.abs(d), i, 0, `休 ${off[i].size} 天 ≠ 額度 ${quotas[i]}`); } } },
-  { id:'restMax', level:'hard', name:'假日休 ≤3 天',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i)) continue; const r = ctx.restDays[i]; if (r > 3) emit(800*(r-3), i, 0, `假日休 ${r} 天`); } } },
-  { id:'run5', level:'hard', name:'連五禁止',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len > 4) emit(500*(seg.len-4), i, seg.end, `連上 ${seg.len} 天`); } },
-  { id:'minStaff', level:'hard', name:'每日人力下限',
-    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w < dem.min) emit(1000*(dem.min-w), -1, d, `僅 ${w} 人（最少 ${dem.min}）`); } } },
-  { id:'trio', level:'hard', name:'管理職不可同天全休',
-    run(ctx, emit){ const { trioIdx, off, days } = ctx; if (trioIdx.length < 2) return;
+  { id:'quota', level:'hard', w:1000, name:p=>'正常休假 = 額度',
+    run(ctx, emit, u){ const { N, off, quotas } = ctx;
+      for (let i=0;i<N;i++){ const d = off[i].size - quotas[i]; if (d) emit(u*Math.abs(d), i, 0, `休 ${off[i].size} 天 ≠ 額度 ${quotas[i]}`); } } },
+  { id:'restMax', level:'hard', w:800, name:p=>`假日休 ≤${p.restMax} 天`,
+    run(ctx, emit, u){ const lim = ctx.p.restMax; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i)) continue; const r = ctx.restDays[i]; if (r > lim) emit(u*(r-lim), i, 0, `假日休 ${r} 天`); } } },
+  { id:'run5', level:'hard', w:500, name:p=>`連上超過 ${p.maxRun} 天`,
+    run(ctx, emit, u){ const lim = ctx.p.maxRun; for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len > lim) emit(u*(seg.len-lim), i, seg.end, `連上 ${seg.len} 天`); } },
+  { id:'minStaff', level:'hard', w:1000, name:p=>`每日人力下限（平日 ${p.wdMin}、假日 ${p.weMin}）`,
+    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w < dem.min) emit(u*(dem.min-w), -1, d, `僅 ${w} 人（最少 ${dem.min}）`); } } },
+  { id:'trio', level:'hard', w:800, name:p=>'管理職不可同天全休',
+    run(ctx, emit, u){ const { trioIdx, off, days } = ctx; if (trioIdx.length < 2) return;
       const th = ctx.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
-      for (let d=1; d<=days; d++){ let c=0; for (const i of trioIdx) if (off[i].has(d)) c++; if (c >= th) emit(800*(c-th+1), -1, d, `${c} 位管理職同休`); } } },
-  { id:'monAlt', level:'hard', name:'週一 Liv/Demi 不同休',
-    run(ctx, emit){ const alt = [...ctx.altIdx]; if (alt.length < 2) return;
-      for (let d=1; d<=ctx.days; d++) if (dowOf(d) === 1 && alt.every(i => ctx.off[i].has(d))) emit(900, -1, d, '兩位管理職週一同休'); } },
+      for (let d=1; d<=days; d++){ let c=0; for (const i of trioIdx) if (off[i].has(d)) c++; if (c >= th) emit(u*(c-th+1), -1, d, `${c} 位管理職同休`); } } },
+  { id:'monAlt', level:'hard', w:900, name:p=>'週一 Liv/Demi 不同休',
+    run(ctx, emit, u){ const alt = [...ctx.altIdx]; if (alt.length < 2) return;
+      for (let d=1; d<=ctx.days; d++) if (dowOf(d) === 1 && alt.every(i => ctx.off[i].has(d))) emit(u, -1, d, '兩位管理職週一同休'); } },
 
-  { id:'restMin', level:'soft', name:'假日休 ≥2 天',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; const r = ctx.restDays[i]; if (r < 2) emit(120*(2-r), i, 0, `假日只休 ${r} 天`); } } },
-  { id:'rest3', level:'soft', name:'假日休 3 天（優先 2 天）',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; if (ctx.restDays[i] === 3) emit(60, i, 0, '假日休 3 天'); } } },
-  { id:'run4', level:'soft', name:'連上四天',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len === 4) emit(60, i, seg.end, '連上 4 天'); } },
-  { id:'altPref', level:'soft', name:'Liv/Demi 做一休一',
-    run(ctx, emit){ for (const i of ctx.altIdx) for (const seg of ctx.runs[i]) if (seg.len >= 2) emit((seg.len-1)*8, i, seg.end, `連上 ${seg.len} 天`); } },
-  { id:'noSingle', level:'soft', name:'其他人避免單日上班',
-    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.altIdx.has(i)) continue; for (const seg of ctx.runs[i]) if (seg.len === 1 && !seg.tail) emit(25, i, seg.end, '只上 1 天就休'); } } },
-  { id:'cap', level:'soft', name:'每日人力上限',
-    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap) emit(400*(w-dem.cap), -1, d, `${w} 人（上限 ${dem.cap}）`); } } },
-  { id:'pref', level:'soft', name:'平日晚班滿編',
-    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (dem.pref && w < dem.pref) emit(10*(dem.pref-w), -1, d, `${w} 人（偏好 ${dem.pref}）`); } } },
+  { id:'restMin', level:'soft', w:120, name:p=>`假日休 ≥${p.restMin} 天`,
+    run(ctx, emit, u){ const lim = ctx.p.restMin; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; const r = ctx.restDays[i]; if (r < lim) emit(u*(lim-r), i, 0, `假日只休 ${r} 天`); } } },
+  { id:'rest3', level:'soft', w:60, name:p=>`假日休到上限 ${p.restMax} 天（優先少一天）`,
+    run(ctx, emit, u){ const lim = ctx.p.restMax; if (lim <= ctx.p.restMin) return; for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; if (ctx.restDays[i] === lim) emit(u, i, 0, `假日休 ${lim} 天`); } } },
+  { id:'run4', level:'soft', w:60, name:p=>`連上剛好 ${p.maxRun} 天`,
+    run(ctx, emit, u){ const lim = ctx.p.maxRun; for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len === lim) emit(u, i, seg.end, `連上 ${lim} 天`); } },
+  { id:'altPref', level:'soft', w:8, name:p=>'Liv/Demi 做一休一',
+    run(ctx, emit, u){ for (const i of ctx.altIdx) for (const seg of ctx.runs[i]) if (seg.len >= 2) emit((seg.len-1)*u, i, seg.end, `連上 ${seg.len} 天`); } },
+  { id:'noSingle', level:'soft', w:25, name:p=>'其他人避免單日上班',
+    run(ctx, emit, u){ for (let i=0;i<ctx.N;i++){ if (ctx.altIdx.has(i)) continue; for (const seg of ctx.runs[i]) if (seg.len === 1 && !seg.tail) emit(u, i, seg.end, '只上 1 天就休'); } } },
+  { id:'cap', level:'soft', w:400, name:p=>`每日人力上限（平日 ${p.wdCap}、假日 ${p.weCap}）`,
+    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap) emit(u*(w-dem.cap), -1, d, `${w} 人（上限 ${dem.cap}）`); } } },
+  { id:'pref', level:'soft', w:10, name:p=>`平日偏好滿編 ${p.wdPref} 人`,
+    run(ctx, emit, u){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (dem.pref && w < dem.pref) emit(u*(dem.pref-w), -1, d, `${w} 人（偏好 ${dem.pref}）`); } } },
 ];
 /* 硬軟兩段合成一個可比較的數字：硬 ×1e6 ＋ 軟。軟分數實務上遠小於 1e6，
    所以比較結果等同先比硬、再比軟。 */
@@ -82,14 +82,16 @@ function offContext(off, cfg){
   /* 整月不在職（尚未到職／已離職）的人不參與個人偏好類規則 */
   const active = [];
   for (let i=0;i<N;i++) active.push(!(cfg.absent && cfg.absent[i] && cfg.absent[i].size >= days));
-  return { days, N, off, quotas: cfg.quotas, exempt, altIdx, trioIdx: cfg.trioIdx, trioMode: cfg.trioMode, workers, restDays, runs, dem, active };
+  return { days, N, off, quotas: cfg.quotas, exempt, altIdx, trioIdx: cfg.trioIdx, trioMode: cfg.trioMode, workers, restDays, runs, dem, active, p: P() };
 }
 function scoreOff(off, cfg){
   const ctx = offContext(off, cfg);
   let hard = 0, soft = 0;
   for (const c of OFF_CONSTRAINTS){
-    if (c.level === 'hard') c.run(ctx, w => { hard += w; });
-    else c.run(ctx, w => { soft += w; });
+    const rc = ruleCfg(c);
+    if (!rc.on) continue;
+    if (rc.level === 'hard') c.run(ctx, w => { hard += w; }, rc.w);
+    else c.run(ctx, w => { soft += w; }, rc.w);
   }
   return hard * HARD_UNIT + soft;
 }
@@ -97,9 +99,11 @@ function scoreOff(off, cfg){
 function explainOff(off, cfg){
   const ctx = offContext(off, cfg);
   return OFF_CONSTRAINTS.map(c => {
+    const rc = ruleCfg(c);
+    if (!rc.on) return { id: c.id, name: c.name(ctx.p), level: rc.level, total: 0, items: [] };
     const items = []; let total = 0;
-    c.run(ctx, (w, who, day, note) => { total += w; items.push({ w, who, day, note }); });
-    return { id: c.id, name: c.name, level: c.level, total, items };
+    c.run(ctx, (w, who, day, note) => { total += w; items.push({ w, who, day, note }); }, rc.w);
+    return { id: c.id, name: c.name(ctx.p), level: rc.level, total, items };
   }).filter(r => r.total > 0);
 }
 
@@ -349,7 +353,7 @@ function assignShifts(off, cfg){
      換完再跑一次平衡，避免為了喬 Demi 反而把某位同事的早班壓出新的落差。 */
   if (demiIdx >= 0 && !exempt.has(demiIdx) && peers.length){
     const peerAvg = peers.reduce((a,i) => a + mCount[i], 0) / peers.length;
-    const target = Math.max(1, Math.round(peerAvg) - DEMI_MORN_GAP);
+    const target = Math.max(1, Math.round(peerAvg) - P().demiGap);
     /* 把 hi 的一個早班換給 lo（lo 當天要是可動的中/晚班） */
     const swapMorning = (hi, lo) => {
       for (let d=1; d<=days; d++){
@@ -384,6 +388,7 @@ function assignShifts(off, cfg){
 ============================================================ */
 function validate(){
   const { grid, days } = RESULT;
+  const PV = P();
   const N = S.staff.length;
   const v = [];
   const stats = [];
@@ -418,10 +423,10 @@ function validate(){
     if (offN !== quotaFor(i)) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${quotaFor(i)} 天`);
     for (const d of absentOf(i)) if (grid[i][d] !== 5) v.push(`${S.staff[i].name}：${d} 日尚未到職／已離職，卻被排班或休假`);
     if (!isEx && absentOf(i).size < days){
-      if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
-      if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
+      if (restOff > PV.restMax) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 ${PV.restMax} 天）`);
+      if (restOff < PV.restMin) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 ${PV.restMin}–${PV.restMax} 天，公平性提醒）`);
     }
-    if (maxRun > 4) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（連五爆炸，禁止）`);
+    if (maxRun > PV.maxRun) v.push(`${S.staff[i].name}：連續上班 ${maxRun} 天（最多 ${PV.maxRun} 天，禁止）`);
     for (const d of fixedOf(i)) if (grid[i][d] !== 3) v.push(`${S.staff[i].name}：${d} 日為指休/固定休/特殊假，卻被排班`);
     for (const d of weeklyDays(i,'work')) if (grid[i][d] === 3) v.push(`${S.staff[i].name}：${d} 日為週律固定上班，卻排了休假`);
     for (const d of bizOf(i)) if (grid[i][d] !== 4) v.push(`${S.staff[i].name}：${d} 日為出差，卻被排班或休假`);
@@ -432,7 +437,7 @@ function validate(){
   }
   if (mCounts.length){
     const mMax = Math.max(...mCounts), mMin = Math.min(...mCounts);
-    if (mMax - mMin > 1) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ 1，店長/${S.trio[2]}/週律固定早班者不計）`);
+    if (mMax - mMin > PV.mornSpread) v.push(`早班天數落差 ${mMax - mMin}（最多 ${mMax}、最少 ${mMin}，應 ≤ ${PV.mornSpread}，店長/${S.trio[2]}/週律固定早班者不計）`);
   }
   /* 中／晚班也要盡量平均（規則外人力不計）。早班另有 ≤1 的嚴格檢查，
      中晚班受每日班型與休假日牽動，落差門檻放寬到 3。 */
@@ -441,8 +446,8 @@ function validate(){
     const hi = Math.max(...arr), lo = Math.min(...arr);
     if (hi - lo > lim) v.push(`${name}天數落差 ${hi - lo}（最多 ${hi}、最少 ${lo}，應 ≤ ${lim}，規則外人力不計）`);
   };
-  spread(midCounts, '中班', 3);
-  spread(eveCounts, `晚班（${S.trio[1]}/${S.trio[2]} 鎮店不計）`, 3);
+  spread(midCounts, '中班', PV.shiftSpread);
+  spread(eveCounts, `晚班（${S.trio[1]}/${S.trio[2]} 鎮店不計）`, PV.shiftSpread);
   /* Demi 早班刻意比別人少約 DEMI_MORN_GAP 天，但不可為 0、也不該差太多 */
   if (demiIdxV >= 0 && !exempt.has(demiIdxV)){
     let dm = 0;
@@ -451,8 +456,8 @@ function validate(){
     else if (mCounts.length){
       const avg = mCounts.reduce((a,b) => a+b, 0) / mCounts.length;
       const gap = avg - dm;
-      if (gap > DEMI_MORN_GAP + 1.5)
-        v.push(`${S.staff[demiIdxV].name}：早班 ${dm} 天，比其他人平均少 ${gap.toFixed(1)} 天（目標約少 ${DEMI_MORN_GAP} 天，差太多）`);
+      if (gap > PV.demiGap + 1.5)
+        v.push(`${S.staff[demiIdxV].name}：早班 ${dm} 天，比其他人平均少 ${gap.toFixed(1)} 天（目標約少 ${PV.demiGap} 天，差太多）`);
     }
   }
   const th = S.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);

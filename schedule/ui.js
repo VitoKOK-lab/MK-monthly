@@ -30,7 +30,7 @@ async function cloudLoad(){
       const localTs = localStorage.getItem('mk-local-updated') || '';
       const keepLocal = localDirty && localTs && (!data.updatedAt || localTs > data.updatedAt);
       if (!keepLocal){
-        S = data.s; normalize(S);
+        S = data.s; normalize(S); invalidateParams();
         try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){}
         if (data.results){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(data.results)); } catch(e){} }
         localStorage.removeItem('mk-dirty');
@@ -459,20 +459,25 @@ function jumpToPerson(i, d){
 }
 /* 規則清單：每條規則一列，過關打勾、違規列出細節。順序＝店長關心的優先序。
    每則違規訊息依第一個符合的 regex 歸類；沒對到的歸入「其他」。 */
-const RULE_CHECKS = [
-  ['休假額度：每人正常休假 = 額度', /≠ 額度/],
-  ['指休／特殊假／出差／指班／週律：全部照設定', /指休\/固定休|週律固定上班|為出差|為指班/],
-  ['每日人力下限：平日 ≥4、五六日假日 ≥5', /僅 \d+ 人上班/],
-  ['每日人力上限：平日 ≤5、五六日假日 ≤6', /人上班（上限/],
-  ['班型：每天早 1、中 1，其餘晚班', /早班 \d 人|晚班缺|應開 1 個中班/],
-  ['晚班鎮店：管理職每天至少一人晚班', /無人上晚班/],
-  ['管理職互斥：不可同天全休；週一 Liv/Demi 不同休', /互斥名單|同時休假/],
-  ['連續上班：禁止連五', /連續上班/],
-  ['假日休：每人 2–3 天', /假日休了|假日只休/],
-  ['早班平衡：落差 ≤1；Demi 少排但不為 0', /^早班天數落差|個早班|比其他人平均少/],
-  ['中／晚班平衡：落差 ≤3（鎮店者不計）', /^中班天數落差|^晚班（/],
-];
+function ruleChecks(){
+  const p = P();
+  const we = p.friAsWeekend ? '五六日假日' : '六日假日';
+  return [
+    ['休假額度：每人正常休假 = 額度', /≠ 額度/],
+    ['指休／特殊假／出差／指班／週律：全部照設定', /指休\/固定休|週律固定上班|為出差|為指班/],
+    [`每日人力下限：平日 ≥${p.wdMin}、${we} ≥${p.weMin}`, /僅 \d+ 人上班/],
+    [`每日人力上限：平日 ≤${p.wdCap}、${we} ≤${p.weCap}`, /人上班（上限/],
+    [`班型：每天早 1、中 1，其餘晚班（平日晚班 ≥${p.wdEve}、${we} ≥${p.weEve}）`, /早班 \d 人|晚班缺|應開 1 個中班/],
+    ['晚班鎮店：管理職每天至少一人晚班', /無人上晚班/],
+    ['管理職互斥：不可同天全休；週一 Liv/Demi 不同休', /互斥名單|同時休假/],
+    [`連續上班：最多 ${p.maxRun} 天`, /連續上班/],
+    [`假日休：每人 ${p.restMin}–${p.restMax} 天`, /假日休了|假日只休/],
+    [`早班平衡：落差 ≤${p.mornSpread}；Demi 少約 ${p.demiGap} 天但不為 0`, /^早班天數落差|個早班|比其他人平均少/],
+    [`中／晚班平衡：落差 ≤${p.shiftSpread}（鎮店者不計）`, /^中班天數落差|^晚班（/],
+  ];
+}
 function renderRuleList(violations){
+  const RULE_CHECKS = ruleChecks();
   const buckets = RULE_CHECKS.map(() => []);
   const other = [];
   violations.forEach(msg => {
@@ -1045,6 +1050,76 @@ function renderStaff(){
   renderTrio(); renderFixChips(); saveState();
 }
 
+/* ============================================================
+   規則設定（Step①）：數字參數 ＋ 每條休假分配規則的開關／等級／權重
+   存在 S.params / S.rules，saveState 後自動雲端同步；排班與體檢即時讀取。
+============================================================ */
+function setParam(key, val){
+  if (!S.params) S.params = {};
+  const meta = PARAM_META.find(m => m[0] === key);
+  let v = Number(val);
+  if (meta){ if (!Number.isFinite(v)) v = PARAMS_DEFAULT[key]; v = Math.max(meta[2], Math.min(meta[3], Math.round(v))); }
+  if (v === PARAMS_DEFAULT[key]) delete S.params[key]; else S.params[key] = v;
+  /* 範圍類參數互相牽制 */
+  const p = P();
+  if (p.restMin > p.restMax){ if (key === 'restMin') S.params.restMax = p.restMin; else S.params.restMin = p.restMax; }
+  if (p.wdMin > p.wdCap){ if (key === 'wdMin') S.params.wdCap = p.wdMin; else S.params.wdMin = p.wdCap; }
+  if (p.weMin > p.weCap){ if (key === 'weMin') S.params.weCap = p.weMin; else S.params.weMin = p.weCap; }
+  saveState(); renderRuleSettings(); renderStep1Sum(); if (RESULT) render();
+}
+function setParamBool(key, on){
+  if (!S.params) S.params = {};
+  if (on === PARAMS_DEFAULT[key]) delete S.params[key]; else S.params[key] = on;
+  saveState(); renderRuleSettings(); renderStep1Sum(); if (RESULT) render();
+}
+function setRule(id, field, val){
+  if (!S.rules) S.rules = {};
+  const c = OFF_CONSTRAINTS.find(x => x.id === id); if (!c) return;
+  const o = S.rules[id] || (S.rules[id] = {});
+  if (field === 'on') o.on = !!val;
+  else if (field === 'level') o.level = val === 'hard' ? 'hard' : 'soft';
+  else if (field === 'w'){ const n = Math.round(Number(val)); o.w = Number.isFinite(n) && n >= 0 ? n : c.w; }
+  /* 等於預設就拿掉，Step① 摘要才算得出「調整了幾項」 */
+  if (o.on !== false) delete o.on;
+  if (o.level === c.level) delete o.level;
+  if (o.w === c.w) delete o.w;
+  if (!Object.keys(o).length) delete S.rules[id];
+  saveState(); renderRuleSettings(); renderStep1Sum(); if (RESULT) render();
+}
+function resetRules(){
+  delete S.params; delete S.rules;
+  saveState(); renderRuleSettings(); renderStep1Sum(); if (RESULT) render();
+}
+function ruleChangesCount(){
+  return Object.keys(S.params || {}).length + Object.values(S.rules || {}).reduce((n, o) => n + Object.keys(o).length, 0);
+}
+function renderRuleSettings(){
+  const el = document.getElementById('ruleSettings');
+  if (!el) return;
+  const p = P();
+  const grid = PARAM_META.map(([k, label, lo, hi]) => {
+    const chg = p[k] !== PARAMS_DEFAULT[k];
+    return `<label><span class="${chg ? 'chg' : ''}">${label}${chg ? ` <span style="font-size:10px">(預設 ${PARAMS_DEFAULT[k]})</span>` : ''}</span><input type="number" min="${lo}" max="${hi}" value="${p[k]}" onchange="setParam('${k}', this.value)"></label>`;
+  }).join('') + `<label><span class="${p.friAsWeekend !== PARAMS_DEFAULT.friAsWeekend ? 'chg' : ''}">週五人力比照假日</span><input type="checkbox" ${p.friAsWeekend ? 'checked' : ''} onchange="setParamBool('friAsWeekend', this.checked)"></label>`;
+  const rows = OFF_CONSTRAINTS.map(c => {
+    const rc = ruleCfg(c);
+    const chgL = rc.level !== c.level, chgW = rc.w !== c.w;
+    return `<tr class="${rc.on ? '' : 'off'}">
+      <td><input type="checkbox" ${rc.on ? 'checked' : ''} onchange="setRule('${c.id}','on',this.checked)" title="關掉＝這條規則不計分"></td>
+      <td>${c.name(p)}</td>
+      <td class="${chgL ? 'chg' : ''}"><select onchange="setRule('${c.id}','level',this.value)"><option value="hard" ${rc.level==='hard'?'selected':''}>硬</option><option value="soft" ${rc.level==='soft'?'selected':''}>軟</option></select></td>
+      <td class="${chgW ? 'chg' : ''}"><input type="number" min="0" max="100000" value="${rc.w}" onchange="setRule('${c.id}','w',this.value)">${chgW ? `<span style="font-size:10px;margin-left:4px">(預設 ${c.w})</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+  const n = ruleChangesCount();
+  el.innerHTML = `<div class="rs-grid">${grid}</div>
+    <table class="rs-table"><thead><tr><th>計分</th><th>休假分配規則</th><th>等級</th><th>權重（每次違規扣分）</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="ctrl-row" style="margin-top:10px;align-items:center">
+      <button class="btn ghost" onclick="resetRules()" style="padding:8px 18px" ${n ? '' : 'disabled'}>↺ 恢復預設</button>
+      <span class="hint" style="margin:0">${n ? `目前與預設不同：${n} 項（金色標示）` : '目前全部為預設值'}。改完請到步驟③重新「自動排班」。</span>
+    </div>`;
+}
+
 /* 員工排序上下移動 — 指休/特殊假/已存班表都以序號記錄，必須一併對調 */
 function moveStaff(i, dir){
   const j = i + dir;
@@ -1330,7 +1405,7 @@ function autoInsertAL(){
   document.getElementById('alStatus').textContent =
     `✓ 已安插 AL（${summary.join('；')}）— 請按「⚙ 自動排班」重新產生班表`;
 }
-function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum(); renderStep2Sum(); }
+function syncAll(){ saveState(); renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderRuleSettings(); renderStep1Sum(); renderStep2Sum(); }
 
 /* ============================================================
    排班流程精靈：①員工 → ②假別 → ③排班體檢 → ④定案
@@ -1362,7 +1437,8 @@ function renderStep1Sum(){
   const joiners = S.staff.map((p,i) => ({p,i,n:absentOf(i).size})).filter(x => x.n > 0 && x.n < monthInfo().days)
     .map(x => `${x.p.name}（${x.p.joined && absentOf(x.i).has(1) ? '到職 ' + x.p.joined : '離職 ' + x.p.left}，本月額度 ${quotaFor(x.i)} 天）`);
   const [y, m] = S.month.split('-');
-  el.innerHTML = `排班月份 <b>${y} 年 ${Number(m)} 月</b> ・ 共 <b>${S.staff.length}</b> 位員工（業務 ${nReg} 位＋店長 ${ex.size} 位）・ 休假額度 ${quotas} 天${joiners.length ? ' ・ ' + joiners.join('；') : ''} ・ 晚班鎮店三人組：${S.trio.filter(Boolean).join('、')}`;
+  const nRule = ruleChangesCount();
+  el.innerHTML = `排班月份 <b>${y} 年 ${Number(m)} 月</b> ・ 共 <b>${S.staff.length}</b> 位員工（業務 ${nReg} 位＋店長 ${ex.size} 位）・ 休假額度 ${quotas} 天${joiners.length ? ' ・ ' + joiners.join('；') : ''} ・ 規則 ${nRule ? `<b style="color:var(--gold-dark)">已調整 ${nRule} 項</b>` : '全部預設'} ・ 晚班鎮店三人組：${S.trio.filter(Boolean).join('、')}`;
 }
 function renderStep2Sum(){
   const el = document.getElementById('step2Sum');
@@ -1450,7 +1526,7 @@ const INIT_READY = cloudLoad().finally(() => {
   runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
   document.getElementById('monthInput').value = S.month;
   document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = true;
-  renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
+  renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderRuleSettings(); renderStep1Sum();
   restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
   gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
   applyMode();

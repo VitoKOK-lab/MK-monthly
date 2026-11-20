@@ -185,6 +185,18 @@ table.sched { border-collapse: collapse; background: var(--bg); }
 .viol { border-left: 3px solid var(--crit); background: var(--crit-wash); padding: 12px 16px; font-size: 13px; color: var(--ink2); margin-bottom: 8px; }
 .ok-note { border-left: 3px solid var(--good); background: rgba(12,163,12,0.07); padding: 12px 16px; font-size: 13px; color: var(--ink2); }
 .status { font-size: 12px; color: var(--muted); margin-left: 12px; }
+.rs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:6px 16px; margin-bottom:14px; }
+.rs-grid label { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; color:var(--ink2); padding:4px 0; border-bottom:1px dashed var(--hair-soft); }
+.rs-grid input[type=number] { width:64px; text-align:right; }
+.rs-grid .chg { color:var(--gold-dark); font-weight:700; }
+.rs-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.rs-table th { font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); text-align:left; padding:4px 6px; border-bottom:1px solid var(--hair); }
+.rs-table td { padding:5px 6px; border-bottom:1px solid var(--hair-soft); vertical-align:middle; }
+.rs-table td.chg { font-weight:700; color:var(--gold-dark); }
+.rs-table select, .rs-table input[type=number] { font-size:12.5px; padding:4px 6px; }
+.rs-table input[type=number] { width:70px; text-align:right; }
+.rs-table tr.off td { color:var(--muted); text-decoration:line-through; }
+.rs-table tr.off td:first-child, .rs-table tr.off td:last-child { text-decoration:none; }
 .copy-table { border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
 .copy-table td { border: 1px solid var(--hair-soft); padding: 2px 5px; white-space: nowrap; }
 .alt-strip { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0 4px; }
@@ -341,6 +353,11 @@ table.sched { border-collapse: collapse; background: var(--bg); }
       <div class="check"><input type="radio" name="trioMode" id="tmPair" value="pair"><label for="tmPair" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink2)">任兩人都不可同一天休（最嚴格）</label></div>
     </div>
     <div class="hint">「任兩人不可同休」在多數月份數學上無解（三人 30 天休假需完全不重疊，平日僅約 21 天，超出部分受假日 2 天上限卡死），建議用「至少一位在班」。</div>
+  </div>
+  <div class="card" id="ruleCard">
+    <div class="subhead" style="margin-bottom:6px">規則設定（店長可自行調整，改完立即生效並同步雲端）</div>
+    <div class="hint" style="margin-bottom:10px">數字類是每日人力、假日休、連上等門檻；下方清單是休假分配的每條規則，可開關、改「硬／軟」、改權重。硬＝沒清零前軟偏好不參與；權重只在同一層內互相比較。改壞了按「恢復預設」。</div>
+    <div id="ruleSettings"></div>
   </div>
   <div class="confirm-bar">
     <div class="cb-q">店長，這是你要的員工設定嗎？</div>
