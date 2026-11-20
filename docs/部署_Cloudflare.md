@@ -1,4 +1,6 @@
-# 部署到 Cloudflare Pages（網頁 ＋ API 同網域）
+# （備選方案，目前未啟用）部署到 Cloudflare Pages（網頁 ＋ API 同網域）
+
+> 2026-11-20 決定維持 GitHub Pages。程式碼已就緒，哪天需要跨裝置同步或即時發布，照下面步驟啟用即可，前端不用再改。
 
 > 2026-11 起，排班資料改存 Cloudflare KV：店長設定跨裝置同步、發布班表即時生效、PIN 在伺服器驗證。
 > 程式碼仍在 GitHub；推上 `main` 由 GitHub Actions 自動部署。API Token 只放在 GitHub repo secrets，不經過 Claude。

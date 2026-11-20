@@ -42,8 +42,9 @@ async function cloudLoad(){
       setSync('☁ 雲端尚無設定，登入後首次存檔即建立');
     }
   } catch(e){
+    /* 沒有雲端 API（例如 GitHub Pages）：維持原本的本機模式，不顯示警示 */
     CLOUD.online = false;
-    setSync('離線模式：變更只存在這台裝置', true);
+    setSync('');
   }
   try {
     const r = await withTimeout(cloudApi('published'), 3500);
