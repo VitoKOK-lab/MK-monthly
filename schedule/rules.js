@@ -73,7 +73,7 @@ function normalize(s){
   s.staff.forEach(p => { if (!p.role) p.role = 'SA'; if (!p.week) p.week = {}; });
   if (!s.trioMode) s.trioMode = 'all3';
 }
-function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} }
+function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} if (typeof cloudMarkDirty === 'function') cloudMarkDirty(); }
 function loadState(){ try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ return null; } }
 
 /* ---------- 一次性資料補寫 ----------

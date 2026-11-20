@@ -1,4 +1,83 @@
 /* ============================================================
+   雲端同步（Cloudflare Pages Functions /api/*，KV 存放）
+   - 讀公開：開頁先拉雲端設定與已發布班表，拉不到就用本機 localStorage
+   - 寫要 PIN：店長登入時向 /api/auth 驗證，之後每次存檔延遲 1.2 秒推上雲端
+   - 離線或 PIN 失效：變更先留本機並標記 dirty，下次連上且登入後補推
+   - 衝突：雲端為主；只有「本機有未同步變更且比雲端新」才以本機覆蓋雲端
+============================================================ */
+const CLOUD = { base: window.MK_API || '', online: false, pin: sessionStorage.getItem('mk-admin-pin') || '', timer: null, cloudUpdatedAt: null };
+function cloudApi(path, opt){
+  opt = opt || {};
+  const headers = { 'content-type': 'application/json', ...(CLOUD.pin ? { 'X-PIN': CLOUD.pin } : {}), ...(opt.headers || {}) };
+  return fetch(CLOUD.base + '/api/' + path, { ...opt, headers });
+}
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+function setSync(text, bad){
+  const el = document.getElementById('syncBadge');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = bad ? 'var(--crit)' : 'var(--muted)';
+}
+async function cloudLoad(){
+  try {
+    const r = await withTimeout(cloudApi('state'), 3500);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    CLOUD.online = true;
+    const data = await r.json();
+    if (data && data.s && Array.isArray(data.s.staff)){
+      CLOUD.cloudUpdatedAt = data.updatedAt || null;
+      const localDirty = localStorage.getItem('mk-dirty') === '1';
+      const localTs = localStorage.getItem('mk-local-updated') || '';
+      const keepLocal = localDirty && localTs && (!data.updatedAt || localTs > data.updatedAt);
+      if (!keepLocal){
+        S = data.s; normalize(S);
+        try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){}
+        if (data.results){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(data.results)); } catch(e){} }
+        localStorage.removeItem('mk-dirty');
+        setSync('☁ 已載入雲端設定' + (data.updatedAt ? `（${data.updatedAt.slice(0,16).replace('T',' ')}）` : ''));
+      } else {
+        setSync('☁ 本機有較新的未同步變更，登入後會推上雲端');
+      }
+    } else {
+      setSync('☁ 雲端尚無設定，登入後首次存檔即建立');
+    }
+  } catch(e){
+    CLOUD.online = false;
+    setSync('離線模式：變更只存在這台裝置', true);
+  }
+  try {
+    const r = await withTimeout(cloudApi('published'), 3500);
+    if (r.ok){
+      const pub = await r.json();
+      /* 與 repo 內的 published.js 合併：雲端剛啟用時舊月份仍看得到；同月以雲端為準 */
+      if (pub && typeof pub === 'object' && Object.keys(pub).length) window.MK_SCHED_PUB = { ...(window.MK_SCHED_PUB || {}), ...pub };
+    }
+  } catch(e){ /* 退回 data/schedule/published.js */ }
+}
+function cloudMarkDirty(){
+  try { localStorage.setItem('mk-dirty', '1'); localStorage.setItem('mk-local-updated', new Date().toISOString()); } catch(e){}
+  if (!CLOUD.online || !CLOUD.pin) return;
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer = setTimeout(cloudPush, 1200);
+}
+async function cloudPush(){
+  if (!CLOUD.online || !CLOUD.pin) return false;
+  try {
+    const r = await cloudApi('state', { method: 'PUT', body: JSON.stringify({ s: S, results: loadSavedAll() }) });
+    if (r.ok){
+      const j = await r.json().catch(() => ({}));
+      CLOUD.cloudUpdatedAt = j.updatedAt || null;
+      localStorage.removeItem('mk-dirty');
+      setSync('☁ 已同步 ' + new Date().toTimeString().slice(0,5));
+      return true;
+    }
+    if (r.status === 401){ CLOUD.pin = ''; sessionStorage.removeItem('mk-admin-pin'); setSync('⚠ PIN 失效，變更暫存本機；請重新登入店長後台', true); }
+    else setSync('⚠ 雲端儲存失敗（HTTP ' + r.status + '），變更暫存本機', true);
+  } catch(e){ setSync('⚠ 離線，變更暫存本機', true); }
+  return false;
+}
+
+/* ============================================================
    schedule/ui.js
    畫面：方案比較、班表存檔、產生流程 generate()、渲染、體檢頁、
    手動微調、匯出、設定頁、AL 自動安插、步驟精靈、看班／發布。
@@ -52,6 +131,7 @@ function persistResult(){
     manual: [...manualEdits], savedAt: new Date().toISOString().slice(0,10),
   };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch(e){}
+  cloudMarkDirty();
 }
 function restoreResult(){
   const rec = loadSavedAll()[S.month];
@@ -1365,10 +1445,16 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
     `產出時間 ${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} · A 早／M 中／P 晚／RL 例假／RL/ 休假 · BL/AL = 特殊假 · 底線 = 指休`;
   window.print();   /* 列印對話框選「另存為 PDF」即可 */
 });
-runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
-renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
-restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
-gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
+/* 先拉雲端設定（最多等 3.5 秒），再初始化畫面；拉不到就用本機資料 */
+const INIT_READY = cloudLoad().finally(() => {
+  runMigrations();   /* 補寫規則已談定、但這台裝置的存檔還沒有的資料 */
+  document.getElementById('monthInput').value = S.month;
+  document.getElementById(S.trioMode === 'pair' ? 'tmPair' : 'tmAll3').checked = true;
+  renderStaff(); renderHoliCal(); renderFixCal(); renderAlChips(); renderStep1Sum();
+  restoreResult();   /* 開啟頁面時自動載入本月已存的班表 */
+  gotoStep(Number(sessionStorage.getItem('mk-wstep')) || 1);   /* 回到上次所在步驟 */
+  applyMode();
+});
 
 /* ============================================================
    同事看班（預設畫面）＋ 店長 PIN 後台 ＋ 發布
@@ -1432,11 +1518,20 @@ function pubData(){ return window.MK_SCHED_PUB || {}; }
 async function enterAdmin(){
   const pin = await uiPrompt('店長排班', '請輸入店長密碼', { password: true, placeholder: '密碼' });
   if (pin === null) return;
-  if (pin !== ADMIN_PIN){ await uiConfirm('密碼錯誤', '請再試一次。'); return; }
+  if (CLOUD.online){
+    /* 線上：PIN 交給伺服器驗，之後所有寫入都帶這個 PIN */
+    let ok = false;
+    try { const r = await cloudApi('auth', { method: 'POST', body: JSON.stringify({ pin }) }); ok = r.ok; } catch(e){ ok = false; }
+    if (!ok){ await uiConfirm('密碼錯誤', '請再試一次。'); return; }
+    CLOUD.pin = pin; sessionStorage.setItem('mk-admin-pin', pin);
+    if (localStorage.getItem('mk-dirty') === '1') cloudPush();   /* 補推離線期間的變更 */
+  } else {
+    if (pin !== ADMIN_PIN){ await uiConfirm('密碼錯誤', '請再試一次。'); return; }
+  }
   sessionStorage.setItem('mk-admin','1');
   applyMode();
 }
-function exitAdmin(){ sessionStorage.removeItem('mk-admin'); applyMode(); }
+function exitAdmin(){ sessionStorage.removeItem('mk-admin'); sessionStorage.removeItem('mk-admin-pin'); CLOUD.pin = ''; applyMode(); }
 function applyMode(){
   const admin = sessionStorage.getItem('mk-admin') === '1';
   document.getElementById('adminArea').style.display = admin ? '' : 'none';
@@ -1544,6 +1639,22 @@ function buildPubRecord(){
 }
 async function publish(){
   if (!RESULT){ alert('請先產生班表'); return; }
+  const st0 = document.getElementById('status');
+  if (CLOUD.online && CLOUD.pin){
+    /* 雲端發布：寫入 KV，同事重新整理即看到；不再需要 GitHub Token */
+    st0.textContent = '發布中…';
+    try {
+      const rec = buildPubRecord();
+      const r = await cloudApi('published/' + S.month, { method: 'PUT', body: JSON.stringify(rec) });
+      if (!r.ok){ const err = await r.json().catch(() => ({})); throw new Error(err.error || ('HTTP ' + r.status)); }
+      const pub = { ...pubData() }; pub[S.month] = rec; window.MK_SCHED_PUB = pub;
+      st0.textContent = '✓ 已發布！同事重新整理頁面即可看到新班表';
+      return;
+    } catch(e){
+      st0.textContent = '⚠ 雲端發布失敗：' + e.message;
+      if (!await uiConfirm('雲端發布失敗', e.message + '\n\n要改用舊的 GitHub 方式發布嗎？')) return;
+    }
+  }
   let token = localStorage.getItem('mk-gh-token');
   if (!token){
     token = await uiPrompt('設定 GitHub Token',
@@ -1602,4 +1713,4 @@ function downloadPubFile(){
 }
 document.getElementById('pubBtn').addEventListener('click', publish);
 
-applyMode();
+applyMode();   /* 先用本機／靜態資料把看班畫面畫出來；雲端資料到了 INIT_READY 會再畫一次 */

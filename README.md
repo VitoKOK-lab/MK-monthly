@@ -1,7 +1,7 @@
 # MK Monthly Review — Taoyuan Gloria Outlets
 
 每月團隊業績檢討網站（Michael Kors CIS 風格）。
-線上網址：**https://vitokok-lab.github.io/MK-monthly/**
+線上網址：**https://mk-monthly.pages.dev/**（Cloudflare Pages；舊網址 vitokok-lab.github.io/MK-monthly 過渡期仍可看班）
 
 ## 架構
 
@@ -12,8 +12,10 @@ data/2026-06.js     ← 六月資料（數字 + 文案）
 schedule.html       ← 排班系統頁面（只有 HTML 與 CSS）
 schedule/rules.js   ←   規則與狀態：常數、存檔、月曆、假別展開、每日人力需求
 schedule/solver.js  ←   求解器：休假分配、班別分配、體檢（純計算，不碰畫面）
-schedule/ui.js      ←   畫面：渲染、步驟精靈、匯出、看班、發布
-.github/workflows/  ← 推上 main 自動部署 GitHub Pages
+schedule/ui.js      ←   畫面：渲染、步驟精靈、匯出、看班、發布、雲端同步
+functions/api/      ← Cloudflare Pages Functions：/api/*（店長設定、發布班表、PIN 驗證；存 KV）
+wrangler.toml       ← Pages 專案與 KV 綁定
+.github/workflows/  ← 推上 main 自動部署：Cloudflare Pages（主）＋ GitHub Pages（過渡）
 ```
 
 ## 每月新增一期的流程
@@ -30,10 +32,10 @@ schedule/ui.js      ←   畫面：渲染、步驟精靈、匯出、看班、發
 - 預設畫面 = **同事看班**（唯讀，可選月份、點名字只看自己的班）
 - 店長按「🔑 店長排班」輸入 PIN `0000` 進入排班後台
 - 後台流程：設定 → 指休/BL/AL → ⚙ 自動排班 → 手動微調 → 🔒 鎖定 → 📤 發布給同事
-- 「發布給同事」把班表寫入 `data/schedule/published.js`（需一次性設定 GitHub
-  Fine-grained Token，Contents Read/Write，僅限本 repo）；發布後全員可見
+- 「發布給同事」寫入 Cloudflare KV，同事重新整理即見；店長設定也存雲端、跨裝置同步
+  （部署與一次性設定見 `docs/部署_Cloudflare.md`）
 - Token 設定不便時可「下載檔案」把 `published.js` 交給 Claude 代為發布
-- PIN 修改：`schedule/ui.js` 內搜尋 `ADMIN_PIN`
+- PIN 修改：Cloudflare Pages 專案 → Settings → Variables and Secrets → `ADMIN_PIN`（離線備援值在 `schedule/ui.js` 的 `ADMIN_PIN`）
 - 改規則：人力需求在 `schedule/rules.js` 的 `demand()`，分數權重在 `schedule/solver.js` 的 `scoreOff()`，體檢在 `validate()`；改完到 `docs/排班規則.md` 同步
 
 ## 設計原則（勿破壞）

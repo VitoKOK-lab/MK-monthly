@@ -1,0 +1,13 @@
+# Cloudflare Pages 專案設定（網頁 ＋ functions/ 內的 API 同網域）
+name = "mk-monthly"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "."
+
+# 店長設定、已發布班表、發布歷史都存這個 KV（Cloudflare 後台 Workers & Pages → KV → mk-schedule）
+[[kv_namespaces]]
+binding = "MK"
+id = "54a96bfb44fc45f9b8428f4d71c08291"
+
+# 店長 PIN：到 Pages 專案 Settings → Variables and Secrets 設 ADMIN_PIN（加密）。沒設時退回 0000。
+[vars]
+ALLOWED_ORIGINS = "https://vitokok-lab.github.io"
