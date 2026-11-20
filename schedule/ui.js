@@ -831,6 +831,89 @@ function companyLayout(ws){
   }
   return { rowOf, emptyRows, namedRows, blockEnd, baseFill, canon };
 }
+/* 名單超過範本列數時，在正職區塊末尾插入 k 列（每人 2 列：姓名列＋小列）。
+   ExcelJS 的 insertRows 只搬儲存格，不會調整公式、共用公式的主格位址、合併儲存格、
+   條件格式與資料驗證，這裡逐一補齊；插入列的樣式與列高複製自上一位同事的兩列。
+   公式裡「結尾剛好落在插入點前兩列」的範圍（例如早班人數的 C9:C23）視為正職統計範圍，自動延伸。 */
+function growCompanyBlock(ws, pos, k){
+  const shiftRef = (ref) => {
+    /* 單一位址或範圍：列號 ≥ pos 的 +k；範圍結尾在 pos-2／pos-1 且起點在 pos 之前的，結尾 +k */
+    return ref.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)(?::(\$?)([A-Z]{1,3})(\$?)(\d+))?/g, (m, d1, c1, d2, r1, d3, c2, d4, r2) => {
+      let a = Number(r1);
+      if (r2 === undefined){ if (a >= pos) a += k; return `${d1}${c1}${d2}${a}`; }
+      let b = Number(r2);
+      if (a >= pos) a += k;
+      if (b >= pos) b += k; else if (b >= pos - 2 && Number(r1) < pos) b += k;
+      return `${d1}${c1}${d2}${a}:${d3}${c2}${d4}${b}`;
+    });
+  };
+  const shiftFormulaText = (f) => f.replace(/("[^"]*")|(\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?)/g, (m, str, ref) => str ? str : shiftRef(ref));
+  const addrRow = a => Number((/\d+/.exec(a) || [0])[0]);
+
+  /* 1. 合併儲存格：先記下、解除 ≥ pos 的，插列後重合併 */
+  const merges = Object.values(ws._merges || {}).map(m => ({ top: m.top, left: m.left, bottom: m.bottom, right: m.right }));
+  const moved = merges.filter(m => m.top >= pos);
+  moved.forEach(m => { try { ws.unMergeCells(m.top, m.left, m.bottom, m.right); } catch(e){} });
+
+  /* 2. 插列（樣式先繼承上一列，稍後逐格覆寫） */
+  const rows = []; for (let i=0;i<k;i++) rows.push([]);
+  ws.insertRows(pos, rows, 'i');
+
+  /* 3. 公式：主格的公式文字、從屬格指向的主格位址 */
+  ws.eachRow({ includeEmpty: true }, (row) => {
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      const v = cell.value;
+      if (!v || typeof v !== 'object') return;
+      if (typeof v.formula === 'string'){
+        const nf = shiftFormulaText(v.formula);
+        if (nf !== v.formula) cell.value = { ...v, formula: nf };
+      } else if (typeof v.sharedFormula === 'string'){
+        const r = addrRow(v.sharedFormula);
+        if (r >= pos) cell.value = { ...v, sharedFormula: v.sharedFormula.replace(/\d+/, String(r + k)) };
+      }
+    });
+  });
+
+  /* 4. 合併儲存格重建 */
+  moved.forEach(m => { try { ws.mergeCells(m.top + k, m.left, m.bottom + k, m.right); } catch(e){} });
+
+  /* 5. 條件格式與資料驗證的範圍 */
+  (ws.conditionalFormattings || []).forEach(cf => { if (cf.ref) cf.ref = shiftRef(cf.ref); });
+  try {
+    const dv = ws.dataValidations && ws.dataValidations.model;
+    if (dv){
+      const next = {};
+      Object.keys(dv).forEach(key => { next[shiftRef(key)] = dv[key]; });
+      ws.dataValidations.model = next;
+    }
+  } catch(e){}
+
+  /* 6. 插入列的樣式、列高與「每列自己的公式」（AH 假日休、AI–AN 班別統計）：複製自插入點前的「姓名列、小列」，
+        公式裡指向來源列的列號改成新列 */
+  const srcName = ws.getRow(pos - 2), srcSub = ws.getRow(pos - 1);
+  /* 回傳 {f, row}：共用公式的從屬格要拿主格的公式文字，列號也以主格為準再改寫 */
+  const formulaOf = (cell) => {
+    const v = cell.value;
+    if (!v || typeof v !== 'object') return null;
+    if (typeof v.formula === 'string') return { f: v.formula, row: cell.row };
+    if (typeof v.sharedFormula === 'string'){ const mc = ws.getCell(v.sharedFormula); const mv = mc.value; return mv && typeof mv.formula === 'string' ? { f: mv.formula, row: mc.row } : null; }
+    return null;
+  };
+  const rerow = (f, from, to) => f.replace(/("[^"]*")|(\$?[A-Z]{1,3})(\$?)(\d+)/g, (m, str, col, d, r) => str ? str : (Number(r) === from ? `${col}${d}${to}` : m));
+  for (let i=0;i<k;i++){
+    const src = (i % 2 === 0) ? srcName : srcSub;
+    const dst = ws.getRow(pos + i);
+    dst.height = src.height;
+    for (let c = 1; c <= 45; c++){
+      const sc = src.getCell(c), dc = dst.getCell(c);
+      const s = sc.style;
+      dc.style = s ? JSON.parse(JSON.stringify(s)) : {};
+      const f = formulaOf(sc);
+      dc.value = (f && c >= 34) ? { formula: rerow(f.f, f.row, dst.number) } : null;   /* AH 欄以後才是每列統計公式 */
+    }
+  }
+}
+
 /* ExcelJS 填色 → 六位 hex（給 HTML 剪貼簿用）。佈景主題色依本範本的 Office 2007 主題，tint 依 Excel 的 HSL 亮度公式。 */
 const XLSX_THEME = ['FFFFFF','000000','EEECE1','1F497D','4F81BD','C0504D','9BBB59','8064A2','4BACC6','F79646'];
 function fillToHex(fill){
@@ -871,11 +954,24 @@ async function buildCompanyBlock(){
   if (!ws) throw new Error(`範本沒有「${sheetName}」分頁`);
   const { rowOf, emptyRows, baseFill, canon } = companyLayout(ws);
   const rowStaff = {};   /* 範本列 → 名單索引 */
+  const overflow = [];   /* 範本沒有列可放的人：接在正職區塊之後（公司班表要先插列） */
   for (let i = 0; i < S.staff.length; i++){
     if (absentOf(i).size >= days) continue;
     let row = rowOf[canon(S.staff[i].name)];
-    if (!row){ if (!emptyRows.length) continue; row = emptyRows.shift(); }
+    if (!row){ if (!emptyRows.length){ overflow.push(i); continue; } row = emptyRows.shift(); }
     rowStaff[row] = i;
+  }
+  /* 放不下的人插在「額外人力（柏鴻）」那一列之前，與匯出 Excel 的插列位置一致；沒有額外人力就接在最後 */
+  if (overflow.length){
+    const extraRow = Object.keys(rowStaff).map(Number).sort((a,b) => a-b).find(r => { if (r <= 7) return false; const i = rowStaff[r]; return S.staff[i].extra || S.staff[i].role === '店長'; });
+    const lastNamed = Math.max(...Object.keys(rowStaff).map(Number));
+    const pos = (extraRow && extraRow > 7) ? extraRow : lastNamed + 2;
+    const k = overflow.length * 2;
+    const shifted = {};
+    Object.keys(rowStaff).map(Number).forEach(r => { shifted[r >= pos ? r + k : r] = rowStaff[r]; });
+    overflow.forEach((i, n) => { shifted[pos + n*2] = i; });
+    Object.keys(rowStaff).forEach(r => delete rowStaff[r]);
+    Object.assign(rowStaff, shifted);
   }
   const lastRow = Math.max(...Object.keys(rowStaff).map(Number)) + 1;
   const rows = [];
@@ -910,7 +1006,7 @@ async function buildCompanyBlock(){
   const html = '<table border="0" cellspacing="0" cellpadding="0"><tbody>' + rows.map(cells =>
     '<tr>' + cells.map(c => `<td${c.bg ? ` bgcolor="#${c.bg}"` : ''} style="text-align:center${c.bg ? `;background:#${c.bg}` : ''}">${esc(c.v)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
   const text = rows.map(cells => cells.map(c => c.v).join('\t')).join('\n');
-  return { html, text, rows, sheetName, firstRow: 7, lastRow };
+  return { html, text, rows, sheetName, firstRow: 7, lastRow, overflow: overflow.length };
 }
 async function copyCompanyBlock(){
   const btn = document.getElementById('copyBtn');
@@ -945,6 +1041,7 @@ async function copyCompanyBlock(){
     const host = document.getElementById('copyPanel');
     host.style.display = '';
     host.innerHTML = `<div class="hint" style="margin-bottom:6px">${ok ? '✓ 已複製（純文字，只貼值）。' : '⚠ 瀏覽器不允許寫入剪貼簿，請改用「匯出公司格式 Excel」。'}
+      ${blk.overflow ? `<b style="color:var(--crit)">注意：名單比公司班表多 ${blk.overflow} 人。請先在公司班表的「柏鴻」列上方插入 ${blk.overflow * 2} 列空白列（每人 2 列），再貼上，否則會蓋到下方的列。</b><br>` : ''}
       打開公司班表「${blk.sheetName}」分頁，<b>點 B7 後貼上</b>（第 ${blk.firstRow}–${blk.lastRow} 列、B–AG 欄）。公司班表原本的字型、框線、底色都會保留，只換班別代號。姓名下方小列會貼成空白，記號請貼完再補。</div>
       <div class="hint" style="margin-bottom:6px"><b>貼完請手動上色（${todo.length ? todo.length + ' 人' : '本月無'}）</b>：指休 RL 黃、RL/ 紅；AL 灰；BL 紫；OL 青</div>
       ${todo.length ? `<div style="font-size:12.5px;line-height:1.9">${todo.join('<br>')}</div>` : ''}`;
@@ -975,7 +1072,20 @@ async function exportCompanyExcel(){
            只改「正職同事的班別格」。列位置依 B 欄姓名比對（不分大小寫、去空白、
            含舊寫法別名）；名單上有、範本沒有的人，放進正職區塊第一個空列。 */
         const setFill = (cell, fill) => { cell.style = Object.assign({}, cell.style, { fill }); };
-        const { rowOf, emptyRows, baseFill, canon } = companyLayout(ws);
+        let layout = companyLayout(ws);
+        /* 名單上有、範本沒有列的人數 > 空列數 → 在正職區塊末尾（額外人力如柏鴻之前）插列 */
+        {
+          const active = S.staff.map((p,i) => ({ p, i })).filter(x => absentOf(x.i).size < days);
+          const unplaced = active.filter(x => !layout.rowOf[layout.canon(x.p.name)]).length;
+          const need = unplaced - layout.emptyRows.length;
+          if (need > 0){
+            const extraRow = layout.namedRows.find(nr => { const si = S.staff.findIndex(p => layout.canon(p.name) === layout.canon(nr.name)); return si >= 0 && (S.staff[si].extra || S.staff[si].role === '店長') && nr.row > 7; });
+            const pos = extraRow ? extraRow.row : layout.blockEnd + 1;
+            growCompanyBlock(ws, pos, need * 2);
+            layout = companyLayout(ws);
+          }
+        }
+        const { rowOf, emptyRows, baseFill, canon } = layout;
         const missing = [];
         for (let i = 0; i < N; i++){
           const p = S.staff[i];
