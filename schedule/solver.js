@@ -7,77 +7,104 @@
 /* ============================================================
    PHASE 1 — 休假日分配
 ============================================================ */
-function scoreOff(off, cfg){
-  const { days, N, quotas, trioIdx, exempt } = cfg;
-  const altIdx = cfg.altIdx || new Set();   /* 喜歡做一休一的人（Liv/Demi） */
-  let sc = 0;
-  /* offCount 只計「規則內」員工 — 店長為規則外額外人力，不佔人力數；
-     出差日視同不在店，一併從當日人力扣除 */
-  const offCount = new Array(days+1).fill(0);
-  const bizCnt = new Array(days+1).fill(0);
+/* ------------------------------------------------------------
+   休假日分配的規則清單（借 Timefold ConstraintProvider 的寫法）
+   每條規則一個函式，標 hard／soft，透過 emit(weight, who, day, note) 回報違規。
+   - 快速模式（求解器每秒呼叫數十萬次）：emit 只累加分數
+   - 說明模式（explainOff）：emit 另外收集「誰、哪天、為什麼」給店長看
+   分數採硬軟兩段：硬違規沒清零前，軟偏好完全不參與比較（HardSoftScore）。
+   權重仍沿用舊值，方便對照歷史分數；差別在硬軟不再互相抵換。
+------------------------------------------------------------ */
+const OFF_CONSTRAINTS = [
+  { id:'quota', level:'hard', name:'正常休假 = 額度',
+    run(ctx, emit){ const { N, off, quotas } = ctx;
+      for (let i=0;i<N;i++){ const d = off[i].size - quotas[i]; if (d) emit(1000*Math.abs(d), i, 0, `休 ${off[i].size} 天 ≠ 額度 ${quotas[i]}`); } } },
+  { id:'restMax', level:'hard', name:'假日休 ≤3 天',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i)) continue; const r = ctx.restDays[i]; if (r > 3) emit(800*(r-3), i, 0, `假日休 ${r} 天`); } } },
+  { id:'run5', level:'hard', name:'連五禁止',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len > 4) emit(500*(seg.len-4), i, seg.end, `連上 ${seg.len} 天`); } },
+  { id:'minStaff', level:'hard', name:'每日人力下限',
+    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w < dem.min) emit(1000*(dem.min-w), -1, d, `僅 ${w} 人（最少 ${dem.min}）`); } } },
+  { id:'trio', level:'hard', name:'管理職不可同天全休',
+    run(ctx, emit){ const { trioIdx, off, days } = ctx; if (trioIdx.length < 2) return;
+      const th = ctx.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
+      for (let d=1; d<=days; d++){ let c=0; for (const i of trioIdx) if (off[i].has(d)) c++; if (c >= th) emit(800*(c-th+1), -1, d, `${c} 位管理職同休`); } } },
+  { id:'monAlt', level:'hard', name:'週一 Liv/Demi 不同休',
+    run(ctx, emit){ const alt = [...ctx.altIdx]; if (alt.length < 2) return;
+      for (let d=1; d<=ctx.days; d++) if (dowOf(d) === 1 && alt.every(i => ctx.off[i].has(d))) emit(900, -1, d, '兩位管理職週一同休'); } },
+
+  { id:'restMin', level:'soft', name:'假日休 ≥2 天',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; const r = ctx.restDays[i]; if (r < 2) emit(120*(2-r), i, 0, `假日只休 ${r} 天`); } } },
+  { id:'rest3', level:'soft', name:'假日休 3 天（優先 2 天）',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.exempt.has(i) || !ctx.active[i]) continue; if (ctx.restDays[i] === 3) emit(60, i, 0, '假日休 3 天'); } } },
+  { id:'run4', level:'soft', name:'連上四天',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++) for (const seg of ctx.runs[i]) if (seg.len === 4) emit(60, i, seg.end, '連上 4 天'); } },
+  { id:'altPref', level:'soft', name:'Liv/Demi 做一休一',
+    run(ctx, emit){ for (const i of ctx.altIdx) for (const seg of ctx.runs[i]) if (seg.len >= 2) emit((seg.len-1)*8, i, seg.end, `連上 ${seg.len} 天`); } },
+  { id:'noSingle', level:'soft', name:'其他人避免單日上班',
+    run(ctx, emit){ for (let i=0;i<ctx.N;i++){ if (ctx.altIdx.has(i)) continue; for (const seg of ctx.runs[i]) if (seg.len === 1 && !seg.tail) emit(25, i, seg.end, '只上 1 天就休'); } } },
+  { id:'cap', level:'soft', name:'每日人力上限',
+    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (w > dem.cap) emit(400*(w-dem.cap), -1, d, `${w} 人（上限 ${dem.cap}）`); } } },
+  { id:'pref', level:'soft', name:'平日晚班滿編',
+    run(ctx, emit){ for (let d=1; d<=ctx.days; d++){ const w = ctx.workers[d], dem = ctx.dem[d]; if (dem.pref && w < dem.pref) emit(10*(dem.pref-w), -1, d, `${w} 人（偏好 ${dem.pref}）`); } } },
+];
+/* 硬軟兩段合成一個可比較的數字：硬 ×1e6 ＋ 軟。軟分數實務上遠小於 1e6，
+   所以比較結果等同先比硬、再比軟。 */
+const HARD_UNIT = 1000000;
+const scoreParts = sc => ({ hard: Math.floor(sc / HARD_UNIT), soft: sc % HARD_UNIT });
+
+/* 把 off 集合整理成各規則共用的事實：每人假日休天數、工作段、每日人力 */
+function offContext(off, cfg){
+  const { days, N, exempt } = cfg;
+  const altIdx = cfg.altIdx || new Set();
+  const workers = new Array(days+1).fill(0);
   let nReg = 0;
-  for (let i=0;i<N;i++){
-    if (exempt.has(i)) continue;
-    nReg++;
-    for (const d of (cfg.biz && cfg.biz[i] ? cfg.biz[i] : [])) bizCnt[d]++;
-    for (const d of (cfg.absent && cfg.absent[i] ? cfg.absent[i] : [])) bizCnt[d]++;   /* 未到職視同不在店 */
-  }
+  for (let i=0;i<N;i++) if (!exempt.has(i)) nReg++;
+  for (let d=1; d<=days; d++) workers[d] = nReg;
+  const restDays = new Array(N).fill(0), runs = [];
   for (let i=0;i<N;i++){
     const isEx = exempt.has(i);
-    let restDays = 0;
-    for (const d of off[i]) { if (!isEx) offCount[d]++; if (isRest(d)) restDays++; }
-    if (off[i].size !== quotas[i]) sc += 1000 * Math.abs(off[i].size - quotas[i]);
-    if (!isEx){
-      if (restDays > 3) sc += 800 * (restDays - 3);          /* 假日休上限 3（硬） */
-      if (restDays === 3) sc += 60;                          /* 3 天可通融，但優先 2 天 */
-      if (restDays < 2) sc += 120 * (2 - restDays);          /* 假日至少休 2（公平性） */
-    }
-    /* 連上偏好：Liv/Demi 喜歡做一休一（工作段越短越好）；
-       其他人不喜歡單日工作段（傾向連上 2–3 天）；連四重罰、連五禁止 */
-    const likesAlt = altIdx.has(i);
-    let run = 0;
     const absent = cfg.absent && cfg.absent[i] ? cfg.absent[i] : null;
+    const biz = cfg.biz && cfg.biz[i] ? cfg.biz[i] : null;
+    for (const d of off[i]){ if (!isEx) workers[d]--; if (isRest(d)) restDays[i]++; }
+    if (!isEx){ if (biz) for (const d of biz) workers[d]--; if (absent) for (const d of absent) workers[d]--; }
+    const segs = []; let run = 0;
     for (let d=1; d<=days; d++){
-      if (absent && absent.has(d)){ run = 0; continue; }   /* 不在職：既非休也非班，切斷連上計算 */
-      if (off[i].has(d)){
-        if (likesAlt){ if (run >= 2) sc += (run - 1) * 8; }
-        else if (run === 1) sc += 25;
-        run = 0;
-      }
-      else { run++; if (run === 4) sc += 60; else if (run > 4) sc += 500; }  /* 連四哇哇叫、連五爆炸 */
+      if (absent && absent.has(d)){ if (run) segs.push({ len: run, end: d-1 }); run = 0; continue; }
+      if (off[i].has(d)){ if (run) segs.push({ len: run, end: d-1 }); run = 0; }
+      else run++;
     }
-    if (run > 4) sc += 500 * (run - 4);
-    else if (likesAlt && run >= 2) sc += (run - 1) * 8;
+    if (run) segs.push({ len: run, end: days, tail: true });   /* 月底段：不知下月，不罰單日 */
+    runs.push(segs);
   }
-  for (let d=1; d<=days; d++){
-    const workers = nReg - offCount[d] - bizCnt[d];
-    const dem = demand(d);
-    if (workers < dem.min) sc += 1000 * (dem.min - workers);
-    /* 超過上限＝晚班擠太多人（假日晚班上限 4、平日 3），罰則需夠重才會被真正避開，
-       但仍低於「人力不足」，確保萬一無解時寧可多一人上班也不要缺人。 */
-    if (workers > dem.cap) sc += 400 * (workers - dem.cap);
-    /* 平日晚班 2–3 人都合規，但 3 人尤佳 → 有餘裕時輕推到滿編。
-       （本店人力通常只夠少數幾天達成，這是軟性偏好，達不到不算違規。） */
-    if (dem.pref && workers < dem.pref) sc += 10 * (dem.pref - workers);
+  const dem = new Array(days+1);
+  for (let d=1; d<=days; d++) dem[d] = demand(d);
+  /* 整月不在職（尚未到職／已離職）的人不參與個人偏好類規則 */
+  const active = [];
+  for (let i=0;i<N;i++) active.push(!(cfg.absent && cfg.absent[i] && cfg.absent[i].size >= days));
+  return { days, N, off, quotas: cfg.quotas, exempt, altIdx, trioIdx: cfg.trioIdx, trioMode: cfg.trioMode, workers, restDays, runs, dem, active };
+}
+function scoreOff(off, cfg){
+  const ctx = offContext(off, cfg);
+  let hard = 0, soft = 0;
+  for (const c of OFF_CONSTRAINTS){
+    if (c.level === 'hard') c.run(ctx, w => { hard += w; });
+    else c.run(ctx, w => { soft += w; });
   }
-  if (trioIdx.length >= 2){
-    const th = cfg.trioMode === 'pair' ? 2 : Math.min(3, trioIdx.length);
-    for (let d=1; d<=days; d++){
-      let c = 0;
-      for (const i of trioIdx) if (off[i].has(d)) c++;
-      if (c >= th) sc += 800 * (c - th + 1);
-    }
-  }
-  /* 禁止 Liv、Demi 同一個週一都休（避免店長被迫在週一鎮晚班） */
-  if (altIdx.size >= 2){
-    const alt = [...altIdx];
-    for (let d=1; d<=days; d++){
-      if (dowOf(d) === 1 && alt.every(i => off[i].has(d))) sc += 900;
-    }
-  }
-  return sc;
+  return hard * HARD_UNIT + soft;
+}
+/* 說明模式：每條規則的扣分與明細（誰、哪天、為什麼） */
+function explainOff(off, cfg){
+  const ctx = offContext(off, cfg);
+  return OFF_CONSTRAINTS.map(c => {
+    const items = []; let total = 0;
+    c.run(ctx, (w, who, day, note) => { total += w; items.push({ w, who, day, note }); });
+    return { id: c.id, name: c.name, level: c.level, total, items };
+  }).filter(r => r.total > 0);
 }
 
+/* 搜尋法採模擬退火。曾以相同移動集合實作 Timefold 預設的 Late Acceptance 對跑（2026-10～2027-01 各 3 次）：
+   LA 軟分數高 10–40%、耗時多 50–90% 且結果不穩定，故不採用。 */
 function solveOff(cfg, rng){
   const { days, N, quotas, fixed, blocked } = cfg;
   const off = [];
@@ -390,7 +417,7 @@ function validate(){
     stats.push({ offN, restOff, spN, bizN, m, mid, e, maxRun });
     if (offN !== quotaFor(i)) v.push(`${S.staff[i].name}：正常休假 ${offN} 天 ≠ 額度 ${quotaFor(i)} 天`);
     for (const d of absentOf(i)) if (grid[i][d] !== 5) v.push(`${S.staff[i].name}：${d} 日尚未到職／已離職，卻被排班或休假`);
-    if (!isEx){
+    if (!isEx && absentOf(i).size < days){
       if (restOff > 3) v.push(`${S.staff[i].name}：假日休了 ${restOff} 天（上限 3 天）`);
       if (restOff < 2) v.push(`${S.staff[i].name}：假日只休 ${restOff} 天（建議 2–3 天，公平性提醒）`);
     }

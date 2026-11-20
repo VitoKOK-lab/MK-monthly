@@ -32,7 +32,7 @@ function renderAltStrip(){
     const restLow = stats.filter((s,i) => !exemptSet().has(i) && s.restOff < 2).length;
     return `<div class="alt-card ${k===ALT_SEL?'active':''}" onclick="pickAlt(${k})">
       <b>方案 ${'ABC'[k]}${k===ALT_SEL?' ・ 套用中':''}</b>
-      分數 <span class="num">${alt.offScore}</span> ・ 體檢 ${violations.length ? `<span style="color:var(--crit)">${violations.length} 項</span>` : '<span style="color:var(--good)">全過</span>'}<br>
+      硬 <span class="num">${scoreParts(alt.offScore).hard}</span> ・ 軟 <span class="num">${scoreParts(alt.offScore).soft}</span> ・ 體檢 ${violations.length ? `<span style="color:var(--crit)">${violations.length} 項</span>` : '<span style="color:var(--good)">全過</span>'}<br>
       連上四天：${runs4} 人 ・ 假日休不足 2 天：${restLow} 人 ・ 最長連上 ${maxRun} 天<br>
       <span style="color:var(--muted)">${k===ALT_SEL ? '目前套用' : `與套用中方案相差 ${diff} 格`}</span>
     </div>`;
@@ -112,6 +112,44 @@ function updateButtons(){
 /* ============================================================
    產生
 ============================================================ */
+/* 求解器設定（generate 與分數明細共用） */
+function buildSolveCfg(){
+  const { days } = monthInfo();
+  const N = S.staff.length;
+  const trioIdx = S.trio.map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0);
+  return {
+    days, N,
+    quotas: S.staff.map((_,i) => totalQuota(i)),
+    fixed: S.staff.map((_,i) => fixedOf(i)),
+    blocked: S.staff.map((_,i) => blockedOf(i)),
+    special: S.staff.map((_,i) => specialSet(i)),
+    trioIdx,
+    trioMode: S.trioMode,
+    exempt: exemptSet(),   /* 店長 = 不做業績、只算人頭 */
+    altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
+    biz: S.staff.map((_,i) => bizOf(i)),
+    absent: S.staff.map((_,i) => absentOf(i)),
+  };
+}
+/* 分數明細：由目前班表反推休假集合，逐條規則列出扣分與對象（Timefold score analysis 的做法） */
+function renderScoreBreakdown(result){
+  if (!result || result.month !== S.month) return '';
+  const cfg = buildSolveCfg();
+  if (result.grid.length !== cfg.N) return '';
+  const off = result.grid.map(row => { const s = new Set(); for (let d=1; d<=result.days; d++) if (row[d] === 3) s.add(d); return s; });
+  const rows = explainOff(off, cfg).sort((a,b) => (a.level === b.level ? b.total - a.total : (a.level === 'hard' ? -1 : 1)));
+  const hard = rows.filter(r => r.level === 'hard').reduce((s,r) => s + r.total, 0);
+  const soft = rows.filter(r => r.level === 'soft').reduce((s,r) => s + r.total, 0);
+  const who = i => i >= 0 && S.staff[i] ? S.staff[i].name : '';
+  const item = it => `${who(it.who)}${it.day ? `${who(it.who) ? ' ' : ''}${it.day} 日` : ''}${it.note ? `：${it.note}` : ''}（−${it.w}）`;
+  return `<div class="card"><div class="subhead">分數明細 — 硬違規 <span class="num">${hard}</span> ・ 軟偏好 <span class="num">${soft}</span>（分數越低越好；硬違規沒清零前軟偏好不參與比較）</div>
+    ${rows.length ? `<table class="stat-table" style="font-size:12.5px"><tbody>${rows.map(r => `<tr>
+      <td style="text-align:left;white-space:nowrap;font-weight:700;color:${r.level==='hard'?'var(--crit)':'var(--ink)'}">${r.level==='hard'?'硬':'軟'} ・ ${r.name}</td>
+      <td class="num" style="white-space:nowrap">−${r.total}</td>
+      <td style="text-align:left;color:var(--ink2)">${r.items.slice(0,6).map(item).join('、')}${r.items.length > 6 ? `、…另 ${r.items.length-6} 項` : ''}</td>
+    </tr>`).join('')}</tbody></table>` : '<div class="ok-note">所有規則零扣分。</div>'}
+    <div class="hint" style="margin-top:8px">這是「休假日分配」階段的規則；班別（早／中／晚）相關檢查在上方規則總覽。</div></div>`;
+}
 function generate(){
   if (LOCKED){ document.getElementById('status').textContent = '🔒 班表已鎖定，請先解除鎖定'; return; }
   const btn = document.getElementById('genBtn');
@@ -151,19 +189,7 @@ function generate(){
         btn.disabled = false; return;
       }
     }
-    const cfg = {
-      days, N,
-      quotas: S.staff.map((_,i) => totalQuota(i)),
-      fixed: S.staff.map((_,i) => fixedOf(i)),
-      blocked: S.staff.map((_,i) => blockedOf(i)),
-      special: S.staff.map((_,i) => specialSet(i)),
-      trioIdx,
-      trioMode: S.trioMode,
-      exempt: exemptSet(),   /* 店長 = 不做業績、只算人頭 */
-      altIdx: new Set([S.trio[1], S.trio[2]].map(n => S.staff.findIndex(s => s.name===n)).filter(i => i>=0)),
-      biz: S.staff.map((_,i) => bizOf(i)),
-      absent: S.staff.map((_,i) => absentOf(i)),
-    };
+    const cfg = buildSolveCfg();
     /* 8 個隨機起點各解一次，留下分數最好的 3 個「彼此不同」方案讓店長挑。
        以前只回傳最佳一版；多版本不增加計算量，只是把原本丟掉的解留下來。 */
     const sols = [];
@@ -388,7 +414,7 @@ function renderAnomalies(violations){
   sec.style.display = '';
   const box = document.getElementById('anomalyBox');
   const q = document.getElementById('anomalyQ');
-  const ruleHtml = renderRuleList(violations);
+  const ruleHtml = renderRuleList(violations) + renderScoreBreakdown(RESULT);
   if (!violations.length){
     box.innerHTML = ruleHtml + `<div class="ok-note" style="font-size:14px">✓ 體檢通過：${RESULT.days} 天的班型、人力下限、晚班鎮店與休假規則全部正常，沒有需要調整的異常日。</div>`;
     q.textContent = '沒有異常 — 直接前往定案？';
